@@ -120,11 +120,19 @@ backend/
 - **Refresh token rotation** her refresh çağrısında eskiyi iptal edip yeni döner.
 - **PayTR test mode = 1** olduğu sürece gerçek paraya dokunulmaz.
 
-## Sonraki Adımlar (henüz yapılmadı)
+## Durum
 
-- [ ] Frontend (`admin.html`, `index.html`) localStorage çağrılarını fetch API'ye çevir
-- [ ] Mevcut localStorage verilerini bir kerelik backend'e seed eden migration scripti
-- [ ] Resim upload endpoint'i (`/api/uploads/images`) + dosya sistemi veya S3
-- [ ] Email gönderim servisi (sipariş onayı, kargo bildirimi)
-- [ ] Rate limit middleware
-- [ ] Production WSGI/ASGI deploy (gunicorn + uvicorn workers)
+Tamamlananlar:
+
+- [x] Resim upload endpoint'i (`/api/uploads/images`) — local FS / S3 (`routers/uploads.py`)
+- [x] Email gönderim servisi — sipariş onayı, kargo, parola sıfırlama (`services/email.py`)
+- [x] Rate limit (slowapi — login/register/forgot vb. korumalı, `rate_limit.py`)
+- [x] Production deploy (gunicorn + uvicorn workers, `DEPLOY.md`, `docker-compose.prod.yml`)
+- [x] Müşteri üyelik paneli + KVKK (veri ihracı / silme)
+- [x] Canlı destek (WebSocket chat), kargo entegrasyonu (PTT), e-fatura (GİB)
+- [x] Kod kalitesi: ruff + mypy + pre-commit + CI
+
+Sıradaki adaylar:
+
+- [ ] Cart'ı tamamen backend'e taşı (şu an `localStorage.tt_cart` + rezervasyon aynası)
+- [ ] mypy bulgularını sıfıra çekip CI'da bloklayıcı yap (şu an rapor modu)
