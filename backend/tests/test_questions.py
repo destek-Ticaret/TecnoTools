@@ -1,5 +1,5 @@
 """Ürün soru-cevap (Q&A) testleri."""
-import pytest
+
 
 from app.models import Product
 
@@ -44,8 +44,15 @@ async def test_ask_question_missing_product(client):
 async def test_public_list_only_published_answered(client, db_session, auth_client):
     p = await _make_product(db_session)
     # iki soru sor
-    q1 = (await client.post(f"/api/products/{p.id}/questions", json={"customer_name": "Ali", "question": "Soru bir?"})).json()
-    await client.post(f"/api/products/{p.id}/questions", json={"customer_name": "Ayse", "question": "Soru iki?"})
+    q1 = (
+        await client.post(
+            f"/api/products/{p.id}/questions",
+            json={"customer_name": "Ali", "question": "Soru bir?"},
+        )
+    ).json()
+    await client.post(
+        f"/api/products/{p.id}/questions", json={"customer_name": "Ayse", "question": "Soru iki?"}
+    )
 
     # public liste boş (hiçbiri yayınlı değil)
     pub = await client.get(f"/api/products/{p.id}/questions")
@@ -69,7 +76,12 @@ async def test_public_list_only_published_answered(client, db_session, auth_clie
 async def test_published_without_answer_hidden(client, db_session, auth_client):
     """Yayınlı ama cevapsız soru public listede görünmez."""
     p = await _make_product(db_session)
-    q = (await client.post(f"/api/products/{p.id}/questions", json={"customer_name": "Ali", "question": "Cevapsız?"})).json()
+    q = (
+        await client.post(
+            f"/api/products/{p.id}/questions",
+            json={"customer_name": "Ali", "question": "Cevapsız?"},
+        )
+    ).json()
     await auth_client.patch(f"/api/admin/questions/{q['id']}", json={"is_published": True})
     pub = await client.get(f"/api/products/{p.id}/questions")
     assert pub.json() == []
@@ -77,7 +89,12 @@ async def test_published_without_answer_hidden(client, db_session, auth_client):
 
 async def test_admin_filters_and_delete(client, db_session, auth_client):
     p = await _make_product(db_session)
-    q = (await client.post(f"/api/products/{p.id}/questions", json={"customer_name": "Ali", "question": "Filtre sorusu?"})).json()
+    q = (
+        await client.post(
+            f"/api/products/{p.id}/questions",
+            json={"customer_name": "Ali", "question": "Filtre sorusu?"},
+        )
+    ).json()
 
     # answered=False filtresi → 1 sonuç
     unanswered = await auth_client.get("/api/admin/questions", params={"answered": "false"})
@@ -86,8 +103,14 @@ async def test_admin_filters_and_delete(client, db_session, auth_client):
 
     # cevapla → answered=True 1, answered=False 0
     await auth_client.patch(f"/api/admin/questions/{q['id']}", json={"answer": "Cevap."})
-    assert len((await auth_client.get("/api/admin/questions", params={"answered": "true"})).json()) == 1
-    assert len((await auth_client.get("/api/admin/questions", params={"answered": "false"})).json()) == 0
+    assert (
+        len((await auth_client.get("/api/admin/questions", params={"answered": "true"})).json())
+        == 1
+    )
+    assert (
+        len((await auth_client.get("/api/admin/questions", params={"answered": "false"})).json())
+        == 0
+    )
 
     # sil
     d = await auth_client.delete(f"/api/admin/questions/{q['id']}")

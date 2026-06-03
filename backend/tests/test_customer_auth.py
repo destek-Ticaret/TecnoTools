@@ -1,5 +1,5 @@
 """Müşteri üyelik (customer-auth) akış testleri."""
-import pytest
+
 
 
 REGISTER_PAYLOAD = {
@@ -48,29 +48,38 @@ async def test_register_password_too_short(client):
 
 async def test_login_success(client):
     await _register(client)
-    r = await client.post("/api/customer-auth/login", json={
-        "email": "alice@example.com",
-        "password": "AliceStrong1!",
-    })
+    r = await client.post(
+        "/api/customer-auth/login",
+        json={
+            "email": "alice@example.com",
+            "password": "AliceStrong1!",
+        },
+    )
     assert r.status_code == 200
     assert "access_token" in r.json()
 
 
 async def test_login_wrong_password(client):
     await _register(client)
-    r = await client.post("/api/customer-auth/login", json={
-        "email": "alice@example.com",
-        "password": "WrongPass1!",
-    })
+    r = await client.post(
+        "/api/customer-auth/login",
+        json={
+            "email": "alice@example.com",
+            "password": "WrongPass1!",
+        },
+    )
     assert r.status_code == 401
 
 
 async def test_login_unknown_email_same_message(client):
     """Enumeration koruması: bilinmeyen e-posta ve yanlış şifre aynı yanıt."""
-    r = await client.post("/api/customer-auth/login", json={
-        "email": "ghost@example.com",
-        "password": "Whatever1!",
-    })
+    r = await client.post(
+        "/api/customer-auth/login",
+        json={
+            "email": "ghost@example.com",
+            "password": "Whatever1!",
+        },
+    )
     assert r.status_code == 401
 
 
@@ -91,9 +100,13 @@ async def test_me_returns_profile(client):
 
 async def test_admin_token_rejected_by_customer_endpoints(client, seed_admin):
     """Admin JWT'si müşteri endpoint'lerinde kabul edilmez (type=customer_access şart)."""
-    login = await client.post("/api/auth/login", json={
-        "username": "testadmin", "password": "TestPass123!",
-    })
+    login = await client.post(
+        "/api/auth/login",
+        json={
+            "username": "testadmin",
+            "password": "TestPass123!",
+        },
+    )
     admin_token = login.json()["access_token"]
     client.headers["Authorization"] = f"Bearer {admin_token}"
     r = await client.get("/api/customer-auth/me")
@@ -103,7 +116,9 @@ async def test_admin_token_rejected_by_customer_endpoints(client, seed_admin):
 async def test_profile_update(client):
     reg = (await _register(client)).json()
     client.headers["Authorization"] = f"Bearer {reg['access_token']}"
-    r = await client.patch("/api/customer-auth/me", json={"city": "Ankara", "marketing_opt_in": False})
+    r = await client.patch(
+        "/api/customer-auth/me", json={"city": "Ankara", "marketing_opt_in": False}
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["city"] == "Ankara"
@@ -115,10 +130,13 @@ async def test_change_password_revokes_refresh_tokens(client):
     refresh = reg["refresh_token"]
     client.headers["Authorization"] = f"Bearer {reg['access_token']}"
 
-    cp = await client.post("/api/customer-auth/change-password", json={
-        "current_password": "AliceStrong1!",
-        "new_password": "NewPass1234!",
-    })
+    cp = await client.post(
+        "/api/customer-auth/change-password",
+        json={
+            "current_password": "AliceStrong1!",
+            "new_password": "NewPass1234!",
+        },
+    )
     assert cp.status_code == 200
 
     # Eski refresh artık geçersiz
@@ -126,33 +144,49 @@ async def test_change_password_revokes_refresh_tokens(client):
     assert bad.status_code == 401
 
     # Eski parola → fail
-    r1 = await client.post("/api/customer-auth/login", json={
-        "email": "alice@example.com", "password": "AliceStrong1!",
-    })
+    r1 = await client.post(
+        "/api/customer-auth/login",
+        json={
+            "email": "alice@example.com",
+            "password": "AliceStrong1!",
+        },
+    )
     assert r1.status_code == 401
     # Yeni parola → ok
-    r2 = await client.post("/api/customer-auth/login", json={
-        "email": "alice@example.com", "password": "NewPass1234!",
-    })
+    r2 = await client.post(
+        "/api/customer-auth/login",
+        json={
+            "email": "alice@example.com",
+            "password": "NewPass1234!",
+        },
+    )
     assert r2.status_code == 200
 
 
 async def test_refresh_rotation(client):
     reg = (await _register(client)).json()
-    r1 = await client.post("/api/customer-auth/refresh", json={"refresh_token": reg["refresh_token"]})
+    r1 = await client.post(
+        "/api/customer-auth/refresh", json={"refresh_token": reg["refresh_token"]}
+    )
     assert r1.status_code == 200
     new_refresh = r1.json()["refresh_token"]
     assert new_refresh != reg["refresh_token"]
     # Eski token tekrar kullanılamaz
-    r2 = await client.post("/api/customer-auth/refresh", json={"refresh_token": reg["refresh_token"]})
+    r2 = await client.post(
+        "/api/customer-auth/refresh", json={"refresh_token": reg["refresh_token"]}
+    )
     assert r2.status_code == 401
 
 
 async def test_logout_revokes_refresh(client):
     reg = (await _register(client)).json()
-    out = await client.post("/api/customer-auth/logout", json={"refresh_token": reg["refresh_token"]})
+    out = await client.post(
+        "/api/customer-auth/logout", json={"refresh_token": reg["refresh_token"]}
+    )
     assert out.status_code == 204
-    r = await client.post("/api/customer-auth/refresh", json={"refresh_token": reg["refresh_token"]})
+    r = await client.post(
+        "/api/customer-auth/refresh", json={"refresh_token": reg["refresh_token"]}
+    )
     assert r.status_code == 401
 
 
@@ -164,9 +198,13 @@ async def test_forgot_password_same_response(client):
 
 
 async def test_reset_password_with_invalid_token(client):
-    r = await client.post("/api/customer-auth/reset-password", json={
-        "token": "bogus-token", "new_password": "WhateverNew1!",
-    })
+    r = await client.post(
+        "/api/customer-auth/reset-password",
+        json={
+            "token": "bogus-token",
+            "new_password": "WhateverNew1!",
+        },
+    )
     assert r.status_code == 400
 
 
@@ -179,27 +217,33 @@ async def test_my_orders_filters_by_ownership(client, auth_client):
     # Müşteri kayıt + sipariş
     reg = (await _register(client)).json()
     client.headers["Authorization"] = f"Bearer {reg['access_token']}"
-    co = await client.post("/api/orders/checkout", json={
-        "items": [{"product_id": pid, "qty": 1}],
-        "customer_name": "Alice Tester",
-        "customer_email": "alice@example.com",
-        "customer_phone": "+905551112233",
-        "customer_city": "İstanbul",
-        "customer_address": "Mahalle Sokak No:1 Daire:5",
-    })
+    co = await client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": 1}],
+            "customer_name": "Alice Tester",
+            "customer_email": "alice@example.com",
+            "customer_phone": "+905551112233",
+            "customer_city": "İstanbul",
+            "customer_address": "Mahalle Sokak No:1 Daire:5",
+        },
+    )
     assert co.status_code == 200, co.text
     my_order_no = co.json()["order_no"]
 
     # Başka bir email ile sipariş (auth gerekmez, public checkout)
     client.headers.pop("Authorization", None)
-    other = await client.post("/api/orders/checkout", json={
-        "items": [{"product_id": pid, "qty": 1}],
-        "customer_name": "Bob Other",
-        "customer_email": "bob@example.com",
-        "customer_phone": "+905559998877",
-        "customer_city": "İzmir",
-        "customer_address": "Cadde No:5 Daire:1",
-    })
+    other = await client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": 1}],
+            "customer_name": "Bob Other",
+            "customer_email": "bob@example.com",
+            "customer_phone": "+905559998877",
+            "customer_city": "İzmir",
+            "customer_address": "Cadde No:5 Daire:1",
+        },
+    )
     assert other.status_code == 200
     other_no = other.json()["order_no"]
 
@@ -221,14 +265,17 @@ async def test_pasif_kayit_uyelige_yukseltilir(client, auth_client):
     pr = await auth_client.post("/api/products", json={"name": "P", "price": 50, "stock": 5})
     pid = pr.json()["id"]
     # 1) Anonim checkout → Customer pasif kaydı oluşur
-    co = await client.post("/api/orders/checkout", json={
-        "items": [{"product_id": pid, "qty": 1}],
-        "customer_name": "Carol Pasif",
-        "customer_email": "carol@example.com",
-        "customer_phone": "+905557776655",
-        "customer_city": "Bursa",
-        "customer_address": "Adres satırı No:1 Daire:1",
-    })
+    co = await client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": 1}],
+            "customer_name": "Carol Pasif",
+            "customer_email": "carol@example.com",
+            "customer_phone": "+905557776655",
+            "customer_city": "Bursa",
+            "customer_address": "Adres satırı No:1 Daire:1",
+        },
+    )
     assert co.status_code == 200
     past_order_no = co.json()["order_no"]
 

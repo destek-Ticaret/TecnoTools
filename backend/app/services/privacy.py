@@ -17,11 +17,12 @@
    Çıktı `result` dict'i her tablodan kaç satır etkilendiğini içerir; audit log
    için bu data_deletion_requests.result alanına yazılır.
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, select, update
@@ -40,7 +41,6 @@ from app.models import (
     Invoice,
     NewsletterSubscriber,
     Order,
-    OrderStatus,
     PaymentStatus,
     ProductReview,
     ReturnRequest,
@@ -77,33 +77,66 @@ async def collect_customer_data(db: AsyncSession, customer: Customer) -> dict[st
     Şifre hash'i, refresh token'lar gibi güvenlik bilgileri çıktıya konmaz.
     """
     orders = (
-        await db.execute(
-            select(Order).where(
-                (Order.customer_id == customer.id) | (Order.customer_email == customer.email)
+        (
+            await db.execute(
+                select(Order).where(
+                    (Order.customer_id == customer.id) | (Order.customer_email == customer.email)
+                )
             )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
     reviews = (
-        await db.execute(select(ProductReview).where(ProductReview.customer_email == customer.email))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(ProductReview).where(ProductReview.customer_email == customer.email)
+            )
+        )
+        .scalars()
+        .all()
+    )
     invoices = (
-        await db.execute(select(Invoice).where(Invoice.customer_email == customer.email))
-    ).scalars().all()
+        (await db.execute(select(Invoice).where(Invoice.customer_email == customer.email)))
+        .scalars()
+        .all()
+    )
     returns = (
-        await db.execute(select(ReturnRequest).where(ReturnRequest.customer_email == customer.email))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(ReturnRequest).where(ReturnRequest.customer_email == customer.email)
+            )
+        )
+        .scalars()
+        .all()
+    )
     stock_notifs = (
-        await db.execute(select(StockNotification).where(StockNotification.email == customer.email))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(StockNotification).where(StockNotification.email == customer.email)
+            )
+        )
+        .scalars()
+        .all()
+    )
     newsletter = (
-        await db.execute(select(NewsletterSubscriber).where(NewsletterSubscriber.email == customer.email))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(NewsletterSubscriber).where(NewsletterSubscriber.email == customer.email)
+            )
+        )
+        .scalars()
+        .all()
+    )
     chat_sessions = (
-        await db.execute(select(ChatSession).where(ChatSession.customer_id == customer.id))
-    ).scalars().all()
+        (await db.execute(select(ChatSession).where(ChatSession.customer_id == customer.id)))
+        .scalars()
+        .all()
+    )
 
     return {
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "format_version": "1.0",
         "customer": {
             "id": customer.id,
@@ -168,7 +201,10 @@ async def collect_customer_data(db: AsyncSession, customer: Customer) -> dict[st
             for r in reviews
         ],
         "stock_notifications": [
-            {"product_id": s.product_id, "created_at": s.created_at.isoformat() if s.created_at else None}
+            {
+                "product_id": s.product_id,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+            }
             for s in stock_notifs
         ],
         "newsletter_subscriptions": [
@@ -194,12 +230,17 @@ async def _anonymize_orders(db: AsyncSession, customer: Customer) -> int:
     içerir; onları burada anonimleştiriyoruz.
     """
     rows = (
-        await db.execute(
-            select(Order).where(
-                (Order.customer_id == customer.id) | (Order.customer_email == customer.email)
+        (
+            await db.execute(
+                select(Order).where(
+                    (Order.customer_id == customer.id) | (Order.customer_email == customer.email)
+                )
             )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
     affected = 0
     anon_email = _anon_email(customer.email)
     for o in rows:
@@ -220,8 +261,10 @@ async def _anonymize_orders(db: AsyncSession, customer: Customer) -> int:
 async def _anonymize_invoices(db: AsyncSession, customer: Customer) -> int:
     """E-arşiv faturaları VUK uyarınca 5 yıl saklanır — silinmez, maskelenir."""
     rows = (
-        await db.execute(select(Invoice).where(Invoice.customer_email == customer.email))
-    ).scalars().all()
+        (await db.execute(select(Invoice).where(Invoice.customer_email == customer.email)))
+        .scalars()
+        .all()
+    )
     affected = 0
     anon_email = _anon_email(customer.email)
     for inv in rows:
@@ -235,8 +278,14 @@ async def _anonymize_invoices(db: AsyncSession, customer: Customer) -> int:
 
 async def _anonymize_returns(db: AsyncSession, customer: Customer) -> int:
     rows = (
-        await db.execute(select(ReturnRequest).where(ReturnRequest.customer_email == customer.email))
-    ).scalars().all()
+        (
+            await db.execute(
+                select(ReturnRequest).where(ReturnRequest.customer_email == customer.email)
+            )
+        )
+        .scalars()
+        .all()
+    )
     anon_email = _anon_email(customer.email)
     for r in rows:
         r.customer_name = ANON_NAME
@@ -260,15 +309,15 @@ async def _anonymize_reviews(db: AsyncSession, customer: Customer) -> int:
 async def _delete_chat(db: AsyncSession, customer: Customer) -> int:
     """Chat oturumlarını + mesajlarını sil (cascade)."""
     sessions = (
-        await db.execute(select(ChatSession.id).where(ChatSession.customer_id == customer.id))
-    ).scalars().all()
+        (await db.execute(select(ChatSession.id).where(ChatSession.customer_id == customer.id)))
+        .scalars()
+        .all()
+    )
     deleted = 0
     if sessions:
         # Önce mesajları sil (FK ondelete=CASCADE zaten ama hassas içerikte
         # ayrı silmek log'da net görünür).
-        res_msg = await db.execute(
-            delete(ChatMessage).where(ChatMessage.session_pk.in_(sessions))
-        )
+        res_msg = await db.execute(delete(ChatMessage).where(ChatMessage.session_pk.in_(sessions)))
         deleted += res_msg.rowcount or 0
         res_sess = await db.execute(delete(ChatSession).where(ChatSession.id.in_(sessions)))
         deleted += res_sess.rowcount or 0
@@ -279,9 +328,7 @@ async def _delete_misc(db: AsyncSession, customer: Customer) -> dict[str, int]:
     """Tutmaya değmeyen kişisel kayıtlar — tamamen sil."""
     out: dict[str, int] = {}
 
-    r = await db.execute(
-        delete(StockNotification).where(StockNotification.email == customer.email)
-    )
+    r = await db.execute(delete(StockNotification).where(StockNotification.email == customer.email))
     out["stock_notifications"] = r.rowcount or 0
 
     r = await db.execute(
@@ -304,9 +351,7 @@ async def _delete_misc(db: AsyncSession, customer: Customer) -> dict[str, int]:
     # Consent log'ları — customer_id ile bağlı olanları SET NULL yap;
     # session_id bazlılar zaten kişiyi tanımlamaz.
     await db.execute(
-        update(ConsentLog)
-        .where(ConsentLog.customer_id == customer.id)
-        .values(customer_id=None)
+        update(ConsentLog).where(ConsentLog.customer_id == customer.id).values(customer_id=None)
     )
     return out
 
@@ -344,7 +389,7 @@ async def run_deletion(db: AsyncSession, request: DataDeletionRequest) -> dict[s
             )
         )
         request.status = DataDeletionStatus.COMPLETED.value
-        request.completed_at = datetime.now(timezone.utc)
+        request.completed_at = datetime.now(UTC)
         request.result = {"note": "customer_already_deleted"}
         await db.commit()
         return request.result
@@ -372,7 +417,7 @@ async def run_deletion(db: AsyncSession, request: DataDeletionRequest) -> dict[s
     summary["customer_deleted"] = True
 
     request.status = DataDeletionStatus.COMPLETED.value
-    request.completed_at = datetime.now(timezone.utc)
+    request.completed_at = datetime.now(UTC)
     request.customer_id = None  # SET NULL referansı netleşsin
     request.result = summary
     await db.commit()

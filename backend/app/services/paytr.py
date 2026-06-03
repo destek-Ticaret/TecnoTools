@@ -6,12 +6,13 @@
 
 Bu modül sadece protokolü implement eder; gerçek HTTP çağrısı `payments` router'ında.
 """
+
 import base64
 import hashlib
 import hmac
 import json
 import secrets
-from typing import Iterable
+from collections.abc import Iterable
 
 import httpx
 
@@ -47,7 +48,9 @@ def build_paytr_token(
     max_installment: int = 0,
 ) -> dict:
     """PayTR iframe için token üretir ve sözlük döner: {token, raw_response}."""
-    if not (settings.paytr_merchant_id and settings.paytr_merchant_key and settings.paytr_merchant_salt):
+    if not (
+        settings.paytr_merchant_id and settings.paytr_merchant_key and settings.paytr_merchant_salt
+    ):
         # Test/dev modunda credential yoksa sahte bir token döndür
         return {"token": "DEV-" + secrets.token_urlsafe(20), "raw_response": {"status": "dev-mock"}}
 
@@ -88,7 +91,9 @@ def build_paytr_token(
     return {"token": body["token"], "raw_response": body, "merchant_oid": merchant_oid}
 
 
-def verify_callback_hash(*, merchant_oid: str, status: str, total_amount: str, hash_value: str) -> bool:
+def verify_callback_hash(
+    *, merchant_oid: str, status: str, total_amount: str, hash_value: str
+) -> bool:
     """PayTR notification handler için imza doğrulaması."""
     if not (settings.paytr_merchant_key and settings.paytr_merchant_salt):
         return False

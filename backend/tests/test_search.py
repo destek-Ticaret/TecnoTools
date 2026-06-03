@@ -1,13 +1,18 @@
 """Ürün arama uçları — autocomplete + fuzzy (typo toleransı)."""
-import pytest
+
 
 from app.models import Product
 
 
 async def _make(db_session, name, **kw):
-    p = Product(name=name, sub=kw.get("sub"), price=kw.get("price", 100),
-                stock=kw.get("stock", 5), is_active=kw.get("is_active", True),
-                features=kw.get("features"))
+    p = Product(
+        name=name,
+        sub=kw.get("sub"),
+        price=kw.get("price", 100),
+        stock=kw.get("stock", 5),
+        is_active=kw.get("is_active", True),
+        features=kw.get("features"),
+    )
     db_session.add(p)
     await db_session.commit()
     await db_session.refresh(p)
@@ -52,6 +57,8 @@ async def test_fuzzy_typo_tolerance(client, db_session):
 async def test_fuzzy_respects_min_score(client, db_session):
     await _make(db_session, "Çekiç")
     # alakasız sorgu yüksek eşikle boş dönmeli
-    r = await client.get("/api/products/search/fuzzy", params={"q": "buzdolabı", "min_score": "0.6"})
+    r = await client.get(
+        "/api/products/search/fuzzy", params={"q": "buzdolabı", "min_score": "0.6"}
+    )
     assert r.status_code == 200
     assert r.json() == []

@@ -1,8 +1,11 @@
 """İade talebi endpoint'leri — public lookup + admin onay/red."""
+
 from app.models import Order, OrderItem, OrderStatus, Product, ReturnStatus
 
 
-async def _create_order_with_item(db_session, status_value: str = OrderStatus.DELIVERED.value, qty: int = 2, stock: int = 50):
+async def _create_order_with_item(
+    db_session, status_value: str = OrderStatus.DELIVERED.value, qty: int = 2, stock: int = 50
+):
     """Test için: ürün + sipariş + kalem oluşturur, status'unu set eder."""
     p = Product(name="Matkap", price=200.0, stock=stock, is_active=True)
     db_session.add(p)
@@ -31,7 +34,9 @@ async def _create_order_with_item(db_session, status_value: str = OrderStatus.DE
 
 
 async def test_create_return_request_ok(client, db_session):
-    o, p = await _create_order_with_item(db_session, status_value=OrderStatus.DELIVERED.value, qty=3)
+    o, p = await _create_order_with_item(
+        db_session, status_value=OrderStatus.DELIVERED.value, qty=3
+    )
     payload = {
         "order_no": o.order_no,
         "customer_email": o.customer_email,
@@ -134,15 +139,20 @@ async def test_return_item_not_in_order(client, db_session):
 async def test_lookup_returns_by_order_and_email(client, db_session):
     o, p = await _create_order_with_item(db_session)
     for i in range(2):
-        await client.post("/api/returns", json={
-            "order_no": o.order_no,
-            "customer_email": o.customer_email,
-            "customer_name": o.customer_name,
-            "reason": "damaged",
-            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-        })
+        await client.post(
+            "/api/returns",
+            json={
+                "order_no": o.order_no,
+                "customer_email": o.customer_email,
+                "customer_name": o.customer_name,
+                "reason": "damaged",
+                "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+            },
+        )
 
-    r = await client.get("/api/returns/lookup", params={"order_no": o.order_no, "email": o.customer_email})
+    r = await client.get(
+        "/api/returns/lookup", params={"order_no": o.order_no, "email": o.customer_email}
+    )
     assert r.status_code == 200
     rows = r.json()
     assert len(rows) == 2
@@ -151,11 +161,16 @@ async def test_lookup_returns_by_order_and_email(client, db_session):
 
 async def test_cancel_my_return_ok(client, db_session):
     o, p = await _create_order_with_item(db_session)
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
 
     r = await client.post(f"/api/returns/{rid}/cancel", params={"email": o.customer_email})
@@ -163,17 +178,24 @@ async def test_cancel_my_return_ok(client, db_session):
     assert r.json()["ok"] is True
 
     # Artık cancelled
-    lookup = await client.get("/api/returns/lookup", params={"order_no": o.order_no, "email": o.customer_email})
+    lookup = await client.get(
+        "/api/returns/lookup", params={"order_no": o.order_no, "email": o.customer_email}
+    )
     assert lookup.json()[0]["status"] == ReturnStatus.CANCELLED.value
 
 
 async def test_cancel_return_with_wrong_email_404(client, db_session):
     o, p = await _create_order_with_item(db_session)
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
     r = await client.post(f"/api/returns/{rid}/cancel", params={"email": "imposter@x.com"})
     assert r.status_code == 404
@@ -184,11 +206,16 @@ async def test_admin_approve_and_refund_restores_stock(auth_client, client, db_s
     o, p = await _create_order_with_item(db_session, qty=3, stock=10)
     initial_stock = p.stock
 
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 2, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 2, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
 
     # Onayla
@@ -213,11 +240,16 @@ async def test_admin_approve_and_refund_restores_stock(auth_client, client, db_s
 
 async def test_admin_reject_terminal(auth_client, client, db_session):
     o, p = await _create_order_with_item(db_session)
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
     r1 = await auth_client.patch(f"/api/returns/{rid}/status", json={"status": "rejected"})
     assert r1.status_code == 200
@@ -229,11 +261,16 @@ async def test_admin_reject_terminal(auth_client, client, db_session):
 
 async def test_admin_cannot_set_requested(auth_client, client, db_session):
     o, p = await _create_order_with_item(db_session)
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
     r = await auth_client.patch(f"/api/returns/{rid}/status", json={"status": "requested"})
     assert r.status_code == 400
@@ -242,11 +279,16 @@ async def test_admin_cannot_set_requested(auth_client, client, db_session):
 async def test_admin_list_returns(auth_client, client, db_session):
     o, p = await _create_order_with_item(db_session)
     for _ in range(2):
-        await client.post("/api/returns", json={
-            "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-            "reason": "damaged",
-            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-        })
+        await client.post(
+            "/api/returns",
+            json={
+                "order_no": o.order_no,
+                "customer_email": o.customer_email,
+                "customer_name": o.customer_name,
+                "reason": "damaged",
+                "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+            },
+        )
     r = await auth_client.get("/api/returns")
     assert r.status_code == 200
     assert len(r.json()) >= 2
@@ -254,11 +296,16 @@ async def test_admin_list_returns(auth_client, client, db_session):
 
 async def test_admin_list_filter_by_status(auth_client, client, db_session):
     o, p = await _create_order_with_item(db_session)
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
     await auth_client.patch(f"/api/returns/{rid}/status", json={"status": "approved"})
 
@@ -269,11 +316,16 @@ async def test_admin_list_filter_by_status(auth_client, client, db_session):
 
 async def test_admin_get_return_detail(auth_client, client, db_session):
     o, p = await _create_order_with_item(db_session)
-    cr = await client.post("/api/returns", json={
-        "order_no": o.order_no, "customer_email": o.customer_email, "customer_name": o.customer_name,
-        "reason": "damaged",
-        "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
-    })
+    cr = await client.post(
+        "/api/returns",
+        json={
+            "order_no": o.order_no,
+            "customer_email": o.customer_email,
+            "customer_name": o.customer_name,
+            "reason": "damaged",
+            "items": [{"product_id": p.id, "name": p.name, "qty": 1, "price": 200.0}],
+        },
+    )
     rid = cr.json()["id"]
     r = await auth_client.get(f"/api/returns/{rid}")
     assert r.status_code == 200

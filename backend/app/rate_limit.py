@@ -8,6 +8,7 @@ Limitler IP başınadır. PayTR callback'i muaftır (sunucu-sunucu trafik).
 Test modu (APP_ENV=test): Limiter `enabled=False` ile no-op'a düşer; testler
 arasında slowapi global state'i tıkanmaz.
 """
+
 import os
 
 from slowapi import Limiter

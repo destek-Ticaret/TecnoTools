@@ -1,4 +1,5 @@
 """Toplu ürün içe aktarma — CSV + XLSX, dry-run, kategori eşleme, idempotent güncelleme."""
+
 import io
 
 import openpyxl
@@ -34,10 +35,7 @@ async def test_import_template_requires_permission(client):
 
 async def test_import_csv_dry_run(auth_client):
     """dry_run=true → DB değişmez, sadece özet döner."""
-    csv_data = (
-        b"name,price,stock\n"
-        b"Yeni Urun,99.90,10\n"
-    )
+    csv_data = b"name,price,stock\nYeni Urun,99.90,10\n"
     files = {"file": ("products.csv", io.BytesIO(csv_data), "text/csv")}
     r = await auth_client.post("/api/imports/products?dry_run=true", files=files)
     assert r.status_code == 200, r.text
@@ -48,8 +46,9 @@ async def test_import_csv_dry_run(auth_client):
 
 
 async def test_import_xlsx_creates_products(auth_client, db_session):
-    from app.models import Product
     from sqlalchemy import func, select
+
+    from app.models import Product
 
     headers = ["name", "price", "stock", "is_active"]
     data = [
@@ -57,8 +56,13 @@ async def test_import_xlsx_creates_products(auth_client, db_session):
         ["İthal Matkap", "199.90", 5, "evet"],
         ["Tornavida Seti", "89.50", 12, "1"],
     ]
-    files = {"file": ("urunler.xlsx", io.BytesIO(_build_xlsx(data)),
-                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    files = {
+        "file": (
+            "urunler.xlsx",
+            io.BytesIO(_build_xlsx(data)),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    }
     r = await auth_client.post("/api/imports/products", files=files)
     assert r.status_code == 200, r.text
     body = r.json()
@@ -69,8 +73,8 @@ async def test_import_xlsx_creates_products(auth_client, db_session):
 
 
 async def test_import_updates_existing_by_id(auth_client, db_session):
+
     from app.models import Product
-    from sqlalchemy import select
 
     p = Product(name="Eski Ad", price=10.0, stock=1, is_active=True)
     db_session.add(p)
@@ -82,7 +86,13 @@ async def test_import_updates_existing_by_id(auth_client, db_session):
         headers,
         [str(p.id), "Yeni Ad", "25.0", 50],
     ]
-    files = {"file": ("update.xlsx", io.BytesIO(_build_xlsx(data)), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    files = {
+        "file": (
+            "update.xlsx",
+            io.BytesIO(_build_xlsx(data)),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    }
     r = await auth_client.post("/api/imports/products", files=files)
     assert r.status_code == 200
     body = r.json()
@@ -97,13 +107,20 @@ async def test_import_updates_existing_by_id(auth_client, db_session):
 async def test_import_updates_by_name(auth_client, db_session):
     """id yoksa name ile eşleşip günceller."""
     from app.models import Product
+
     p = Product(name="Aynı İsim", price=10.0, stock=1, is_active=True)
     db_session.add(p)
     await db_session.commit()
 
     headers = ["name", "price", "stock"]
     data = [headers, ["Aynı İsim", "30.0", 20]]
-    files = {"file": ("upd.xlsx", io.BytesIO(_build_xlsx(data)), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    files = {
+        "file": (
+            "upd.xlsx",
+            io.BytesIO(_build_xlsx(data)),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    }
     r = await auth_client.post("/api/imports/products", files=files)
     assert r.json()["updated"] == 1
     assert r.json()["created"] == 0
@@ -146,8 +163,13 @@ async def test_import_warns_on_unknown_category(auth_client):
         headers,
         ["X", "10.0", 5, "Olmayan Kategori"],
     ]
-    files = {"file": ("warn.xlsx", io.BytesIO(_build_xlsx(data)),
-                       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    files = {
+        "file": (
+            "warn.xlsx",
+            io.BytesIO(_build_xlsx(data)),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    }
     r = await auth_client.post("/api/imports/products", files=files)
     body = r.json()
     assert body["created"] == 1

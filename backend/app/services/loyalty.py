@@ -14,12 +14,13 @@ Kurallar (tier eşiği config'lenebilir):
         Platinum: ≥ 15.000 ₺
   * 100 puan = 10₺ kupon (default kur).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order, PaymentStatus
@@ -78,7 +79,7 @@ async def loyalty_for_email(db: AsyncSession, email: str) -> LoyaltyAccount | No
     ).all()
     if not rows:
         return None
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     validity_cutoff = now - timedelta(days=POINT_VALIDITY_DAYS)
     annual_cutoff = now - timedelta(days=365)
     points = 0
@@ -86,7 +87,7 @@ async def loyalty_for_email(db: AsyncSession, email: str) -> LoyaltyAccount | No
     annual = 0.0
     for sub, disc, created_at in rows:
         if created_at and created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
+            created_at = created_at.replace(tzinfo=UTC)
         net = max(0.0, float(sub or 0) - float(disc or 0))
         lifetime += net
         if created_at and created_at >= annual_cutoff:
@@ -112,7 +113,9 @@ def points_for_order_total(*, subtotal: float, discount: float) -> int:
     return int(round(net * POINT_PER_TRY))
 
 
-def redeem_points_to_discount(points: int, max_discount_pct: float = 0.20, subtotal: float = 0.0) -> float:
+def redeem_points_to_discount(
+    points: int, max_discount_pct: float = 0.20, subtotal: float = 0.0
+) -> float:
     """`points` puanın TRY karşılığı — sepete uygulanabilecek max indirim.
 
     Güvenlik: en fazla sepet ara toplamının %max_discount_pct kadarı uygulanır.

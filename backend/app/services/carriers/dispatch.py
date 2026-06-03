@@ -4,10 +4,11 @@
 çakışmalarında IntegrityError yer (uq_shipment_event_dedupe) ve sessizce
 yutulur. Order.status sadece "ileri" yönde değişir (delivered'dan geriye gitmez).
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -23,12 +24,12 @@ CARRIER_CODES = ("ptt",)
 
 # Hangi event kodu Order.status'ü hangi değere çıkarmalı.
 _EVENT_TO_STATUS: dict[str, str] = {
-    "picked_up":        OrderStatus.SHIPPED.value,
-    "in_transit":       OrderStatus.SHIPPED.value,
+    "picked_up": OrderStatus.SHIPPED.value,
+    "in_transit": OrderStatus.SHIPPED.value,
     "out_for_delivery": OrderStatus.SHIPPED.value,
-    "delivered":        OrderStatus.DELIVERED.value,
-    "returned":         OrderStatus.CANCELLED.value,
-    "cancelled":        OrderStatus.CANCELLED.value,
+    "delivered": OrderStatus.DELIVERED.value,
+    "returned": OrderStatus.CANCELLED.value,
+    "cancelled": OrderStatus.CANCELLED.value,
 }
 
 # Statü sıralaması (geri sayım engelle).
@@ -45,6 +46,7 @@ def get_adapter(carrier: str) -> CarrierAdapter:
     """Carrier kodundan adapter instance döndür."""
     if carrier == "ptt":
         from app.services.carriers.ptt import PttAdapter
+
         return PttAdapter()
     raise ValueError(f"Unknown carrier: {carrier!r}")
 
@@ -67,7 +69,9 @@ async def apply_event(
         ).scalar_one_or_none()
 
     if order is None:
-        log.info("shipment event for unknown tracking_no=%s carrier=%s", event.tracking_no, event.carrier)
+        log.info(
+            "shipment event for unknown tracking_no=%s carrier=%s", event.tracking_no, event.carrier
+        )
         return None, None, False
 
     # 1) Event satırını ekle (idempotent)
@@ -79,7 +83,9 @@ async def apply_event(
         raw_status=event.raw_status,
         description=event.description,
         location=event.location,
-        occurred_at=event.occurred_at if event.occurred_at.tzinfo else event.occurred_at.replace(tzinfo=timezone.utc),
+        occurred_at=event.occurred_at
+        if event.occurred_at.tzinfo
+        else event.occurred_at.replace(tzinfo=UTC),
         source=source,
         raw_payload=event.raw_payload,
     )
@@ -102,24 +108,34 @@ async def apply_event(
             order.shipped_at = row.occurred_at
         if new_status == OrderStatus.DELIVERED.value and not order.delivered_at:
             order.delivered_at = row.occurred_at
-        db.add(AuditLog(
-            actor=f"carrier:{event.carrier}",
-            action="order-status",
-            message=f"{order.order_no}: {old} → {new_status}",
-        ))
+        db.add(
+            AuditLog(
+                actor=f"carrier:{event.carrier}",
+                action="order-status",
+                message=f"{order.order_no}: {old} → {new_status}",
+            )
+        )
         status_changed = True
 
-    order.last_tracking_sync_at = datetime.now(timezone.utc)
+    order.last_tracking_sync_at = datetime.now(UTC)
     await db.flush()
 
     if status_changed:
-        await bus.publish("order_status_changed", {
-            "order_no": order.order_no, "status": order.status, "carrier": event.carrier,
-        })
+        await bus.publish(
+            "order_status_changed",
+            {
+                "order_no": order.order_no,
+                "status": order.status,
+                "carrier": event.carrier,
+            },
+        )
         # Müşteriye bilgilendirme maili
         try:
             from app.services.email import send_order_status_update
-            await send_order_status_update(order, "shipped" if order.status == "delivered" else "processing")
+
+            await send_order_status_update(
+                order, "shipped" if order.status == "delivered" else "processing"
+            )
         except Exception:
             log.exception("send_order_status_update failed")
 

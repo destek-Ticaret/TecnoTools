@@ -1,32 +1,33 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.deps import require_editor
-from app.config import get_settings
 from app.models import AuditLog, Product, Reservation, StockMovement, User
 from app.schemas import ProductIn, ProductOut, ProductPublicOut
 from app.services.currency import convert, get_rate, is_supported
 from app.services.events import bus
-from app.services.text_utils import fuzzy_score, normalize, slugify, tokenize
+from app.services.text_utils import fuzzy_score, normalize, slugify
 
 _cfg = get_settings()
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
 
-async def _effective_stock_map(db: AsyncSession, product_ids: list[int], exclude_session: str | None) -> dict[int, int]:
+async def _effective_stock_map(
+    db: AsyncSession, product_ids: list[int], exclude_session: str | None
+) -> dict[int, int]:
     """Verilen ürünler için 'kalan stok' (toplam - başkalarının rezervasyonu)."""
     if not product_ids:
         return {}
-    now = datetime.now(timezone.utc)
-    q = (
-        select(Reservation.product_id, func.coalesce(func.sum(Reservation.qty), 0))
-        .where(Reservation.product_id.in_(product_ids), Reservation.expires_at > now)
+    now = datetime.now(UTC)
+    q = select(Reservation.product_id, func.coalesce(func.sum(Reservation.qty), 0)).where(
+        Reservation.product_id.in_(product_ids), Reservation.expires_at > now
     )
     if exclude_session:
         q = q.where(Reservation.session_id != exclude_session)
@@ -64,11 +65,21 @@ async def list_products_public(
         old_price = convert(float(p.old_price), rate) if p.old_price is not None else None
         out.append(
             ProductPublicOut(
-                id=p.id, name=p.name, sub=p.sub, description=p.description, icon=p.icon,
-                category_id=p.category_id, category=p.category,
-                price=price, old_price=old_price,
-                effective_stock=eff, rating=float(p.rating or 0), review_count=p.review_count or 0,
-                badge=p.badge, features=p.features, images=p.images,
+                id=p.id,
+                name=p.name,
+                sub=p.sub,
+                description=p.description,
+                icon=p.icon,
+                category_id=p.category_id,
+                category=p.category,
+                price=price,
+                old_price=old_price,
+                effective_stock=eff,
+                rating=float(p.rating or 0),
+                review_count=p.review_count or 0,
+                badge=p.badge,
+                features=p.features,
+                images=p.images,
             )
         )
     return out
@@ -112,20 +123,22 @@ async def search_products_fuzzy(
 
     out = []
     for score, p in scored:
-        out.append({
-            "id": p.id,
-            "name": p.name,
-            "sub": p.sub,
-            "icon": p.icon,
-            "category_id": p.category_id,
-            "price": float(p.price),
-            "old_price": float(p.old_price) if p.old_price is not None else None,
-            "stock": p.stock,
-            "rating": float(p.rating or 0),
-            "image": (p.images or [None])[0] if p.images else None,
-            "slug": slugify(p.name),
-            "score": round(score, 3),
-        })
+        out.append(
+            {
+                "id": p.id,
+                "name": p.name,
+                "sub": p.sub,
+                "icon": p.icon,
+                "category_id": p.category_id,
+                "price": float(p.price),
+                "old_price": float(p.old_price) if p.old_price is not None else None,
+                "stock": p.stock,
+                "rating": float(p.rating or 0),
+                "image": (p.images or [None])[0] if p.images else None,
+                "slug": slugify(p.name),
+                "score": round(score, 3),
+            }
+        )
     return out
 
 
@@ -142,9 +155,11 @@ async def search_autocomplete(
     # Geniş alma; küçük katalog varsayımıyla bellekte filtre.
     rows = (
         await db.execute(
-            select(Product.id, Product.name, Product.icon, Product.images).where(
+            select(Product.id, Product.name, Product.icon, Product.images)
+            .where(
                 Product.is_active == True  # noqa: E712
-            ).limit(500)
+            )
+            .limit(500)
         )
     ).all()
     matches: list[tuple[float, dict]] = []
@@ -164,11 +179,18 @@ async def search_autocomplete(
                     score = 0.85
                     break
         if score >= 0.5:
-            matches.append((score, {
-                "id": int(pid), "name": name, "icon": icon,
-                "image": (images or [None])[0] if images else None,
-                "slug": slugify(name or ""),
-            }))
+            matches.append(
+                (
+                    score,
+                    {
+                        "id": int(pid),
+                        "name": name,
+                        "icon": icon,
+                        "image": (images or [None])[0] if images else None,
+                        "slug": slugify(name or ""),
+                    },
+                )
+            )
     matches.sort(key=lambda x: x[0], reverse=True)
     return [m for _, m in matches[:limit]]
 
@@ -183,18 +205,32 @@ async def get_product_public(
     reserved = await _effective_stock_map(db, [p.id], session_id)
     eff = max(0, (p.stock or 0) - reserved.get(p.id, 0))
     return ProductPublicOut(
-        id=p.id, name=p.name, sub=p.sub, description=p.description, icon=p.icon,
-        category_id=p.category_id, category=p.category,
-        price=float(p.price), old_price=float(p.old_price) if p.old_price is not None else None,
-        effective_stock=eff, rating=float(p.rating or 0), review_count=p.review_count or 0,
-        badge=p.badge, features=p.features, images=p.images,
+        id=p.id,
+        name=p.name,
+        sub=p.sub,
+        description=p.description,
+        icon=p.icon,
+        category_id=p.category_id,
+        category=p.category,
+        price=float(p.price),
+        old_price=float(p.old_price) if p.old_price is not None else None,
+        effective_stock=eff,
+        rating=float(p.rating or 0),
+        review_count=p.review_count or 0,
+        badge=p.badge,
+        features=p.features,
+        images=p.images,
     )
 
 
 # ── ADMIN ──
 @router.get("/admin/all", response_model=list[ProductOut])
-async def list_products_admin(db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)):
-    products = (await db.execute(select(Product).order_by(Product.id.desc()))).scalars().unique().all()
+async def list_products_admin(
+    db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)
+):
+    products = (
+        (await db.execute(select(Product).order_by(Product.id.desc()))).scalars().unique().all()
+    )
     return products
 
 
@@ -207,7 +243,11 @@ async def create_product(
     await db.flush()
     if p.stock > 0:
         db.add(StockMovement(product_id=p.id, product_name=p.name, delta=p.stock, reason="init"))
-    db.add(AuditLog(actor=user.username, action="product-add", message=f"Ürün eklendi: {p.name} (#{p.id})"))
+    db.add(
+        AuditLog(
+            actor=user.username, action="product-add", message=f"Ürün eklendi: {p.name} (#{p.id})"
+        )
+    )
     await db.commit()
     await db.refresh(p)
     await bus.publish("product_created", {"id": p.id, "name": p.name})
@@ -216,7 +256,10 @@ async def create_product(
 
 @router.put("/{product_id}", response_model=ProductOut)
 async def update_product(
-    product_id: int, payload: ProductIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    product_id: int,
+    payload: ProductIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
     p = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
     if not p:
@@ -228,8 +271,18 @@ async def update_product(
     new_stock = p.stock or 0
     new_price = float(p.price or 0)
     if new_stock != old_stock:
-        db.add(StockMovement(product_id=p.id, product_name=p.name, delta=new_stock - old_stock, reason="manual"))
-    db.add(AuditLog(actor=user.username, action="product-edit", message=f"Ürün güncellendi: {p.name} (#{p.id})"))
+        db.add(
+            StockMovement(
+                product_id=p.id, product_name=p.name, delta=new_stock - old_stock, reason="manual"
+            )
+        )
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="product-edit",
+            message=f"Ürün güncellendi: {p.name} (#{p.id})",
+        )
+    )
     await db.commit()
     await db.refresh(p)
     await bus.publish("product_updated", {"id": p.id, "name": p.name})
@@ -237,6 +290,7 @@ async def update_product(
     if old_stock <= 0 and new_stock > 0:
         try:
             from app.routers.stock_notifications import notify_restocked
+
             await notify_restocked(db, p.id)
         except Exception:
             pass
@@ -244,6 +298,7 @@ async def update_product(
     if new_price > 0 and new_price < old_price:
         try:
             from app.routers.wishlist import notify_price_drop
+
             await notify_price_drop(db, p.id, old_price)
         except Exception:
             pass
@@ -252,14 +307,16 @@ async def update_product(
 
 class BulkPriceUpdateIn(BaseModel):
     category_id: int | None = None  # belirtilmezse tüm aktif ürünler
-    percent: float | None = None    # örn +10 (zam) veya -15 (indirim)
+    percent: float | None = None  # örn +10 (zam) veya -15 (indirim)
     fixed_delta: float | None = None  # +50 ₺ ekle / -20 ₺ düş
     only_in_stock: bool = False
 
 
 @router.post("/bulk/price")
 async def bulk_price_update(
-    payload: BulkPriceUpdateIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    payload: BulkPriceUpdateIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
     """Toplu fiyat zammı/indirimi. Yüzdesel veya sabit tutar.
 
@@ -285,25 +342,36 @@ async def bulk_price_update(
         if new != old:
             p.price = new
             updated += 1
-    db.add(AuditLog(
-        actor=user.username, action="product-bulk-price",
-        message=f"Toplu fiyat güncellemesi: {updated} ürün etkilendi"
-        + (f", %{payload.percent}" if payload.percent else "")
-        + (f", {payload.fixed_delta}₺" if payload.fixed_delta else ""),
-    ))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="product-bulk-price",
+            message=f"Toplu fiyat güncellemesi: {updated} ürün etkilendi"
+            + (f", %{payload.percent}" if payload.percent else "")
+            + (f", {payload.fixed_delta}₺" if payload.fixed_delta else ""),
+        )
+    )
     await db.commit()
     return {"ok": True, "updated": updated, "matched": len(rows)}
 
 
 @router.delete("/{product_id}", status_code=204)
-async def delete_product(product_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
+async def delete_product(
+    product_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
     p = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     name = p.name
     await db.execute(delete(Reservation).where(Reservation.product_id == product_id))
     await db.delete(p)
-    db.add(AuditLog(actor=user.username, action="product-delete", message=f"Ürün silindi: {name} (#{product_id})"))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="product-delete",
+            message=f"Ürün silindi: {name} (#{product_id})",
+        )
+    )
     await db.commit()
     await bus.publish("product_deleted", {"id": product_id, "name": name})
     return None

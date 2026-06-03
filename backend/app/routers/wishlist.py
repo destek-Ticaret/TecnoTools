@@ -12,6 +12,7 @@ Endpoint'ler:
 Fiyat düşüşü bildirimi için `notify_price_drop(db, product_id, old_price)`
 products router'ından çağrılır.
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete, select
@@ -32,14 +33,18 @@ class MergeIn(BaseModel):
 
 async def _wishlist_products(db: AsyncSession, customer_id: int) -> list[Product]:
     rows = (
-        await db.execute(
-            select(Product)
-            .join(WishlistItem, WishlistItem.product_id == Product.id)
-            .where(WishlistItem.customer_id == customer_id)
-            .where(Product.is_active.is_(True))
-            .order_by(WishlistItem.created_at.desc())
+        (
+            await db.execute(
+                select(Product)
+                .join(WishlistItem, WishlistItem.product_id == Product.id)
+                .where(WishlistItem.customer_id == customer_id)
+                .where(Product.is_active.is_(True))
+                .order_by(WishlistItem.created_at.desc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 
@@ -71,11 +76,11 @@ async def merge_wishlist(
         existing = set(
             (
                 await db.execute(
-                    select(WishlistItem.product_id).where(
-                        WishlistItem.customer_id == customer.id
-                    )
+                    select(WishlistItem.product_id).where(WishlistItem.customer_id == customer.id)
                 )
-            ).scalars().all()
+            )
+            .scalars()
+            .all()
         )
         for pid in valid - existing:
             db.add(WishlistItem(customer_id=customer.id, product_id=pid))
@@ -96,8 +101,7 @@ async def add_wishlist(
     existing = (
         await db.execute(
             select(WishlistItem).where(
-                (WishlistItem.customer_id == customer.id)
-                & (WishlistItem.product_id == product_id)
+                (WishlistItem.customer_id == customer.id) & (WishlistItem.product_id == product_id)
             )
         )
     ).scalar_one_or_none()
@@ -116,8 +120,7 @@ async def remove_wishlist(
 ):
     await db.execute(
         delete(WishlistItem).where(
-            (WishlistItem.customer_id == customer.id)
-            & (WishlistItem.product_id == product_id)
+            (WishlistItem.customer_id == customer.id) & (WishlistItem.product_id == product_id)
         )
     )
     await db.commit()
@@ -136,13 +139,17 @@ async def notify_price_drop(db: AsyncSession, product_id: int, old_price: float)
     if new_price <= 0 or new_price >= float(old_price):
         return 0
     emails = (
-        await db.execute(
-            select(Customer.email)
-            .join(WishlistItem, WishlistItem.customer_id == Customer.id)
-            .where(WishlistItem.product_id == product_id)
-            .where(Customer.is_active.is_(True))
+        (
+            await db.execute(
+                select(Customer.email)
+                .join(WishlistItem, WishlistItem.customer_id == Customer.id)
+                .where(WishlistItem.product_id == product_id)
+                .where(Customer.is_active.is_(True))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not emails:
         return 0
     pct = round((1 - new_price / float(old_price)) * 100)

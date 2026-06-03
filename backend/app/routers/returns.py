@@ -16,10 +16,11 @@ Admin:
 - İade kalemleri orijinal sipariş kalemlerinden fazla olamaz
 - "refunded" durumuna geçince stoğa otomatik geri eklenir + StockMovement(reason=return)
 """
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,9 +43,17 @@ from app.services.events import bus
 
 router = APIRouter(prefix="/api/returns", tags=["returns"])
 
-ELIGIBLE_ORDER_STATUSES = {OrderStatus.SHIPPED.value, OrderStatus.DELIVERED.value, OrderStatus.PROCESSING.value}
+ELIGIBLE_ORDER_STATUSES = {
+    OrderStatus.SHIPPED.value,
+    OrderStatus.DELIVERED.value,
+    OrderStatus.PROCESSING.value,
+}
 VALID_REASONS = {"damaged", "wrong_item", "not_needed", "defective", "size_issue", "other"}
-TERMINAL_STATUSES = {ReturnStatus.REJECTED.value, ReturnStatus.REFUNDED.value, ReturnStatus.CANCELLED.value}
+TERMINAL_STATUSES = {
+    ReturnStatus.REJECTED.value,
+    ReturnStatus.REFUNDED.value,
+    ReturnStatus.CANCELLED.value,
+}
 
 
 # ── Public ──
@@ -56,9 +65,13 @@ async def create_return_request(
     if payload.website:  # honeypot bot
         raise HTTPException(status_code=400, detail="invalid")
     if payload.reason not in VALID_REASONS:
-        raise HTTPException(status_code=400, detail=f"Geçersiz sebep. İzin verilenler: {', '.join(VALID_REASONS)}")
+        raise HTTPException(
+            status_code=400, detail=f"Geçersiz sebep. İzin verilenler: {', '.join(VALID_REASONS)}"
+        )
 
-    order = (await db.execute(select(Order).where(Order.order_no == payload.order_no))).scalar_one_or_none()
+    order = (
+        await db.execute(select(Order).where(Order.order_no == payload.order_no))
+    ).scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
 
@@ -87,10 +100,14 @@ async def create_return_request(
                 status_code=400,
                 detail=f"'{original.name}' için iade edebileceğiniz max adet: {original.qty}",
             )
-        validated_items.append({
-            "product_id": ri.product_id, "name": ri.name,
-            "qty": ri.qty, "price": float(ri.price),
-        })
+        validated_items.append(
+            {
+                "product_id": ri.product_id,
+                "name": ri.name,
+                "qty": ri.qty,
+                "price": float(ri.price),
+            }
+        )
         refund_amount += Decimal(str(ri.price)) * Decimal(ri.qty)
 
     rr = ReturnRequest(
@@ -105,16 +122,25 @@ async def create_return_request(
         status=ReturnStatus.REQUESTED.value,
     )
     db.add(rr)
-    db.add(AuditLog(actor="customer", action="return-create",
-                    message=f"İade talebi: {order.order_no} (₺{refund_amount:.2f})"))
+    db.add(
+        AuditLog(
+            actor="customer",
+            action="return-create",
+            message=f"İade talebi: {order.order_no} (₺{refund_amount:.2f})",
+        )
+    )
     await db.commit()
     await db.refresh(rr)
-    await bus.publish("return_created", {"id": rr.id, "order_no": rr.order_no, "amount": float(refund_amount)})
+    await bus.publish(
+        "return_created", {"id": rr.id, "order_no": rr.order_no, "amount": float(refund_amount)}
+    )
 
     # Müşteri bilgilendirme maili
     try:
         html = render_template("return_received.html", rr=rr)
-        await send_email(to=rr.customer_email, subject=f"İade talebiniz alındı · {rr.order_no}", html=html)
+        await send_email(
+            to=rr.customer_email, subject=f"İade talebiniz alındı · {rr.order_no}", html=html
+        )
     except Exception:
         pass
     return rr
@@ -126,20 +152,31 @@ async def lookup_returns(
 ):
     """Müşteri kendi siparişine bağlı iade taleplerini görür."""
     rows = (
-        await db.execute(
-            select(ReturnRequest).where(
-                and_(
-                    ReturnRequest.order_no == order_no,
-                    ReturnRequest.customer_email.ilike(email),
+        (
+            await db.execute(
+                select(ReturnRequest)
+                .where(
+                    and_(
+                        ReturnRequest.order_no == order_no,
+                        ReturnRequest.customer_email.ilike(email),
+                    )
                 )
-            ).order_by(ReturnRequest.id.desc())
+                .order_by(ReturnRequest.id.desc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [
         {
-            "id": r.id, "status": r.status, "reason": r.reason, "items": r.items,
-            "refund_amount": float(r.refund_amount), "created_at": r.created_at,
-            "processed_at": r.processed_at, "admin_note": r.admin_note,
+            "id": r.id,
+            "status": r.status,
+            "reason": r.reason,
+            "items": r.items,
+            "refund_amount": float(r.refund_amount),
+            "created_at": r.created_at,
+            "processed_at": r.processed_at,
+            "admin_note": r.admin_note,
         }
         for r in rows
     ]
@@ -150,14 +187,22 @@ async def cancel_my_return(
     return_id: int, email: str = Query(...), db: AsyncSession = Depends(get_db)
 ):
     """Müşteri talebini geri çeker — sadece REQUESTED durumundakileri."""
-    r = (await db.execute(select(ReturnRequest).where(ReturnRequest.id == return_id))).scalar_one_or_none()
+    r = (
+        await db.execute(select(ReturnRequest).where(ReturnRequest.id == return_id))
+    ).scalar_one_or_none()
     if not r or r.customer_email.lower() != email.lower():
         raise HTTPException(status_code=404, detail="İade bulunamadı")
     if r.status != ReturnStatus.REQUESTED.value:
         raise HTTPException(status_code=409, detail="Sadece beklemedeki iadeler iptal edilebilir")
     r.status = ReturnStatus.CANCELLED.value
-    r.processed_at = datetime.now(timezone.utc)
-    db.add(AuditLog(actor="customer", action="return-cancel", message=f"İade iptal edildi: {r.order_no} (#{r.id})"))
+    r.processed_at = datetime.now(UTC)
+    db.add(
+        AuditLog(
+            actor="customer",
+            action="return-cancel",
+            message=f"İade iptal edildi: {r.order_no} (#{r.id})",
+        )
+    )
     await db.commit()
     return {"ok": True}
 
@@ -177,8 +222,12 @@ async def list_returns(
 
 
 @router.get("/{return_id}", response_model=ReturnRequestOut)
-async def get_return(return_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)):
-    r = (await db.execute(select(ReturnRequest).where(ReturnRequest.id == return_id))).scalar_one_or_none()
+async def get_return(
+    return_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)
+):
+    r = (
+        await db.execute(select(ReturnRequest).where(ReturnRequest.id == return_id))
+    ).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="İade bulunamadı")
     return r
@@ -186,9 +235,14 @@ async def get_return(return_id: int, db: AsyncSession = Depends(get_db), _: User
 
 @router.patch("/{return_id}/status", response_model=ReturnRequestOut)
 async def update_return_status(
-    return_id: int, payload: ReturnStatusUpdate, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    return_id: int,
+    payload: ReturnStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
-    r = (await db.execute(select(ReturnRequest).where(ReturnRequest.id == return_id))).scalar_one_or_none()
+    r = (
+        await db.execute(select(ReturnRequest).where(ReturnRequest.id == return_id))
+    ).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="İade bulunamadı")
     if r.status in TERMINAL_STATUSES:
@@ -204,7 +258,7 @@ async def update_return_status(
     old = r.status
     r.status = new_status
     r.processed_by = user.username
-    r.processed_at = datetime.now(timezone.utc)
+    r.processed_at = datetime.now(UTC)
     if payload.admin_note is not None:
         r.admin_note = payload.admin_note
 
@@ -212,7 +266,12 @@ async def update_return_status(
     if new_status == ReturnStatus.REFUNDED.value and old != ReturnStatus.REFUNDED.value:
         product_ids = [it.get("product_id") for it in (r.items or []) if it.get("product_id")]
         if product_ids:
-            products = (await db.execute(select(Product).where(Product.id.in_(product_ids)))).scalars().unique().all()
+            products = (
+                (await db.execute(select(Product).where(Product.id.in_(product_ids))))
+                .scalars()
+                .unique()
+                .all()
+            )
             pmap = {p.id: p for p in products}
             for it in r.items or []:
                 pid = it.get("product_id")
@@ -220,15 +279,23 @@ async def update_return_status(
                 p = pmap.get(pid) if pid else None
                 if p and qty > 0:
                     p.stock = (p.stock or 0) + qty
-                    db.add(StockMovement(
-                        product_id=p.id, product_name=p.name, delta=qty,
-                        reason="return", order_no=r.order_no,
-                    ))
+                    db.add(
+                        StockMovement(
+                            product_id=p.id,
+                            product_name=p.name,
+                            delta=qty,
+                            reason="return",
+                            order_no=r.order_no,
+                        )
+                    )
 
-    db.add(AuditLog(
-        actor=user.username, action=f"return-{new_status}",
-        message=f"İade {new_status}: {r.order_no} (#{r.id})",
-    ))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action=f"return-{new_status}",
+            message=f"İade {new_status}: {r.order_no} (#{r.id})",
+        )
+    )
     await db.commit()
     await db.refresh(r)
     await bus.publish("return_status_changed", {"id": r.id, "status": r.status})
@@ -237,8 +304,10 @@ async def update_return_status(
     try:
         html = render_template("return_processed.html", rr=r)
         labels = {
-            "approved": "onaylandı", "rejected": "reddedildi",
-            "refunded": "tamamlandı", "cancelled": "iptal edildi",
+            "approved": "onaylandı",
+            "rejected": "reddedildi",
+            "refunded": "tamamlandı",
+            "cancelled": "iptal edildi",
         }
         await send_email(
             to=r.customer_email,

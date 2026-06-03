@@ -11,7 +11,8 @@ Admin:
 
 Onaylanan yorum, ürünün rating ortalamasını ve review_count'ünü günceller.
 """
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,8 +52,9 @@ class ReviewOut(BaseModel):
 async def _recalc_product_rating(db: AsyncSession, product_id: int) -> None:
     stats = (
         await db.execute(
-            select(func.avg(ProductReview.rating), func.count())
-            .where((ProductReview.product_id == product_id) & (ProductReview.is_approved == True))  # noqa: E712
+            select(func.avg(ProductReview.rating), func.count()).where(
+                (ProductReview.product_id == product_id) & (ProductReview.is_approved == True)
+            )
         )
     ).one()
     avg = float(stats[0] or 0)
@@ -66,12 +68,17 @@ async def _recalc_product_rating(db: AsyncSession, product_id: int) -> None:
 @router.post("/api/products/{product_id}/reviews", response_model=ReviewOut, status_code=201)
 @limiter.limit("5/minute")
 async def create_review(
-    request: Request, product_id: int, payload: ReviewIn = Body(...), db: AsyncSession = Depends(get_db)
+    request: Request,
+    product_id: int,
+    payload: ReviewIn = Body(...),
+    db: AsyncSession = Depends(get_db),
 ):
     # Honeypot
     if payload.website:
         raise HTTPException(status_code=400, detail="invalid")
-    product = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
+    product = (
+        await db.execute(select(Product).where(Product.id == product_id))
+    ).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     r = ProductReview(
@@ -85,12 +92,24 @@ async def create_review(
         is_approved=False,
     )
     db.add(r)
-    db.add(AuditLog(actor="customer", action="review-create", message=f"Yeni yorum: ürün #{product_id} ({payload.rating}★)"))
+    db.add(
+        AuditLog(
+            actor="customer",
+            action="review-create",
+            message=f"Yeni yorum: ürün #{product_id} ({payload.rating}★)",
+        )
+    )
     await db.commit()
     await db.refresh(r)
     return ReviewOut(
-        id=r.id, product_id=r.product_id, customer_name=r.customer_name, rating=r.rating,
-        title=r.title, body=r.body, is_approved=r.is_approved, created_at=r.created_at,
+        id=r.id,
+        product_id=r.product_id,
+        customer_name=r.customer_name,
+        rating=r.rating,
+        title=r.title,
+        body=r.body,
+        is_approved=r.is_approved,
+        created_at=r.created_at,
         verified_purchase=bool(r.order_no),
     )
 
@@ -98,16 +117,28 @@ async def create_review(
 @router.get("/api/products/{product_id}/reviews", response_model=list[ReviewOut])
 async def list_reviews_public(product_id: int, db: AsyncSession = Depends(get_db)):
     rows = (
-        await db.execute(
-            select(ProductReview)
-            .where((ProductReview.product_id == product_id) & (ProductReview.is_approved == True))  # noqa: E712
-            .order_by(ProductReview.id.desc())
+        (
+            await db.execute(
+                select(ProductReview)
+                .where(
+                    (ProductReview.product_id == product_id) & (ProductReview.is_approved == True)
+                )
+                .order_by(ProductReview.id.desc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [
         ReviewOut(
-            id=r.id, product_id=r.product_id, customer_name=r.customer_name, rating=r.rating,
-            title=r.title, body=r.body, is_approved=r.is_approved, created_at=r.created_at,
+            id=r.id,
+            product_id=r.product_id,
+            customer_name=r.customer_name,
+            rating=r.rating,
+            title=r.title,
+            body=r.body,
+            is_approved=r.is_approved,
+            created_at=r.created_at,
             verified_purchase=bool(r.order_no),
         )
         for r in rows
@@ -117,7 +148,9 @@ async def list_reviews_public(product_id: int, db: AsyncSession = Depends(get_db
 # ── Admin ──
 @router.get("/api/admin/reviews", response_model=list[ReviewOut])
 async def list_reviews_admin(
-    approved: bool | None = None, db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)
+    approved: bool | None = None,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_editor),
 ):
     stmt = select(ProductReview).order_by(ProductReview.id.desc())
     if approved is not None:
@@ -125,8 +158,14 @@ async def list_reviews_admin(
     rows = (await db.execute(stmt)).scalars().all()
     return [
         ReviewOut(
-            id=r.id, product_id=r.product_id, customer_name=r.customer_name, rating=r.rating,
-            title=r.title, body=r.body, is_approved=r.is_approved, created_at=r.created_at,
+            id=r.id,
+            product_id=r.product_id,
+            customer_name=r.customer_name,
+            rating=r.rating,
+            title=r.title,
+            body=r.body,
+            is_approved=r.is_approved,
+            created_at=r.created_at,
             verified_purchase=bool(r.order_no),
         )
         for r in rows
@@ -135,9 +174,14 @@ async def list_reviews_admin(
 
 @router.patch("/api/admin/reviews/{review_id}")
 async def update_review(
-    review_id: int, payload: dict = Body(...), db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    review_id: int,
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
-    r = (await db.execute(select(ProductReview).where(ProductReview.id == review_id))).scalar_one_or_none()
+    r = (
+        await db.execute(select(ProductReview).where(ProductReview.id == review_id))
+    ).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Yorum bulunamadı")
     was_approved = r.is_approved
@@ -145,7 +189,13 @@ async def update_review(
         r.is_approved = bool(payload["is_approved"])
     await db.flush()
     await _recalc_product_rating(db, r.product_id)
-    db.add(AuditLog(actor=user.username, action="review-update", message=f"Yorum #{review_id} → approved={r.is_approved}"))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="review-update",
+            message=f"Yorum #{review_id} → approved={r.is_approved}",
+        )
+    )
     await db.commit()
     if r.is_approved != was_approved:
         await bus.publish(
@@ -156,8 +206,12 @@ async def update_review(
 
 
 @router.delete("/api/admin/reviews/{review_id}", status_code=204)
-async def delete_review(review_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
-    r = (await db.execute(select(ProductReview).where(ProductReview.id == review_id))).scalar_one_or_none()
+async def delete_review(
+    review_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
+    r = (
+        await db.execute(select(ProductReview).where(ProductReview.id == review_id))
+    ).scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Yorum bulunamadı")
     pid = r.product_id
@@ -165,7 +219,9 @@ async def delete_review(review_id: int, db: AsyncSession = Depends(get_db), user
     await db.delete(r)
     await db.flush()
     await _recalc_product_rating(db, pid)
-    db.add(AuditLog(actor=user.username, action="review-delete", message=f"Yorum silindi #{review_id}"))
+    db.add(
+        AuditLog(actor=user.username, action="review-delete", message=f"Yorum silindi #{review_id}")
+    )
     await db.commit()
     if was_approved:
         await bus.publish("review_deleted", {"id": review_id, "product_id": pid})

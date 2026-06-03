@@ -9,10 +9,11 @@ Connection manager:
 
 NOT: Multi-instance deploy'da Redis pub/sub gerekir; şu an single-instance.
 """
+
 import asyncio
 import json
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 

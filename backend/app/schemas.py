@@ -75,6 +75,7 @@ class ReturnItemIn(BaseModel):
 
 class ReturnRequestIn(BaseModel):
     """Müşteri iade talebi — sipariş no + email + kalemler + sebep."""
+
     order_no: str
     customer_email: EmailStr
     reason: str = Field(min_length=2, max_length=64)
@@ -164,6 +165,7 @@ class ProductOut(_ORMBase):
 
 class ProductPublicOut(_ORMBase):
     """Public — `effective_stock` ile birlikte; sensitive alanlar yok."""
+
     id: int
     name: str
     sub: str | None
@@ -251,6 +253,7 @@ class OrderNoteIn(BaseModel):
 
 class OrderPatch(BaseModel):
     """Kısmi sipariş güncelleme — tracking, note, vs."""
+
     tracking_no: str | None = None
     note: str | None = None
 
@@ -284,6 +287,7 @@ class PaymentStartResponse(BaseModel):
     - paytr: iframe_url içerideki iframe'de açılır
     - stripe: redirect_url'e tam sayfa yönlendirme yapılır
     """
+
     order_no: str
     iframe_token: str
     iframe_url: str

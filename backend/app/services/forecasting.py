@@ -10,11 +10,12 @@ Algoritmalar:
 
 Hiçbir 3rd-party ML kullanılmaz; sadece istatistik primitifleri.
 """
+
 from __future__ import annotations
 
 import math
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +28,7 @@ DEFAULT_SERVICE_LEVEL_Z = 1.65  # %95
 
 async def _daily_sales(db: AsyncSession, days: int) -> dict[int, dict[str, int]]:
     """{product_id: {YYYY-MM-DD: qty}} son `days` gün için."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(OrderItem.product_id, OrderItem.qty, Order.created_at)
@@ -71,7 +72,7 @@ def _stddev(values: list[float]) -> float:
 
 def _series_for(product_id: int, days: int, daily: dict[int, dict[str, int]]) -> list[float]:
     """0-pad'li günlük seri (eksik gün = 0 satış)."""
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     series: list[float] = []
     for i in range(days - 1, -1, -1):
         day = (today - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -90,8 +91,13 @@ async def stock_forecast(
     Sıralama: kritik olanlar başta (days_to_stockout < lead_time).
     """
     products = (
-        await db.execute(select(Product).where(Product.is_active == True))  # noqa: E712
-    ).scalars().unique().all()
+        (
+            await db.execute(select(Product).where(Product.is_active == True))  # noqa: E712
+        )
+        .scalars()
+        .unique()
+        .all()
+    )
     daily = await _daily_sales(db, days_window)
     out: list[dict] = []
     for p in products:
@@ -108,26 +114,31 @@ async def stock_forecast(
         else:
             dto = None
         below_rop = stock < rop
-        out.append({
-            "product_id": p.id,
-            "name": p.name,
-            "stock": stock,
-            "velocity_per_day": round(velocity, 3),
-            "sma": round(sma, 3),
-            "ema": round(ema, 3),
-            "stddev": round(sigma, 3),
-            "reorder_point": round(rop, 2),
-            "safety_stock": round(safety_stock, 2),
-            "days_to_stockout": round(dto, 1) if dto is not None else None,
-            "below_rop": bool(below_rop),
-            "lead_time_days": lead_time_days,
-            "suggested_purchase_qty": max(0, math.ceil(rop - stock + velocity * lead_time_days))
-            if below_rop else 0,
-        })
-    out.sort(key=lambda r: (
-        0 if r["below_rop"] else 1,
-        r["days_to_stockout"] if r["days_to_stockout"] is not None else 1e9,
-    ))
+        out.append(
+            {
+                "product_id": p.id,
+                "name": p.name,
+                "stock": stock,
+                "velocity_per_day": round(velocity, 3),
+                "sma": round(sma, 3),
+                "ema": round(ema, 3),
+                "stddev": round(sigma, 3),
+                "reorder_point": round(rop, 2),
+                "safety_stock": round(safety_stock, 2),
+                "days_to_stockout": round(dto, 1) if dto is not None else None,
+                "below_rop": bool(below_rop),
+                "lead_time_days": lead_time_days,
+                "suggested_purchase_qty": max(0, math.ceil(rop - stock + velocity * lead_time_days))
+                if below_rop
+                else 0,
+            }
+        )
+    out.sort(
+        key=lambda r: (
+            0 if r["below_rop"] else 1,
+            r["days_to_stockout"] if r["days_to_stockout"] is not None else 1e9,
+        )
+    )
     return out
 
 
@@ -138,7 +149,7 @@ async def abc_classification(db: AsyncSession, days: int = 90) -> list[dict]:
     B: sonraki %15 (yani kümülatif %80..%95)
     C: kalan %5
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(

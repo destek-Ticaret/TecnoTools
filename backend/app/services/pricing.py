@@ -4,14 +4,15 @@ Bir PricingRule'u eşleşen ürünlere uygular. Önce hedef fiyat hesaplanır,
 sonra min/max koruma ve 2 ondalık yuvarlama yapılır. `compute_new_price`
 saf fonksiyondur — önizleme (dry-run) ve gerçek uygulama aynı mantığı paylaşır.
 """
+
 from __future__ import annotations
 
-from decimal import Decimal
+from datetime import UTC
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Product, PricingRule
+from app.models import PricingRule, Product
 
 
 def compute_new_price(rule: PricingRule, product: Product) -> float | None:
@@ -73,11 +74,15 @@ async def preview_rule(db: AsyncSession, rule: PricingRule, limit: int = 200) ->
             continue
         old = float(p.price or 0)
         if new != old:
-            changes.append({
-                "product_id": p.id, "name": p.name,
-                "old_price": old, "new_price": new,
-                "delta": round(new - old, 2),
-            })
+            changes.append(
+                {
+                    "product_id": p.id,
+                    "name": p.name,
+                    "old_price": old,
+                    "new_price": new,
+                    "delta": round(new - old, 2),
+                }
+            )
     return {
         "matched": len(products),
         "changed": len(changes),
@@ -91,7 +96,7 @@ async def apply_rule(db: AsyncSession, rule: PricingRule, actor: str = "system")
 
     AuditLog kaydı çağıran router tarafından eklenir. Commit de orada yapılır.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     products = await _matching_products(db, rule)
     affected = 0
@@ -102,6 +107,6 @@ async def apply_rule(db: AsyncSession, rule: PricingRule, actor: str = "system")
         if new != float(p.price or 0):
             p.price = new
             affected += 1
-    rule.last_applied_at = datetime.now(timezone.utc)
+    rule.last_applied_at = datetime.now(UTC)
     rule.last_affected = affected
     return {"matched": len(products), "affected": affected}

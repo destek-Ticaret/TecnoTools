@@ -8,10 +8,11 @@ Eşleştirme: satırda `id` varsa o ürün güncellenir; yoksa `name` ile eşle�
 aktif ürün güncellenir, eşleşme yoksa yeni ürün oluşturulur. Kategori `category`
 sütunundaki ada göre eşleştirilir (yoksa boş bırakılır, uyarı eklenir).
 """
+
 import csv
 import io
 
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
@@ -27,7 +28,21 @@ router = APIRouter(prefix="/api/imports", tags=["imports"])
 _can_import = require_permission("products.import")
 
 # Şablon / kabul edilen sütun başlıkları (sıra önemli değil; başlık adıyla eşleşir)
-COLUMNS = ["id", "name", "sub", "description", "icon", "category", "price", "old_price", "cost", "stock", "features", "images", "is_active"]
+COLUMNS = [
+    "id",
+    "name",
+    "sub",
+    "description",
+    "icon",
+    "category",
+    "price",
+    "old_price",
+    "cost",
+    "stock",
+    "features",
+    "images",
+    "is_active",
+]
 MAX_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 5000
 
@@ -42,7 +57,23 @@ async def download_template(_: User = Depends(_can_import)):
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
     # Örnek satır (kullanıcıya format ipucu)
-    ws.append(["", "Örnek Ürün", "Alt başlık", "Açıklama", "📦", "Aksesuar", 199.90, 249.90, 120, 50, "Özellik 1|Özellik 2", "https://...jpg|https://...jpg", "evet"])
+    ws.append(
+        [
+            "",
+            "Örnek Ürün",
+            "Alt başlık",
+            "Açıklama",
+            "📦",
+            "Aksesuar",
+            199.90,
+            249.90,
+            120,
+            50,
+            "Özellik 1|Özellik 2",
+            "https://...jpg|https://...jpg",
+            "evet",
+        ]
+    )
     for col, width in zip("ABCDEFGHIJKLM", [6, 26, 20, 30, 6, 16, 10, 10, 10, 8, 28, 34, 8]):
         ws.column_dimensions[col].width = width
     buf = io.BytesIO()
@@ -108,7 +139,9 @@ async def import_products(
 ):
     raw = await file.read()
     if len(raw) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail=f"Dosya {MAX_BYTES // (1024*1024)} MB sınırını aşıyor")
+        raise HTTPException(
+            status_code=413, detail=f"Dosya {MAX_BYTES // (1024 * 1024)} MB sınırını aşıyor"
+        )
     rows = _parse_rows(raw, file.filename or "")
     if not rows:
         raise HTTPException(status_code=400, detail="Dosyada veri bulunamadı")
@@ -139,7 +172,9 @@ async def import_products(
             if cat_name:
                 cat_id = cat_by_name.get(cat_name.lower())
                 if cat_id is None:
-                    errors.append({"row": idx, "error": f"kategori bulunamadı: {cat_name}", "warning": True})
+                    errors.append(
+                        {"row": idx, "error": f"kategori bulunamadı: {cat_name}", "warning": True}
+                    )
 
             # is_active: dosyada sütun varsa kullan, yoksa mevcut değeri koru (yeni ürün: True)
             is_active_raw = row.get("is_active")
@@ -147,7 +182,9 @@ async def import_products(
             fields = dict(
                 name=name_val,
                 sub=(str(row.get("sub")).strip() if row.get("sub") else None),
-                description=(str(row.get("description")).strip() if row.get("description") else None),
+                description=(
+                    str(row.get("description")).strip() if row.get("description") else None
+                ),
                 icon=(str(row.get("icon")).strip() if row.get("icon") else "📦"),
                 category_id=cat_id,
                 price=price,
@@ -165,12 +202,16 @@ async def import_products(
             target = None
             rid = row.get("id")
             if rid is not None and str(rid).strip() != "":
-                target = (await db.execute(select(Product).where(Product.id == int(float(rid))))).scalar_one_or_none()
+                target = (
+                    await db.execute(select(Product).where(Product.id == int(float(rid))))
+                ).scalar_one_or_none()
                 if not target:
                     errors.append({"row": idx, "error": f"id={rid} bulunamadı"})
                     continue
             else:
-                target = (await db.execute(select(Product).where(Product.name == name_val))).scalar_one_or_none()
+                target = (
+                    await db.execute(select(Product).where(Product.name == name_val))
+                ).scalar_one_or_none()
 
             if target:
                 old_stock = target.stock or 0
@@ -180,7 +221,14 @@ async def import_products(
                         continue
                     setattr(target, k, v)
                 if not dry_run and (target.stock or 0) != old_stock:
-                    movements.append(StockMovement(product_id=target.id, product_name=target.name, delta=(target.stock or 0) - old_stock, reason="import"))
+                    movements.append(
+                        StockMovement(
+                            product_id=target.id,
+                            product_name=target.name,
+                            delta=(target.stock or 0) - old_stock,
+                            reason="import",
+                        )
+                    )
                 updated += 1
             else:
                 p = Product(**fields)
@@ -188,22 +236,35 @@ async def import_products(
                     db.add(p)
                     await db.flush()
                     if p.stock > 0:
-                        movements.append(StockMovement(product_id=p.id, product_name=p.name, delta=p.stock, reason="import"))
+                        movements.append(
+                            StockMovement(
+                                product_id=p.id, product_name=p.name, delta=p.stock, reason="import"
+                            )
+                        )
                 created += 1
-        except Exception as e:  # noqa: BLE001 — satır bazlı hata izole edilir
+        except Exception as e:
             errors.append({"row": idx, "error": str(e)})
 
     hard_errors = [e for e in errors if not e.get("warning")]
 
     if dry_run:
         await db.rollback()
-        return {"dry_run": True, "created": created, "updated": updated, "errors": errors, "hard_error_count": len(hard_errors)}
+        return {
+            "dry_run": True,
+            "created": created,
+            "updated": updated,
+            "errors": errors,
+            "hard_error_count": len(hard_errors),
+        }
 
     for m in movements:
         db.add(m)
-    db.add(AuditLog(
-        actor=user.username, action="product-import",
-        message=f"Toplu içe aktarma: {created} yeni, {updated} güncelleme, {len(hard_errors)} hata",
-    ))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="product-import",
+            message=f"Toplu içe aktarma: {created} yeni, {updated} güncelleme, {len(hard_errors)} hata",
+        )
+    )
     await db.commit()
     return {"dry_run": False, "created": created, "updated": updated, "errors": errors}

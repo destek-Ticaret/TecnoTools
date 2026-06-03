@@ -6,7 +6,8 @@ PayTR'ye alternatif. Akış:
 3. Stripe ödemeyi alır, sonra `success_url`'e yönlendirir
 4. Stripe webhook ile `checkout.session.completed` event'i gelir → sipariş `payment_status=success`
 """
-from typing import Iterable
+
+from collections.abc import Iterable
 
 import stripe
 
@@ -27,7 +28,11 @@ def create_checkout_session(
     """Hosted Stripe Checkout session yaratır. Test modu için TEST API key kullanılır.
     Credentials boşsa dev mock URL döner."""
     if not settings.stripe_secret_key:
-        return {"url": f"https://example.com/stripe-mock/{order_no}", "id": f"cs_dev_{order_no}", "mock": True}
+        return {
+            "url": f"https://example.com/stripe-mock/{order_no}",
+            "id": f"cs_dev_{order_no}",
+            "mock": True,
+        }
 
     line_data = [
         {

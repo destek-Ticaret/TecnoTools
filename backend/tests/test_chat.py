@@ -1,6 +1,5 @@
 """Canlı destek — REST endpoint'leri (WebSocket testleri integration testlerinde yapılır)."""
-import json
-import pytest
+
 
 
 async def test_list_sessions_requires_auth(client, auth_client):
@@ -19,7 +18,12 @@ async def test_admin_session_messages_404(auth_client):
 async def test_admin_session_messages_empty(auth_client, db_session):
     from app.models import ChatSession, ChatSessionStatus
 
-    s = ChatSession(session_id="sess_test_1", status=ChatSessionStatus.OPEN.value, customer_name="Test", customer_email="t@t.com")
+    s = ChatSession(
+        session_id="sess_test_1",
+        status=ChatSessionStatus.OPEN.value,
+        customer_name="Test",
+        customer_email="t@t.com",
+    )
     db_session.add(s)
     await db_session.commit()
     await db_session.refresh(s)
@@ -32,13 +36,21 @@ async def test_admin_session_messages_empty(auth_client, db_session):
 
 
 async def test_admin_session_messages_with_msgs(auth_client, db_session):
-    from app.models import ChatSession, ChatMessage, ChatSessionStatus
+    from app.models import ChatMessage, ChatSession, ChatSessionStatus
 
-    s = ChatSession(session_id="sess_msgs", status=ChatSessionStatus.OPEN.value, customer_name="Ali", customer_email="a@a.com", unread_admin=2)
+    s = ChatSession(
+        session_id="sess_msgs",
+        status=ChatSessionStatus.OPEN.value,
+        customer_name="Ali",
+        customer_email="a@a.com",
+        unread_admin=2,
+    )
     db_session.add(s)
     await db_session.flush()
     for i in range(3):
-        db_session.add(ChatMessage(session_pk=s.id, sender="customer", sender_name="Ali", body=f"mesaj {i}"))
+        db_session.add(
+            ChatMessage(session_pk=s.id, sender="customer", sender_name="Ali", body=f"mesaj {i}")
+        )
     await db_session.commit()
     await db_session.refresh(s)
 
@@ -53,7 +65,12 @@ async def test_admin_session_messages_with_msgs(auth_client, db_session):
 async def test_admin_close_session(auth_client, db_session):
     from app.models import ChatSession, ChatSessionStatus
 
-    s = ChatSession(session_id="sess_close", status=ChatSessionStatus.OPEN.value, customer_name="X", customer_email="x@x.com")
+    s = ChatSession(
+        session_id="sess_close",
+        status=ChatSessionStatus.OPEN.value,
+        customer_name="X",
+        customer_email="x@x.com",
+    )
     db_session.add(s)
     await db_session.commit()
     await db_session.refresh(s)
@@ -74,9 +91,14 @@ async def test_admin_close_404(auth_client):
 
 
 async def test_admin_delete_message(auth_client, db_session):
-    from app.models import ChatSession, ChatMessage, ChatSessionStatus
+    from app.models import ChatMessage, ChatSession, ChatSessionStatus
 
-    s = ChatSession(session_id="sess_del_msg", status=ChatSessionStatus.OPEN.value, customer_name="Y", customer_email="y@y.com")
+    s = ChatSession(
+        session_id="sess_del_msg",
+        status=ChatSessionStatus.OPEN.value,
+        customer_name="Y",
+        customer_email="y@y.com",
+    )
     db_session.add(s)
     await db_session.flush()
     m = ChatMessage(session_pk=s.id, sender="customer", sender_name="Y", body="silinecek")
@@ -94,10 +116,16 @@ async def test_admin_delete_message_404(auth_client):
 
 
 async def test_admin_delete_session_cascades_messages(auth_client, db_session):
-    from app.models import ChatSession, ChatMessage, ChatSessionStatus
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
 
-    s = ChatSession(session_id="sess_del_all", status=ChatSessionStatus.OPEN.value, customer_name="Z", customer_email="z@z.com")
+    from app.models import ChatMessage, ChatSession, ChatSessionStatus
+
+    s = ChatSession(
+        session_id="sess_del_all",
+        status=ChatSessionStatus.OPEN.value,
+        customer_name="Z",
+        customer_email="z@z.com",
+    )
     db_session.add(s)
     await db_session.flush()
     db_session.add(ChatMessage(session_pk=s.id, sender="customer", sender_name="Z", body="a"))
@@ -109,7 +137,9 @@ async def test_admin_delete_session_cascades_messages(auth_client, db_session):
     assert r.status_code == 204
 
     # Mesajlar da silinmiş olmalı
-    n = await db_session.execute(select(func.count()).select_from(ChatMessage).where(ChatMessage.session_pk == s.id))
+    n = await db_session.execute(
+        select(func.count()).select_from(ChatMessage).where(ChatMessage.session_pk == s.id)
+    )
     assert n.scalar() == 0
 
 

@@ -1,9 +1,7 @@
 """Sunucu-taraflı favoriler (wishlist) testleri."""
-import pytest
 
-from app.models import Customer, Product
-from app.security import hash_password
 
+from app.models import Product
 
 REGISTER_PAYLOAD = {
     "email": "wish@example.com",

@@ -24,19 +24,28 @@ Admin:
   GET  /api/algorithms/reports/timeseries
   GET  /api/algorithms/reports/visitors
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import require_editor
-from app.models import Order, PaymentStatus, Product, User
-from app.services import analytics_reports, forecasting, loyalty, recommendations, risk, segmentation, shipping
+from app.models import Order, Product, User
+from app.services import (
+    analytics_reports,
+    forecasting,
+    loyalty,
+    recommendations,
+    risk,
+    segmentation,
+    shipping,
+)
 
 router = APIRouter(prefix="/api/algorithms", tags=["algorithms"])
 
@@ -56,17 +65,26 @@ async def _hydrate_products(db: AsyncSession, ids: list[int]) -> list[Product]:
     if not ids:
         return []
     rows = (
-        await db.execute(select(Product).where(Product.id.in_(ids), Product.is_active == True))  # noqa: E712
-    ).scalars().unique().all()
+        (
+            await db.execute(select(Product).where(Product.id.in_(ids), Product.is_active == True))  # noqa: E712
+        )
+        .scalars()
+        .unique()
+        .all()
+    )
     by_id = {p.id: p for p in rows}
     return [by_id[i] for i in ids if i in by_id]
 
 
 def _lite(p: Product, score: float | None = None) -> ProductLite:
     return ProductLite(
-        id=p.id, name=p.name, price=float(p.price), icon=p.icon,
+        id=p.id,
+        name=p.name,
+        price=float(p.price),
+        icon=p.icon,
         image=(p.images or [None])[0] if p.images else None,
-        rating=float(p.rating or 0), score=score,
+        rating=float(p.rating or 0),
+        score=score,
     )
 
 
@@ -123,6 +141,7 @@ class ShippingQuoteRequest(BaseModel):
 @router.post("/shipping/quote")
 async def shipping_quote(payload: ShippingQuoteRequest, db: AsyncSession = Depends(get_db)):
     from app.routers.settings import get_setting
+
     threshold = float(await get_setting(db, "shipping_free_threshold", "750") or "750")
     fee_override_raw = await get_setting(db, "shipping_fee_default", "")
     fee_override = float(fee_override_raw) if fee_override_raw else None
@@ -144,9 +163,14 @@ async def loyalty_status(email: EmailStr, db: AsyncSession = Depends(get_db)):
     acc = await loyalty.loyalty_for_email(db, str(email))
     if not acc:
         return {
-            "email": str(email), "points": 0, "points_value_try": 0,
-            "lifetime_spend": 0, "annual_spend": 0, "tier": "Bronze",
-            "next_tier": "Silver", "next_tier_remaining": 1000,
+            "email": str(email),
+            "points": 0,
+            "points_value_try": 0,
+            "lifetime_spend": 0,
+            "annual_spend": 0,
+            "tier": "Bronze",
+            "next_tier": "Silver",
+            "next_tier_remaining": 1000,
         }
     return acc.__dict__
 
@@ -170,7 +194,9 @@ async def get_stock_forecast(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_editor),
 ):
-    return await forecasting.stock_forecast(db, days_window=days_window, lead_time_days=lead_time_days)
+    return await forecasting.stock_forecast(
+        db, days_window=days_window, lead_time_days=lead_time_days
+    )
 
 
 @router.get("/inventory/abc")
@@ -215,24 +241,34 @@ async def list_risky_orders(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_editor),
 ):
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     orders = (
-        await db.execute(
-            select(Order).where(Order.created_at >= since).order_by(Order.created_at.desc()).limit(500)
+        (
+            await db.execute(
+                select(Order)
+                .where(Order.created_at >= since)
+                .order_by(Order.created_at.desc())
+                .limit(500)
+            )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
     out = []
     for o in orders:
         res = await risk.evaluate_order_db(db, o.order_no)
         if res.get("score", 0) >= min_score:
-            out.append({
-                "order_no": o.order_no,
-                "customer_email": o.customer_email,
-                "total": float(o.total),
-                "created_at": o.created_at,
-                "payment_status": o.payment_status,
-                **res,
-            })
+            out.append(
+                {
+                    "order_no": o.order_no,
+                    "customer_email": o.customer_email,
+                    "total": float(o.total),
+                    "created_at": o.created_at,
+                    "payment_status": o.payment_status,
+                    **res,
+                }
+            )
     out.sort(key=lambda r: r.get("score", 0), reverse=True)
     return out
 

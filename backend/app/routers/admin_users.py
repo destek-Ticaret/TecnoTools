@@ -4,11 +4,11 @@ Sadece `admin` role'üne sahip kullanıcılar erişebilir.
 - Birincil kullanıcı (`is_primary=True`) silinemez ve role'ü değiştirilemez.
 - Kullanıcı kendi role'ünü değiştiremez (kilitlenmeyi önlemek için).
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from pydantic import BaseModel
 
 from app.database import get_db
 from app.deps import current_user, require_admin
@@ -34,7 +34,11 @@ class PermissionUpdate(BaseModel):
 
 @router.get("", response_model=list[UserOut])
 async def list_users(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    rows = (await db.execute(select(User).order_by(User.is_primary.desc(), User.username))).scalars().all()
+    rows = (
+        (await db.execute(select(User).order_by(User.is_primary.desc(), User.username)))
+        .scalars()
+        .all()
+    )
     return rows
 
 
@@ -43,8 +47,12 @@ async def create_user(
     payload: AdminUserCreate, db: AsyncSession = Depends(get_db), me: User = Depends(require_admin)
 ):
     if payload.role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Geçersiz rol. İzin verilenler: {', '.join(VALID_ROLES)}")
-    existing = (await db.execute(select(User).where(User.username == payload.username))).scalar_one_or_none()
+        raise HTTPException(
+            status_code=400, detail=f"Geçersiz rol. İzin verilenler: {', '.join(VALID_ROLES)}"
+        )
+    existing = (
+        await db.execute(select(User).where(User.username == payload.username))
+    ).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="Bu kullanıcı adı zaten mevcut")
     new_user = User(
@@ -54,7 +62,13 @@ async def create_user(
         is_primary=False,
     )
     db.add(new_user)
-    db.add(AuditLog(actor=me.username, action="user-add", message=f"Kullanıcı eklendi: {payload.username} ({payload.role})"))
+    db.add(
+        AuditLog(
+            actor=me.username,
+            action="user-add",
+            message=f"Kullanıcı eklendi: {payload.username} ({payload.role})",
+        )
+    )
     await db.commit()
     await db.refresh(new_user)
     return new_user
@@ -62,7 +76,10 @@ async def create_user(
 
 @router.put("/{user_id}", response_model=UserOut)
 async def update_user(
-    user_id: int, payload: AdminUserUpdate, db: AsyncSession = Depends(get_db), me: User = Depends(require_admin)
+    user_id: int,
+    payload: AdminUserUpdate,
+    db: AsyncSession = Depends(get_db),
+    me: User = Depends(require_admin),
 ):
     target = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not target:
@@ -87,16 +104,30 @@ async def update_user(
             raise HTTPException(status_code=403, detail="Kendinizi devre dışı bırakamazsınız")
         target.is_active = payload.is_active
         action = "user-enable" if payload.is_active else "user-disable"
-        db.add(AuditLog(actor=me.username, action=action, message=f"{target.username} {'etkinleştirildi' if payload.is_active else 'devre dışı bırakıldı'}"))
+        db.add(
+            AuditLog(
+                actor=me.username,
+                action=action,
+                message=f"{target.username} {'etkinleştirildi' if payload.is_active else 'devre dışı bırakıldı'}",
+            )
+        )
 
-    db.add(AuditLog(actor=me.username, action="user-edit", message=f"Kullanıcı güncellendi: {target.username}"))
+    db.add(
+        AuditLog(
+            actor=me.username,
+            action="user-edit",
+            message=f"Kullanıcı güncellendi: {target.username}",
+        )
+    )
     await db.commit()
     await db.refresh(target)
     return target
 
 
 @router.delete("/{user_id}", status_code=204)
-async def delete_user(user_id: int, db: AsyncSession = Depends(get_db), me: User = Depends(require_admin)):
+async def delete_user(
+    user_id: int, db: AsyncSession = Depends(get_db), me: User = Depends(require_admin)
+):
     target = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -143,7 +174,10 @@ async def get_user_permissions(
 
 @router.put("/{user_id}/permissions")
 async def set_user_permissions(
-    user_id: int, payload: PermissionUpdate, db: AsyncSession = Depends(get_db), me: User = Depends(require_admin)
+    user_id: int,
+    payload: PermissionUpdate,
+    db: AsyncSession = Depends(get_db),
+    me: User = Depends(require_admin),
 ):
     """Kullanıcının granüler izin override'ını ayarlar.
 
@@ -154,17 +188,27 @@ async def set_user_permissions(
     if not target:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     if target.role == UserRole.ADMIN.value:
-        raise HTTPException(status_code=400, detail="Admin rolü tüm izinlere sahiptir; override gereksiz")
+        raise HTTPException(
+            status_code=400, detail="Admin rolü tüm izinlere sahiptir; override gereksiz"
+        )
     clean = {k: bool(v) for k, v in payload.permissions.items() if k in ALL_PERMISSIONS}
     target.permissions = clean or None
-    db.add(AuditLog(actor=me.username, action="user-permissions", message=f"{target.username} izinleri güncellendi ({len(clean)} override)"))
+    db.add(
+        AuditLog(
+            actor=me.username,
+            action="user-permissions",
+            message=f"{target.username} izinleri güncellendi ({len(clean)} override)",
+        )
+    )
     await db.commit()
     return {"ok": True, "override": clean, "effective": sorted(effective_permissions(target))}
 
 
 @router.post("/me/change-password", status_code=200)
 async def change_my_password(
-    payload: ChangePasswordRequest, db: AsyncSession = Depends(get_db), me: User = Depends(require_admin)
+    payload: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    me: User = Depends(require_admin),
 ):
     """Giriş yapan kullanıcı kendi şifresini değiştirir (mevcut şifre doğrulanır)."""
     if not verify_password(payload.current_password, me.password_hash):

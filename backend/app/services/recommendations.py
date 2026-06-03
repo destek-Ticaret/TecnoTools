@@ -8,13 +8,14 @@ Hızlı ve bağımlılığı olmayan bir yaklaşım:
 Hesaplar online yapılır; çok büyük katalog için offline batch + cache mantığına
 geçirilmelidir. Sonuçlar shared_cache'te 10 dk tutulur.
 """
+
 from __future__ import annotations
 
 import math
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order, OrderItem, PaymentStatus, Product
@@ -23,7 +24,7 @@ from app.services.cache import ttl_cache
 
 async def _basket_index(db: AsyncSession, days: int = 180) -> dict[int, set[int]]:
     """Sipariş başına ürün setlerini döndür. Sadece ödemesi başarılı siparişler."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(OrderItem.order_id, OrderItem.product_id)
@@ -114,7 +115,9 @@ async def content_similar(
 
     Co-occurrence verisi yoksa veya cold-start için fallback.
     """
-    target = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
+    target = (
+        await db.execute(select(Product).where(Product.id == product_id))
+    ).scalar_one_or_none()
     if not target:
         return []
     lo = float(target.price) * (1 - price_band_pct)
@@ -142,7 +145,7 @@ async def trending_products(
 
     skor = sum_per_sale( qty * 0.5 ^ (yaş / half_life) )
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(OrderItem.product_id, OrderItem.qty, Order.created_at)
@@ -156,12 +159,12 @@ async def trending_products(
             )
         )
     ).all()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     lam = math.log(2) / max(half_life_days, 0.1)
     scores: Counter = Counter()
     for pid, qty, created_at in rows:
         if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
+            created_at = created_at.replace(tzinfo=UTC)
         age_days = (now - created_at).total_seconds() / 86400.0
         weight = math.exp(-lam * age_days)
         scores[int(pid)] += float(qty) * weight

@@ -3,10 +3,11 @@
 Single-instance kullanım için yeterli. Multi-instance deploy için Redis pub/sub'a
 geçilmesi gerekir (RedisStreams veya redis-py pub/sub).
 """
+
 import asyncio
 import json
 import logging
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ async def event_stream(q: asyncio.Queue, heartbeat_interval: float = 25.0) -> As
             try:
                 payload = await asyncio.wait_for(q.get(), timeout=heartbeat_interval)
                 yield f"data: {payload}\n\n"
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Proxy'ler boş bağlantıları kesmesin diye keep-alive
                 yield ": heartbeat\n\n"
     except asyncio.CancelledError:

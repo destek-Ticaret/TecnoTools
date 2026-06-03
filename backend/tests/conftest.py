@@ -2,7 +2,7 @@
 
 Production'da PostgreSQL kullanılır; testler için aiosqlite yeterli.
 JSONB tipi modeller `JSONType` ile SQLite'da JSON'a düşer."""
-import asyncio
+
 import os
 import sys
 from pathlib import Path
@@ -25,7 +25,6 @@ os.environ.setdefault("PAYTR_MERCHANT_SALT", "")
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -97,12 +96,18 @@ async def auth_client(db_engine, seed_admin):
     mutation'ı `client`'a sızıp "auth gerekli" test'lerini yanıltabilir.
     """
     from httpx import ASGITransport, AsyncClient
+
     from app.main import app
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.post("/api/auth/login", json={
-            "username": "testadmin", "password": "TestPass123!",
-        })
+        resp = await ac.post(
+            "/api/auth/login",
+            json={
+                "username": "testadmin",
+                "password": "TestPass123!",
+            },
+        )
         assert resp.status_code == 200, f"Login failed: {resp.text}"
         token = resp.json()["access_token"]
         ac.headers["Authorization"] = f"Bearer {token}"

@@ -13,17 +13,27 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 @router.get("", response_model=list[CategoryOut])
 async def list_categories(db: AsyncSession = Depends(get_db)):
-    return (await db.execute(select(Category).order_by(Category.sort_order, Category.name))).scalars().all()
+    return (
+        (await db.execute(select(Category).order_by(Category.sort_order, Category.name)))
+        .scalars()
+        .all()
+    )
 
 
 @router.post("", response_model=CategoryOut, status_code=status.HTTP_201_CREATED)
-async def create_category(payload: CategoryIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
-    existing = (await db.execute(select(Category).where(Category.name == payload.name))).scalar_one_or_none()
+async def create_category(
+    payload: CategoryIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
+    existing = (
+        await db.execute(select(Category).where(Category.name == payload.name))
+    ).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="Kategori zaten mevcut")
     c = Category(**payload.model_dump())
     db.add(c)
-    db.add(AuditLog(actor=user.username, action="category-add", message=f"Kategori eklendi: {c.name}"))
+    db.add(
+        AuditLog(actor=user.username, action="category-add", message=f"Kategori eklendi: {c.name}")
+    )
     await db.commit()
     await db.refresh(c)
     await bus.publish("category_created", {"id": c.id, "name": c.name})
@@ -53,10 +63,13 @@ async def update_category(
     old_name = c.name
     c.name = payload.name
     c.sort_order = payload.sort_order
-    db.add(AuditLog(
-        actor=user.username, action="category-edit",
-        message=f"Kategori güncellendi: {old_name} → {c.name}",
-    ))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="category-edit",
+            message=f"Kategori güncellendi: {old_name} → {c.name}",
+        )
+    )
     await db.commit()
     await db.refresh(c)
     await bus.publish("category_updated", {"id": c.id, "name": c.name})
@@ -64,14 +77,18 @@ async def update_category(
 
 
 @router.delete("/{category_id}", status_code=204)
-async def delete_category(category_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
+async def delete_category(
+    category_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
     c = (await db.execute(select(Category).where(Category.id == category_id))).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Kategori bulunamadı")
     name = c.name
     cid = c.id
     await db.delete(c)
-    db.add(AuditLog(actor=user.username, action="category-delete", message=f"Kategori silindi: {name}"))
+    db.add(
+        AuditLog(actor=user.username, action="category-delete", message=f"Kategori silindi: {name}")
+    )
     await db.commit()
     await bus.publish("category_deleted", {"id": cid, "name": name})
     return None

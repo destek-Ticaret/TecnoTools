@@ -1,5 +1,5 @@
 """Para birimi endpoint'leri — ağ gerektirmeyen senaryolar."""
-import pytest
+
 
 
 async def test_list_currencies(client):

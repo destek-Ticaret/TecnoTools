@@ -81,7 +81,9 @@ async def current_customer(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token geçersiz")
     if not customer_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token geçersiz")
-    customer = (await db.execute(select(Customer).where(Customer.id == customer_id))).scalar_one_or_none()
+    customer = (
+        await db.execute(select(Customer).where(Customer.id == customer_id))
+    ).scalar_one_or_none()
     if not customer or not customer.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Müşteri bulunamadı")
     if not customer.password_hash:

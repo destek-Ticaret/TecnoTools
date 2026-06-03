@@ -1,4 +1,5 @@
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,7 +30,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
-    stripe_success_url: str = "http://localhost:5500/order-success.html?session_id={CHECKOUT_SESSION_ID}"
+    stripe_success_url: str = (
+        "http://localhost:5500/order-success.html?session_id={CHECKOUT_SESSION_ID}"
+    )
     stripe_cancel_url: str = "http://localhost:5500/order-fail.html"
 
     initial_admin_username: str = "TecnoTools"
@@ -40,7 +43,9 @@ class Settings(BaseSettings):
     storage_backend: str = "local"
     s3_bucket: str = ""
     s3_region: str = "auto"
-    s3_endpoint_url: str = ""  # boş bırakılırsa AWS default; Cloudflare R2 / B2 / DO Spaces için doldur
+    s3_endpoint_url: str = (
+        ""  # boş bırakılırsa AWS default; Cloudflare R2 / B2 / DO Spaces için doldur
+    )
     s3_access_key: str = ""
     s3_secret_key: str = ""
     s3_public_base_url: str = ""  # CDN/public URL prefix (örn https://cdn.tecnotools.com)

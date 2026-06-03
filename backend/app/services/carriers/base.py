@@ -1,4 +1,5 @@
 """Kargo adapter ortak arayüzü ve normalize event modeli."""
+
 from __future__ import annotations
 
 import abc
@@ -6,22 +7,22 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-
 EVENT_CODES = (
-    "created",            # gönderi oluşturuldu / barkod basıldı
-    "picked_up",          # şubeden teslim alındı
-    "in_transit",         # transferde
-    "out_for_delivery",   # dağıtıma çıktı
-    "delivered",          # teslim edildi
-    "failed_attempt",     # teslim denendi, başarısız
-    "returned",           # iade
-    "cancelled",          # iptal
+    "created",  # gönderi oluşturuldu / barkod basıldı
+    "picked_up",  # şubeden teslim alındı
+    "in_transit",  # transferde
+    "out_for_delivery",  # dağıtıma çıktı
+    "delivered",  # teslim edildi
+    "failed_attempt",  # teslim denendi, başarısız
+    "returned",  # iade
+    "cancelled",  # iptal
 )
 
 
 @dataclass(frozen=True)
 class NormalizedEvent:
     """Tüm firmalardan ortak şekle indirilmiş tek hareket."""
+
     carrier: str
     tracking_no: str
     code: str

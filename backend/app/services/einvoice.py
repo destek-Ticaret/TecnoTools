@@ -14,13 +14,14 @@ Gerçek entegratör eklemek için:
 Bu sınır şimdi sadece e-arşiv (B2C). E-fatura (mükellef-mükellef) ileride
 benzer biçimde eklenebilir; modelde `kind` alanı zaten var.
 """
+
 from __future__ import annotations
 
 import base64
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from app.config import get_settings
@@ -32,15 +33,16 @@ settings = get_settings()
 @dataclass
 class InvoicePayload:
     """Entegratöre gönderilecek standartlaştırılmış fatura."""
+
     invoice_no: str
     customer_name: str
     customer_email: str
     customer_phone: str
     customer_address: str
-    tax_no: str | None        # TCKN (11 haneli) veya VKN (10 haneli)
+    tax_no: str | None  # TCKN (11 haneli) veya VKN (10 haneli)
     tax_office: str | None
     company_title: str | None  # boşsa bireysel
-    items: list[dict]          # [{"name","qty","unit_price","tax_rate"}, ...]
+    items: list[dict]  # [{"name","qty","unit_price","tax_rate"}, ...]
     subtotal: float
     tax_rate: float
     tax_amount: float
@@ -50,6 +52,7 @@ class InvoicePayload:
 @dataclass
 class InvoiceResult:
     """Entegratör yanıtının standart hale getirilmiş hali."""
+
     ok: bool
     ettn: str | None = None
     uuid: str | None = None
@@ -60,6 +63,7 @@ class InvoiceResult:
 
 class EInvoiceProvider(Protocol):
     name: str
+
     async def create(self, payload: InvoicePayload) -> InvoiceResult: ...
     async def cancel(self, ettn: str, reason: str) -> bool: ...
 
@@ -69,6 +73,7 @@ class EInvoiceProvider(Protocol):
 
 class MockProvider:
     """Geliştirme/test için — ağa çıkmadan gerçek davranışı simüle eder."""
+
     name = "mock"
 
     async def create(self, payload: InvoicePayload) -> InvoiceResult:
@@ -76,14 +81,18 @@ class MockProvider:
         u = uuid.uuid4()
         ettn = str(u).upper()
         # PDF URL — backend kendi `/api/invoices/{id}/pdf` üzerinden servis eder
-        logger.info("📜 [MOCK-EARSIV] Fatura kesildi: %s (ETTN=%s, total=%.2f)",
-                    payload.invoice_no, ettn, payload.total)
+        logger.info(
+            "📜 [MOCK-EARSIV] Fatura kesildi: %s (ETTN=%s, total=%.2f)",
+            payload.invoice_no,
+            ettn,
+            payload.total,
+        )
         return InvoiceResult(
             ok=True,
             ettn=ettn,
             uuid=str(u),
             pdf_url=None,  # backend kendi üretiyor
-            raw={"mock": True, "issued_at": datetime.now(timezone.utc).isoformat()},
+            raw={"mock": True, "issued_at": datetime.now(UTC).isoformat()},
         )
 
     async def cancel(self, ettn: str, reason: str) -> bool:
@@ -100,6 +109,7 @@ class ForibaProvider:
     Gerçek API: https://efaturaservice.foriba.com/.../v1/invoices
     .env'de FORIBA_USERNAME / FORIBA_PASSWORD / FORIBA_SOURCE_ID gerek.
     """
+
     name = "foriba"
 
     def __init__(self) -> None:
@@ -125,7 +135,11 @@ class ForibaProvider:
                     json=body,
                 )
             if r.status_code >= 300:
-                return InvoiceResult(ok=False, error=f"Foriba HTTP {r.status_code}: {r.text[:200]}", raw={"http": r.status_code})
+                return InvoiceResult(
+                    ok=False,
+                    error=f"Foriba HTTP {r.status_code}: {r.text[:200]}",
+                    raw={"http": r.status_code},
+                )
             data = r.json()
             return InvoiceResult(
                 ok=True,
@@ -158,7 +172,8 @@ class ForibaProvider:
             },
             "items": [
                 {
-                    "name": it["name"], "quantity": it["qty"],
+                    "name": it["name"],
+                    "quantity": it["qty"],
                     "unitPrice": it["unit_price"],
                     "taxRate": it.get("tax_rate", p.tax_rate),
                 }
@@ -204,7 +219,7 @@ from app.models import InvoiceCounter  # noqa: E402
 
 async def next_invoice_no(db: AsyncSession, prefix: str = "TT-FAT") -> str:
     """Yıl bazlı tek satır sayaç. Format: TT-FAT-2026-000001."""
-    year = datetime.now(timezone.utc).year
+    year = datetime.now(UTC).year
     row = (
         await db.execute(select(InvoiceCounter).where(InvoiceCounter.year == year))
     ).scalar_one_or_none()

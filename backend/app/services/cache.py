@@ -7,13 +7,15 @@ Kullanım:
 Tek-instance deploy için yeterli. Multi-instance'da Redis'e geç.
 Anahtarlamada SQLAlchemy Session gibi non-hashable objeleri otomatik dışla.
 """
+
 from __future__ import annotations
 
 import asyncio
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 _DEFAULT_SENTINEL = object()
 

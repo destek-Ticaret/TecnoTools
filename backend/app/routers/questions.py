@@ -9,7 +9,8 @@ Admin:
   PATCH  /api/admin/questions/{id}          — cevapla / yayınla
   DELETE /api/admin/questions/{id}          — sil
 """
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
@@ -46,20 +47,30 @@ class QuestionOut(BaseModel):
 
 def _to_out(q: ProductQuestion) -> QuestionOut:
     return QuestionOut(
-        id=q.id, product_id=q.product_id, customer_name=q.customer_name,
-        question=q.question, answer=q.answer, is_published=q.is_published,
-        created_at=q.created_at, answered_at=q.answered_at,
+        id=q.id,
+        product_id=q.product_id,
+        customer_name=q.customer_name,
+        question=q.question,
+        answer=q.answer,
+        is_published=q.is_published,
+        created_at=q.created_at,
+        answered_at=q.answered_at,
     )
 
 
 @router.post("/api/products/{product_id}/questions", response_model=QuestionOut, status_code=201)
 @limiter.limit("5/minute")
 async def create_question(
-    request: Request, product_id: int, payload: QuestionIn = Body(...), db: AsyncSession = Depends(get_db)
+    request: Request,
+    product_id: int,
+    payload: QuestionIn = Body(...),
+    db: AsyncSession = Depends(get_db),
 ):
     if payload.website:
         raise HTTPException(status_code=400, detail="invalid")
-    product = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
+    product = (
+        await db.execute(select(Product).where(Product.id == product_id))
+    ).scalar_one_or_none()
     if not product:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     q = ProductQuestion(
@@ -70,7 +81,11 @@ async def create_question(
         is_published=False,
     )
     db.add(q)
-    db.add(AuditLog(actor="customer", action="question-create", message=f"Yeni soru: ürün #{product_id}"))
+    db.add(
+        AuditLog(
+            actor="customer", action="question-create", message=f"Yeni soru: ürün #{product_id}"
+        )
+    )
     await db.commit()
     await db.refresh(q)
     await bus.publish("question_created", {"id": q.id, "product_id": product_id})
@@ -80,16 +95,20 @@ async def create_question(
 @router.get("/api/products/{product_id}/questions", response_model=list[QuestionOut])
 async def list_questions_public(product_id: int, db: AsyncSession = Depends(get_db)):
     rows = (
-        await db.execute(
-            select(ProductQuestion)
-            .where(
-                (ProductQuestion.product_id == product_id)
-                & (ProductQuestion.is_published == True)  # noqa: E712
-                & (ProductQuestion.answer.isnot(None))
+        (
+            await db.execute(
+                select(ProductQuestion)
+                .where(
+                    (ProductQuestion.product_id == product_id)
+                    & (ProductQuestion.is_published == True)  # noqa: E712
+                    & (ProductQuestion.answer.isnot(None))
+                )
+                .order_by(ProductQuestion.id.desc())
             )
-            .order_by(ProductQuestion.id.desc())
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [_to_out(q) for q in rows]
 
 
@@ -124,17 +143,25 @@ async def update_question(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_editor),
 ):
-    q = (await db.execute(select(ProductQuestion).where(ProductQuestion.id == question_id))).scalar_one_or_none()
+    q = (
+        await db.execute(select(ProductQuestion).where(ProductQuestion.id == question_id))
+    ).scalar_one_or_none()
     if not q:
         raise HTTPException(status_code=404, detail="Soru bulunamadı")
     if payload.answer is not None:
         ans = payload.answer.strip()
         q.answer = ans or None
         q.answered_by = user.username if ans else None
-        q.answered_at = datetime.now(timezone.utc) if ans else None
+        q.answered_at = datetime.now(UTC) if ans else None
     if payload.is_published is not None:
         q.is_published = bool(payload.is_published)
-    db.add(AuditLog(actor=user.username, action="question-update", message=f"Soru #{question_id} güncellendi (published={q.is_published})"))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="question-update",
+            message=f"Soru #{question_id} güncellendi (published={q.is_published})",
+        )
+    )
     await db.commit()
     await db.refresh(q)
     return _to_out(q)
@@ -144,10 +171,16 @@ async def update_question(
 async def delete_question(
     question_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
 ):
-    q = (await db.execute(select(ProductQuestion).where(ProductQuestion.id == question_id))).scalar_one_or_none()
+    q = (
+        await db.execute(select(ProductQuestion).where(ProductQuestion.id == question_id))
+    ).scalar_one_or_none()
     if not q:
         raise HTTPException(status_code=404, detail="Soru bulunamadı")
     await db.delete(q)
-    db.add(AuditLog(actor=user.username, action="question-delete", message=f"Soru silindi #{question_id}"))
+    db.add(
+        AuditLog(
+            actor=user.username, action="question-delete", message=f"Soru silindi #{question_id}"
+        )
+    )
     await db.commit()
     return None

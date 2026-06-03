@@ -1,4 +1,5 @@
 """Server-Sent Events endpoint — storefront ve admin canlı bildirim için dinler."""
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 

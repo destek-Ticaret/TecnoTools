@@ -1,5 +1,5 @@
 """Ürün yorumları — public oluşturma + moderasyon + rating yeniden hesabı."""
-import pytest
+
 
 from app.models import Product
 
@@ -13,8 +13,13 @@ async def _make_product(db_session, name="Matkap", price=100, stock=5):
 
 
 def _review(**kw):
-    base = {"customer_name": "Ali Veli", "customer_email": "ali@example.com",
-            "rating": 5, "title": "Harika", "body": "Gerçekten çok memnun kaldım."}
+    base = {
+        "customer_name": "Ali Veli",
+        "customer_email": "ali@example.com",
+        "rating": 5,
+        "title": "Harika",
+        "body": "Gerçekten çok memnun kaldım.",
+    }
     base.update(kw)
     return base
 

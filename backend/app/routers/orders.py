@@ -1,13 +1,13 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.deps import require_editor
-from app.rate_limit import limiter
 from app.models import (
     AuditLog,
     Coupon,
@@ -19,11 +19,17 @@ from app.models import (
     PaymentStatus,
     Product,
     Reservation,
-    StockMovement,
     User,
 )
-from app.schemas import CheckoutRequest, OrderNoteIn, OrderOut, OrderPatch, OrderStatusUpdate, PaymentStartResponse
-from app.config import get_settings
+from app.rate_limit import limiter
+from app.schemas import (
+    CheckoutRequest,
+    OrderNoteIn,
+    OrderOut,
+    OrderPatch,
+    OrderStatusUpdate,
+    PaymentStartResponse,
+)
 from app.services.email import send_order_status_update
 from app.services.events import bus
 from app.services.order_signing import sign_order, verify_token
@@ -39,8 +45,10 @@ TAX_RATE = Decimal("0.20")  # KDV %20
 
 
 async def _next_order_no(db: AsyncSession) -> str:
-    year = datetime.now(timezone.utc).year
-    row = (await db.execute(select(OrderCounter).where(OrderCounter.year == year).with_for_update())).scalar_one_or_none()
+    year = datetime.now(UTC).year
+    row = (
+        await db.execute(select(OrderCounter).where(OrderCounter.year == year).with_for_update())
+    ).scalar_one_or_none()
     if not row:
         row = OrderCounter(year=year, seq=0)
         db.add(row)
@@ -50,8 +58,11 @@ async def _next_order_no(db: AsyncSession) -> str:
     return f"TT-{year}-{seq:04d}"
 
 
-async def _calc_totals(db: AsyncSession, items_data: list[tuple[Product, int]], coupon: Coupon | None) -> dict:
+async def _calc_totals(
+    db: AsyncSession, items_data: list[tuple[Product, int]], coupon: Coupon | None
+) -> dict:
     from app.routers.settings import get_setting
+
     subtotal = sum(Decimal(str(p.price)) * Decimal(qty) for p, qty in items_data)
     discount = Decimal("0")
     if coupon and coupon.is_active:
@@ -79,7 +90,12 @@ async def _calc_totals(db: AsyncSession, items_data: list[tuple[Product, int]], 
 async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession = Depends(get_db)):
     """Sipariş oluşturur (status=pending, payment_status=initiated), PayTR token döner."""
     product_ids = [it.product_id for it in payload.items]
-    products = (await db.execute(select(Product).where(Product.id.in_(product_ids)))).scalars().unique().all()
+    products = (
+        (await db.execute(select(Product).where(Product.id.in_(product_ids))))
+        .scalars()
+        .unique()
+        .all()
+    )
     pmap = {p.id: p for p in products}
 
     items_data: list[tuple[Product, int]] = []
@@ -97,8 +113,12 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             await db.execute(select(Coupon).where(Coupon.code == payload.coupon_code.upper()))
         ).scalar_one_or_none()
         if coupon and coupon.expires_at:
-            exp = coupon.expires_at if coupon.expires_at.tzinfo else coupon.expires_at.replace(tzinfo=timezone.utc)
-            if exp < datetime.now(timezone.utc):
+            exp = (
+                coupon.expires_at
+                if coupon.expires_at.tzinfo
+                else coupon.expires_at.replace(tzinfo=UTC)
+            )
+            if exp < datetime.now(UTC):
                 coupon = None
         if coupon and coupon.max_uses is not None and (coupon.used_count or 0) >= coupon.max_uses:
             coupon = None
@@ -113,45 +133,70 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
     ).scalar_one_or_none()
     if not cust:
         cust = Customer(
-            email=payload.customer_email, name=payload.customer_name, phone=payload.customer_phone,
-            city=payload.customer_city, address=payload.customer_address,
+            email=payload.customer_email,
+            name=payload.customer_name,
+            phone=payload.customer_phone,
+            city=payload.customer_city,
+            address=payload.customer_address,
         )
         db.add(cust)
         await db.flush()
     else:
         cust.name, cust.phone, cust.city, cust.address = (
-            payload.customer_name, payload.customer_phone, payload.customer_city, payload.customer_address,
+            payload.customer_name,
+            payload.customer_phone,
+            payload.customer_city,
+            payload.customer_address,
         )
 
     order_no = await _next_order_no(db)
     order = Order(
-        order_no=order_no, customer_id=cust.id,
-        customer_name=payload.customer_name, customer_email=payload.customer_email,
-        customer_phone=payload.customer_phone, customer_city=payload.customer_city,
+        order_no=order_no,
+        customer_id=cust.id,
+        customer_name=payload.customer_name,
+        customer_email=payload.customer_email,
+        customer_phone=payload.customer_phone,
+        customer_city=payload.customer_city,
         customer_address=payload.customer_address,
-        subtotal=totals["subtotal"], discount=totals["discount"],
+        subtotal=totals["subtotal"],
+        discount=totals["discount"],
         coupon_code=coupon.code if coupon else None,
-        tax=totals["tax"], shipping=totals["shipping"], total=totals["total"],
-        status=OrderStatus.PENDING.value, payment_status=PaymentStatus.INITIATED.value,
-        note=payload.note, admin_notes=[],
-        tax_no=(payload.tax_no or None) and payload.tax_no.strip() or None,
-        tax_office=(payload.tax_office or None) and payload.tax_office.strip() or None,
-        company_title=(payload.company_title or None) and payload.company_title.strip() or None,
+        tax=totals["tax"],
+        shipping=totals["shipping"],
+        total=totals["total"],
+        status=OrderStatus.PENDING.value,
+        payment_status=PaymentStatus.INITIATED.value,
+        note=payload.note,
+        admin_notes=[],
+        tax_no=((payload.tax_no or None) and payload.tax_no.strip()) or None,
+        tax_office=((payload.tax_office or None) and payload.tax_office.strip()) or None,
+        company_title=((payload.company_title or None) and payload.company_title.strip()) or None,
     )
     db.add(order)
     await db.flush()
 
     for p, qty in items_data:
-        db.add(OrderItem(
-            order_id=order.id, product_id=p.id, name=p.name, icon=p.icon,
-            image=(p.images or [None])[0], price=float(p.price), qty=qty,
-        ))
+        db.add(
+            OrderItem(
+                order_id=order.id,
+                product_id=p.id,
+                name=p.name,
+                icon=p.icon,
+                image=(p.images or [None])[0],
+                price=float(p.price),
+                qty=qty,
+            )
+        )
 
     # Rezervasyonu temizle (artık siparişte)
     if payload.session_id:
         await db.execute(delete(Reservation).where(Reservation.session_id == payload.session_id))
 
-    db.add(AuditLog(actor="customer", action="order-create", message=f"Sipariş oluşturuldu: {order_no}"))
+    db.add(
+        AuditLog(
+            actor="customer", action="order-create", message=f"Sipariş oluşturuldu: {order_no}"
+        )
+    )
     await db.commit()
     await db.refresh(order)
     await bus.publish("order_created", {"order_no": order_no, "total": float(order.total)})
@@ -159,6 +204,7 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
     # Havale veya kapıda ödeme: gateway iframe akışı yok, sipariş "pending" kalır
     if payload.payment_method in ("wire", "cod"):
         from app.routers.settings import get_setting
+
         if payload.payment_method == "wire" and (await get_setting(db, "wire_enabled", "1")) != "1":
             raise HTTPException(status_code=400, detail="Havale ödeme kapalı")
         if payload.payment_method == "cod" and (await get_setting(db, "cod_enabled", "1")) != "1":
@@ -184,18 +230,23 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         order.payment_method = "stripe"
         await db.commit()
         return PaymentStartResponse(
-            order_no=order.order_no, iframe_token=sess["id"],
-            iframe_url=sess["url"], provider="stripe",
+            order_no=order.order_no,
+            iframe_token=sess["id"],
+            iframe_url=sess["url"],
+            provider="stripe",
         )
     paytr = build_paytr_token(
-        order_no=order.order_no, email=order.customer_email,
+        order_no=order.order_no,
+        email=order.customer_email,
         amount_kurus=int(round(order.total * 100)),
-        user_name=order.customer_name, user_phone=order.customer_phone,
+        user_name=order.customer_name,
+        user_phone=order.customer_phone,
         user_address=f"{order.customer_address}, {order.customer_city or ''}",
         basket=[(p.name, float(p.price), qty) for p, qty in items_data],
     )
     return PaymentStartResponse(
-        order_no=order.order_no, iframe_token=paytr["token"],
+        order_no=order.order_no,
+        iframe_token=paytr["token"],
         iframe_url=f"https://www.paytr.com/odeme/guvenli/{paytr['token']}",
         provider="paytr",
     )
@@ -228,8 +279,7 @@ async def track_order_public(
         o = (
             await db.execute(
                 select(Order).where(
-                    (Order.order_no == order_no.strip())
-                    & (Order.customer_email == email.strip())
+                    (Order.order_no == order_no.strip()) & (Order.customer_email == email.strip())
                 )
             )
         ).scalar_one_or_none()
@@ -264,9 +314,7 @@ async def get_signed_barcode(
     _: User = Depends(require_editor),
 ):
     """Sipariş için RSA imzalı barkod token'ı üretir (admin)."""
-    o = (
-        await db.execute(select(Order).where(Order.order_no == order_no))
-    ).scalar_one_or_none()
+    o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
     signed = sign_order(order_no=o.order_no, total=o.total)
@@ -276,13 +324,15 @@ async def get_signed_barcode(
 @router.get("", response_model=list[OrderOut])
 async def list_orders(db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)):
     orders = (
-        await db.execute(select(Order).order_by(Order.created_at.desc()))
-    ).scalars().unique().all()
+        (await db.execute(select(Order).order_by(Order.created_at.desc()))).scalars().unique().all()
+    )
     return orders
 
 
 @router.get("/{order_no}", response_model=OrderOut)
-async def get_order(order_no: str, db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)):
+async def get_order(
+    order_no: str, db: AsyncSession = Depends(get_db), _: User = Depends(require_editor)
+):
     o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
@@ -291,7 +341,10 @@ async def get_order(order_no: str, db: AsyncSession = Depends(get_db), _: User =
 
 @router.patch("/{order_no}/status", response_model=OrderOut)
 async def update_status(
-    order_no: str, payload: OrderStatusUpdate, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    order_no: str,
+    payload: OrderStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
     o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
@@ -301,14 +354,29 @@ async def update_status(
         raise HTTPException(status_code=400, detail="Geçersiz durum")
     old = o.status
     o.status = payload.status
-    if payload.status in (OrderStatus.SHIPPED.value, OrderStatus.DELIVERED.value) and not o.tracking_no:
+    if (
+        payload.status in (OrderStatus.SHIPPED.value, OrderStatus.DELIVERED.value)
+        and not o.tracking_no
+    ):
         from secrets import token_hex
+
         o.tracking_no = "YK" + token_hex(5).upper()
-    db.add(AuditLog(actor=user.username, action="order-status", message=f"{order_no}: {old} → {payload.status}"))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="order-status",
+            message=f"{order_no}: {old} → {payload.status}",
+        )
+    )
     await db.commit()
     await db.refresh(o)
     # Müşteriye durum bildirim maili (initiated/pending dışı bir değişiklikse)
-    if old != payload.status and payload.status in ("processing", "shipped", "delivered", "cancelled"):
+    if old != payload.status and payload.status in (
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+    ):
         try:
             await send_order_status_update(o, old)
         except Exception:
@@ -318,13 +386,17 @@ async def update_status(
 
 
 @router.delete("/{order_no}", status_code=204)
-async def delete_order(order_no: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
+async def delete_order(
+    order_no: str, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
     o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
     customer_email = o.customer_email
     await db.delete(o)
-    db.add(AuditLog(actor=user.username, action="order-delete", message=f"Sipariş silindi: {order_no}"))
+    db.add(
+        AuditLog(actor=user.username, action="order-delete", message=f"Sipariş silindi: {order_no}")
+    )
     await db.commit()
     # Müşterinin storefront sekmesi açıksa "Siparişlerim" anında güncellenir
     await bus.publish("order_deleted", {"order_no": order_no, "customer_email": customer_email})
@@ -333,7 +405,10 @@ async def delete_order(order_no: str, db: AsyncSession = Depends(get_db), user: 
 
 @router.patch("/{order_no}", response_model=OrderOut)
 async def patch_order(
-    order_no: str, payload: OrderPatch, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    order_no: str,
+    payload: OrderPatch,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
     o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
@@ -341,7 +416,11 @@ async def patch_order(
     fields = payload.model_dump(exclude_unset=True)
     for k, v in fields.items():
         setattr(o, k, v)
-    db.add(AuditLog(actor=user.username, action="order-edit", message=f"Sipariş güncellendi: {order_no}"))
+    db.add(
+        AuditLog(
+            actor=user.username, action="order-edit", message=f"Sipariş güncellendi: {order_no}"
+        )
+    )
     await db.commit()
     await db.refresh(o)
     return o
@@ -349,13 +428,18 @@ async def patch_order(
 
 @router.post("/{order_no}/notes", response_model=OrderOut)
 async def add_admin_note(
-    order_no: str, payload: OrderNoteIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    order_no: str,
+    payload: OrderNoteIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
     o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
     notes = list(o.admin_notes or [])
-    notes.insert(0, {"at": datetime.now(timezone.utc).isoformat(), "text": payload.text, "by": user.username})
+    notes.insert(
+        0, {"at": datetime.now(UTC).isoformat(), "text": payload.text, "by": user.username}
+    )
     o.admin_notes = notes
     db.add(AuditLog(actor=user.username, action="order-note", message=f"{order_no}: not eklendi"))
     await db.commit()
@@ -365,7 +449,10 @@ async def add_admin_note(
 
 @router.delete("/{order_no}/notes/{note_idx}", response_model=OrderOut)
 async def delete_admin_note(
-    order_no: str, note_idx: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+    order_no: str,
+    note_idx: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
 ):
     o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:

@@ -3,8 +3,9 @@
 İlke: Hiçbir kişisel veri saklanmaz. IP hash'lenir, kişi izi takip edilmez,
 sadece toplu sayımlar yapılır.
 """
+
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Body, Depends, Request
 from sqlalchemy import func, select
@@ -22,9 +23,9 @@ _DAILY_SALT_SEED = "tt-analytics-daily-salt"
 def _ip_hash(request: Request) -> str:
     xff = request.headers.get("x-forwarded-for", "")
     ip = xff.split(",")[0].strip() or (request.client.host if request.client else "0.0.0.0")
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    today = datetime.now(UTC).strftime("%Y%m%d")
     salt = f"{_DAILY_SALT_SEED}:{today}"
-    return hashlib.sha256(f"{ip}:{salt}".encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(f"{ip}:{salt}".encode()).hexdigest()[:16]
 
 
 @router.post("/track", status_code=204)
@@ -32,22 +33,26 @@ async def track(request: Request, payload: dict = Body(...), db: AsyncSession = 
     event = (payload.get("event") or "").strip()[:64]
     if not event:
         return None
-    db.add(AnalyticsEvent(
-        event=event,
-        path=(payload.get("path") or "")[:255] or None,
-        referrer=(payload.get("referrer") or "")[:255] or None,
-        session_id=(payload.get("session_id") or "")[:64] or None,
-        meta=payload.get("meta") or None,
-        user_agent=request.headers.get("user-agent", "")[:255] or None,
-        ip_hash=_ip_hash(request),
-    ))
+    db.add(
+        AnalyticsEvent(
+            event=event,
+            path=(payload.get("path") or "")[:255] or None,
+            referrer=(payload.get("referrer") or "")[:255] or None,
+            session_id=(payload.get("session_id") or "")[:64] or None,
+            meta=payload.get("meta") or None,
+            user_agent=request.headers.get("user-agent", "")[:255] or None,
+            ip_hash=_ip_hash(request),
+        )
+    )
     await db.commit()
     return None
 
 
 @router.get("/summary")
-async def summary(days: int = 7, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+async def summary(
+    days: int = 7, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)
+):
+    since = datetime.now(UTC) - timedelta(days=days)
     type_counts = (
         await db.execute(
             select(AnalyticsEvent.event, func.count())
@@ -57,8 +62,9 @@ async def summary(days: int = 7, db: AsyncSession = Depends(get_db), _: User = D
     ).all()
     unique_visitors = (
         await db.execute(
-            select(func.count(func.distinct(AnalyticsEvent.ip_hash)))
-            .where(AnalyticsEvent.created_at >= since)
+            select(func.count(func.distinct(AnalyticsEvent.ip_hash))).where(
+                AnalyticsEvent.created_at >= since
+            )
         )
     ).scalar_one()
     top_pages = (

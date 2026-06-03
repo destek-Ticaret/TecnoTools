@@ -26,13 +26,14 @@ REST:
   GET  /api/chat/admin/sessions/{id}/messages
   POST /api/chat/admin/sessions/{id}/close
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
@@ -154,11 +155,14 @@ async def _get_or_create_session(
         if customer is not None:
             changed = False
             if sess.customer_id != customer.id:
-                sess.customer_id = customer.id; changed = True
+                sess.customer_id = customer.id
+                changed = True
             if not sess.customer_name and customer.name:
-                sess.customer_name = customer.name; changed = True
+                sess.customer_name = customer.name
+                changed = True
             if not sess.customer_email and customer.email:
-                sess.customer_email = customer.email; changed = True
+                sess.customer_email = customer.email
+                changed = True
             if changed:
                 await db.commit()
                 await db.refresh(sess)
@@ -190,9 +194,7 @@ async def admin_list_sessions(
 ):
     # SQLite NULLS LAST tam desteklemez; coalesce ile NULL'ı created_at'a düşür
     order_col = func.coalesce(ChatSession.last_message_at, ChatSession.created_at).desc()
-    rows = (
-        await db.execute(select(ChatSession).order_by(order_col))
-    ).scalars().all()
+    rows = (await db.execute(select(ChatSession).order_by(order_col))).scalars().all()
     return [_session_to_dict(s) for s in rows]
 
 
@@ -208,13 +210,17 @@ async def admin_session_messages(
     if not sess:
         raise HTTPException(status_code=404, detail="Oturum bulunamadı")
     msgs = (
-        await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.session_pk == session_pk)
-            .order_by(ChatMessage.created_at.asc())
-            .limit(HISTORY_LIMIT)
+        (
+            await db.execute(
+                select(ChatMessage)
+                .where(ChatMessage.session_pk == session_pk)
+                .order_by(ChatMessage.created_at.asc())
+                .limit(HISTORY_LIMIT)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     # Admin tarafı bu konuşmayı okudu — unread_admin sıfırla
     if sess.unread_admin:
         sess.unread_admin = 0
@@ -329,24 +335,38 @@ async def chat_customer_ws(websocket: WebSocket, token: str = Query(...)):
         async with SessionLocal() as db:
             sess = await _get_or_create_session(db, session_id, customer=customer)
             msgs = (
-                await db.execute(
-                    select(ChatMessage)
-                    .where(ChatMessage.session_pk == sess.id)
-                    .order_by(ChatMessage.created_at.asc())
-                    .limit(HISTORY_LIMIT)
+                (
+                    await db.execute(
+                        select(ChatMessage)
+                        .where(ChatMessage.session_pk == sess.id)
+                        .order_by(ChatMessage.created_at.asc())
+                        .limit(HISTORY_LIMIT)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             if sess.unread_customer:
                 sess.unread_customer = 0
                 await db.commit()
-            await websocket.send_text(json.dumps({
-                "event": "chat_session",
-                "data": _session_to_dict(sess),
-            }, default=str))
-            await websocket.send_text(json.dumps({
-                "event": "chat_history",
-                "data": [_msg_to_dict(m, session_id) for m in msgs],
-            }, default=str))
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "event": "chat_session",
+                        "data": _session_to_dict(sess),
+                    },
+                    default=str,
+                )
+            )
+            await websocket.send_text(
+                json.dumps(
+                    {
+                        "event": "chat_history",
+                        "data": [_msg_to_dict(m, session_id) for m in msgs],
+                    },
+                    default=str,
+                )
+            )
 
         while True:
             raw = await websocket.receive_text()
@@ -363,7 +383,7 @@ async def chat_customer_ws(websocket: WebSocket, token: str = Query(...)):
                 if not body:
                     continue
                 body = body[:MAX_MESSAGE_LEN]
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 async with SessionLocal() as db:
                     sess = await _get_or_create_session(db, session_id, customer=customer)
                     sess.status = ChatSessionStatus.OPEN.value
@@ -430,7 +450,7 @@ async def chat_admin_ws(websocket: WebSocket, token: str = Query(...)):
                 if not body:
                     continue
                 body = body[:MAX_MESSAGE_LEN]
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 async with SessionLocal() as db:
                     sess = await _get_or_create_session(db, target_session)
                     sess.status = ChatSessionStatus.OPEN.value

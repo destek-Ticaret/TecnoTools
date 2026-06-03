@@ -12,10 +12,11 @@ Admin/internal:
                                           event'leri uygular.
   POST /api/shipping/assign/{order_no}  — Sipariş için carrier + tracking_no set.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -65,12 +66,16 @@ async def list_events(order_no: str, db: AsyncSession = Depends(get_db)):
     if not order:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
     rows = (
-        await db.execute(
-            select(ShipmentEvent)
-            .where(ShipmentEvent.order_no == order_no)
-            .order_by(ShipmentEvent.occurred_at.asc())
+        (
+            await db.execute(
+                select(ShipmentEvent)
+                .where(ShipmentEvent.order_no == order_no)
+                .order_by(ShipmentEvent.occurred_at.asc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return {
         "order_no": order.order_no,
         "status": order.status,
@@ -78,7 +83,9 @@ async def list_events(order_no: str, db: AsyncSession = Depends(get_db)):
         "tracking_no": order.tracking_no,
         "shipped_at": order.shipped_at.isoformat() if order.shipped_at else None,
         "delivered_at": order.delivered_at.isoformat() if order.delivered_at else None,
-        "last_sync_at": order.last_tracking_sync_at.isoformat() if order.last_tracking_sync_at else None,
+        "last_sync_at": order.last_tracking_sync_at.isoformat()
+        if order.last_tracking_sync_at
+        else None,
         "events": [
             {
                 "code": r.code,
@@ -115,8 +122,13 @@ async def sync_order(
         _, _, changed = await apply_event(db, ev, order=order, source="poll")
         if changed:
             applied += 1
-    db.add(AuditLog(actor=user.username, action="shipping-sync",
-                    message=f"{order_no}: {carrier} {len(events)} event"))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="shipping-sync",
+            message=f"{order_no}: {carrier} {len(events)} event",
+        )
+    )
     await db.commit()
     return {"fetched": len(events), "applied": applied, "carrier": carrier}
 
@@ -140,9 +152,14 @@ async def assign_carrier(
     order.carrier = payload.carrier
     order.tracking_no = payload.tracking_no.strip()
     if not order.shipped_at:
-        order.shipped_at = datetime.now(timezone.utc)
-    db.add(AuditLog(actor=user.username, action="shipping-assign",
-                    message=f"{order_no}: {payload.carrier} {payload.tracking_no}"))
+        order.shipped_at = datetime.now(UTC)
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="shipping-assign",
+            message=f"{order_no}: {payload.carrier} {payload.tracking_no}",
+        )
+    )
     await db.commit()
     await db.refresh(order)
     return {"order_no": order.order_no, "carrier": order.carrier, "tracking_no": order.tracking_no}

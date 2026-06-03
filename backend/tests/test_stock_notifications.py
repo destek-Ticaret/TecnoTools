@@ -1,5 +1,5 @@
 """Stok geldi bildirimi (back-in-stock)."""
-import pytest
+
 
 from app.models import Product
 

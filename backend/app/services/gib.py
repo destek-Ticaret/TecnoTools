@@ -12,9 +12,9 @@
 
 Frontend kullanım: checkout VKN/TCKN alanında debounce'lu (450ms) çağrı.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 from dataclasses import asdict, dataclass
@@ -32,13 +32,14 @@ _DIGITS_RE = re.compile(r"\D+")
 @dataclass(slots=True)
 class TaxLookupResult:
     """Tek tip yanıt — frontend hem TCKN hem VKN için aynı şemayı kullanır."""
-    kind: str             # "tckn" | "vkn" | "invalid"
+
+    kind: str  # "tckn" | "vkn" | "invalid"
     value: str
     valid_format: bool
-    is_taxpayer: bool | None = None         # GİB sorgu sonucu; None = sorgulanmadı
-    title: str | None = None                # ünvan (VKN için)
-    tax_office: str | None = None           # vergi dairesi (VKN için)
-    source: str | None = None               # "format" | "gib" | "cache"
+    is_taxpayer: bool | None = None  # GİB sorgu sonucu; None = sorgulanmadı
+    title: str | None = None  # ünvan (VKN için)
+    tax_office: str | None = None  # vergi dairesi (VKN için)
+    source: str | None = None  # "format" | "gib" | "cache"
     error: str | None = None
 
 
@@ -144,14 +145,18 @@ async def _query_gib_taxpayer(vkn: str) -> TaxLookupResult:
             if vkn in body:
                 out.is_taxpayer = True
                 # Çok kaba ünvan çıkarımı — production'da entegratör API'si tavsiye edilir
-                m = re.search(r"<td[^>]*>\s*([^<]{4,120}A\.Ş\.|[^<]{4,120}LTD\.\s*ŞTİ\.)\s*</td>", body, re.IGNORECASE)
+                m = re.search(
+                    r"<td[^>]*>\s*([^<]{4,120}A\.Ş\.|[^<]{4,120}LTD\.\s*ŞTİ\.)\s*</td>",
+                    body,
+                    re.IGNORECASE,
+                )
                 if m:
                     out.title = m.group(1).strip()
             else:
                 out.is_taxpayer = False
         else:
             out.error = f"gib_http_{resp.status_code}"
-    except (httpx.HTTPError, asyncio.TimeoutError) as e:
+    except (TimeoutError, httpx.HTTPError) as e:
         out.error = f"gib_unreachable: {type(e).__name__}"
         logger.info("GİB sorgusu başarısız (%s): %s", vkn, e)
 

@@ -1,4 +1,5 @@
 """RFC 6238 TOTP doğrulama — sadece doğrulama; secret üretimi frontend'de yapılır."""
+
 import base64
 import hashlib
 import hmac
@@ -23,7 +24,7 @@ def _hotp(key: bytes, counter: int, digits: int = 6) -> str:
         | ((h[offset + 2] & 0xFF) << 8)
         | (h[offset + 3] & 0xFF)
     )
-    return str(code_int % (10 ** digits)).zfill(digits)
+    return str(code_int % (10**digits)).zfill(digits)
 
 
 def verify_totp(code: str, secret_b32: str, window: int = 1, step: int = 30) -> bool:

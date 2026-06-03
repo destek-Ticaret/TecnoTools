@@ -1,18 +1,19 @@
 """KVKK uçları (silme talep yönetimi + çerez izin kaydı).
 
-  Public:
-    POST /api/privacy/consent           — çerez tercih log kaydı
+Public:
+  POST /api/privacy/consent           — çerez tercih log kaydı
 
-  Admin:
-    GET    /api/privacy/deletion-requests           — talepleri listele
-    GET    /api/privacy/deletion-requests/{id}      — detay
-    POST   /api/privacy/deletion-requests/{id}/cancel  — talep iptal
-    POST   /api/privacy/deletion-requests/{id}/run     — admin tetikli icra
-                                                       (mailli onay yerine)
-    GET    /api/privacy/consent-logs                — son izin kayıtları
+Admin:
+  GET    /api/privacy/deletion-requests           — talepleri listele
+  GET    /api/privacy/deletion-requests/{id}      — detay
+  POST   /api/privacy/deletion-requests/{id}/cancel  — talep iptal
+  POST   /api/privacy/deletion-requests/{id}/run     — admin tetikli icra
+                                                     (mailli onay yerine)
+  GET    /api/privacy/consent-logs                — son izin kayıtları
 """
+
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
@@ -20,11 +21,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.deps import current_customer, require_admin
+from app.deps import require_admin
 from app.models import (
     AuditLog,
     ConsentLog,
-    Customer,
     DataDeletionRequest,
     DataDeletionStatus,
     User,
@@ -39,6 +39,7 @@ ALLOWED_CATEGORIES = {"essential", "preference", "analytics", "marketing"}
 
 class ConsentIn(BaseModel):
     """Granüler çerez izni — frontend "Çerez tercihleri" modalı buradan POST eder."""
+
     session_id: str = Field(min_length=4, max_length=64)
     categories: dict[str, bool]
     policy_version: str = Field(default="1.0", max_length=16)
@@ -100,6 +101,7 @@ async def log_consent(
     if authorization and authorization.lower().startswith("bearer "):
         # Müşteri token'ı varsa bağla; admin token'ları için sessizce geç.
         from app.security import decode_customer_token
+
         try:
             tok = decode_customer_token(authorization.split(" ", 1)[1].strip())
             if tok and tok.get("sub"):
@@ -194,7 +196,7 @@ async def run_deletion_admin(
     if row.status == DataDeletionStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Zaten tamamlanmış")
     row.status = DataDeletionStatus.CONFIRMED.value
-    row.confirmed_at = datetime.now(timezone.utc)
+    row.confirmed_at = datetime.now(UTC)
     row.token_hash = None
     await db.commit()
     db.add(

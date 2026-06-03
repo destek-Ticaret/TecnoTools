@@ -12,6 +12,7 @@ Beklenen webhook payload örnegi:
 
 Mock modu: credential yoksa `fetch()` deterministik 3 event döner (test/dev için).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -19,7 +20,7 @@ import hmac
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -69,13 +70,13 @@ def _classify(status_code: str | None, status_text: str | None) -> str:
 
 def _parse_dt(value: str | None) -> datetime:
     if not value:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
         try:
-            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(value, fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PttAdapter(CarrierAdapter):
@@ -134,7 +135,9 @@ class PttAdapter(CarrierAdapter):
     def _row_to_event(self, row: dict[str, Any]) -> NormalizedEvent:
         tn = str(row.get("barkod") or row.get("trackingNumber") or row.get("trackingNo") or "")
         status_code = row.get("durumKodu") or row.get("statusCode") or row.get("kod")
-        status_text = row.get("durum") or row.get("status") or row.get("aciklama") or row.get("description")
+        status_text = (
+            row.get("durum") or row.get("status") or row.get("aciklama") or row.get("description")
+        )
         return NormalizedEvent(
             carrier=self.code,
             tracking_no=tn,
@@ -180,24 +183,33 @@ class PttAdapter(CarrierAdapter):
 
 
 def _mock_events(carrier: str, tracking_no: str) -> list[NormalizedEvent]:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return [
         NormalizedEvent(
-            carrier=carrier, tracking_no=tracking_no, code="picked_up",
+            carrier=carrier,
+            tracking_no=tracking_no,
+            code="picked_up",
             occurred_at=now - timedelta(days=2),
-            raw_status="MOCK: kabul edildi", description="Şubeden teslim alındı",
+            raw_status="MOCK: kabul edildi",
+            description="Şubeden teslim alındı",
             location="İstanbul Merkez",
         ),
         NormalizedEvent(
-            carrier=carrier, tracking_no=tracking_no, code="in_transit",
+            carrier=carrier,
+            tracking_no=tracking_no,
+            code="in_transit",
             occurred_at=now - timedelta(days=1),
-            raw_status="MOCK: transfer", description="Aktarma merkezinde",
+            raw_status="MOCK: transfer",
+            description="Aktarma merkezinde",
             location="Ankara Merkez",
         ),
         NormalizedEvent(
-            carrier=carrier, tracking_no=tracking_no, code="out_for_delivery",
+            carrier=carrier,
+            tracking_no=tracking_no,
+            code="out_for_delivery",
             occurred_at=now - timedelta(hours=4),
-            raw_status="MOCK: dağıtımda", description="Dağıtım için yola çıktı",
+            raw_status="MOCK: dağıtımda",
+            description="Dağıtım için yola çıktı",
             location="Ankara Çankaya",
         ),
     ]

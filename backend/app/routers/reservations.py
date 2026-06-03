@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Body, Depends
-from sqlalchemy import delete, select
+from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,7 +26,7 @@ async def sync_reservations(
         return {"ok": False, "detail": "session_id gerekli"}
 
     # Önce expired olanları temizle
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await db.execute(delete(Reservation).where(Reservation.expires_at <= now))
 
     # Bu session'a ait kayıtları sil
@@ -38,7 +38,9 @@ async def sync_reservations(
         pid = int(it.get("product_id") or 0)
         qty = int(it.get("qty") or 0)
         if pid > 0 and qty > 0:
-            rows.append({"session_id": session_id, "product_id": pid, "qty": qty, "expires_at": expiry})
+            rows.append(
+                {"session_id": session_id, "product_id": pid, "qty": qty, "expires_at": expiry}
+            )
     if rows:
         await db.execute(pg_insert(Reservation).values(rows))
     await db.commit()

@@ -23,11 +23,12 @@ Endpoint'ler (`/api/customer-auth/*`):
   GET  /orders/{order_no}    — tek sipariş detayı (yalnız sahibine)
   GET  /loyalty              — kendi puan/tier durumu
 """
+
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,7 +66,7 @@ DELETION_TOKEN_TTL_MINUTES = 60
 
 
 def _as_utc(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
 
 
 def _hash_token(raw: str) -> str:
@@ -146,6 +147,7 @@ class RefreshIn(BaseModel):
 
 class DataDeleteRequestIn(BaseModel):
     """KVKK silme talebi başlatma — mevcut parola + opsiyonel sebep."""
+
     password: str
     reason: str | None = Field(default=None, max_length=2000)
 
@@ -158,8 +160,10 @@ class DataDeleteConfirmIn(BaseModel):
 async def _issue_tokens(db: AsyncSession, customer: Customer) -> CustomerTokenPair:
     access = create_customer_access_token(customer.id, customer.email)
     raw_refresh, refresh_hash, expiry = create_refresh_token()
-    db.add(CustomerRefreshToken(customer_id=customer.id, token_hash=refresh_hash, expires_at=expiry))
-    customer.last_login_at = datetime.now(timezone.utc)
+    db.add(
+        CustomerRefreshToken(customer_id=customer.id, token_hash=refresh_hash, expires_at=expiry)
+    )
+    customer.last_login_at = datetime.now(UTC)
     await db.commit()
     return CustomerTokenPair(
         access_token=access,
@@ -173,15 +177,19 @@ async def _send_verification_email(customer: Customer, raw_token: str) -> None:
     base = settings_cfg.store_public_url.rstrip("/")
     verify_url = f"{base}/#verify-email/{raw_token}"
     try:
-        html = render_template(
-            "email_verify.html",
-            name=customer.name,
-            verify_url=verify_url,
-        ) if _template_exists("email_verify.html") else (
-            f"<p>Merhaba {customer.name},</p>"
-            f"<p>Üyeliğinizi tamamlamak için aşağıdaki bağlantıya tıklayın:</p>"
-            f'<p><a href="{verify_url}">{verify_url}</a></p>'
-            f"<p>Bağlantı 24 saat geçerlidir.</p>"
+        html = (
+            render_template(
+                "email_verify.html",
+                name=customer.name,
+                verify_url=verify_url,
+            )
+            if _template_exists("email_verify.html")
+            else (
+                f"<p>Merhaba {customer.name},</p>"
+                f"<p>Üyeliğinizi tamamlamak için aşağıdaki bağlantıya tıklayın:</p>"
+                f'<p><a href="{verify_url}">{verify_url}</a></p>'
+                f"<p>Bağlantı 24 saat geçerlidir.</p>"
+            )
         )
         await send_email(to=customer.email, subject="E-posta doğrulama · TecnoTools", html=html)
     except Exception:
@@ -190,13 +198,16 @@ async def _send_verification_email(customer: Customer, raw_token: str) -> None:
 
 def _template_exists(name: str) -> bool:
     from pathlib import Path
+
     return (Path(__file__).resolve().parent.parent / "templates" / "email" / name).is_file()
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────
 @router.post("/register", response_model=CustomerTokenPair, status_code=201)
 @limiter.limit("5/minute")
-async def register(request: Request, payload: CustomerRegisterIn, db: AsyncSession = Depends(get_db)):
+async def register(
+    request: Request, payload: CustomerRegisterIn, db: AsyncSession = Depends(get_db)
+):
     """Yeni müşteri üyeliği.
 
     Mevcut **pasif** Customer kaydı (checkout'tan otomatik açılmış, password_hash
@@ -272,12 +283,16 @@ async def login(request: Request, payload: CustomerLoginIn, db: AsyncSession = D
 async def refresh(request: Request, payload: RefreshIn, db: AsyncSession = Depends(get_db)):
     digest = hash_refresh(payload.refresh_token)
     row = (
-        await db.execute(select(CustomerRefreshToken).where(CustomerRefreshToken.token_hash == digest))
+        await db.execute(
+            select(CustomerRefreshToken).where(CustomerRefreshToken.token_hash == digest)
+        )
     ).scalar_one_or_none()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if not row or row.revoked_at or _as_utc(row.expires_at) < now:
         raise HTTPException(status_code=401, detail="Refresh token geçersiz")
-    customer = (await db.execute(select(Customer).where(Customer.id == row.customer_id))).scalar_one_or_none()
+    customer = (
+        await db.execute(select(Customer).where(Customer.id == row.customer_id))
+    ).scalar_one_or_none()
     if not customer or not customer.is_active:
         raise HTTPException(status_code=401, detail="Müşteri bulunamadı")
     # Rotate
@@ -289,10 +304,12 @@ async def refresh(request: Request, payload: RefreshIn, db: AsyncSession = Depen
 async def logout(payload: RefreshIn, db: AsyncSession = Depends(get_db)):
     digest = hash_refresh(payload.refresh_token)
     row = (
-        await db.execute(select(CustomerRefreshToken).where(CustomerRefreshToken.token_hash == digest))
+        await db.execute(
+            select(CustomerRefreshToken).where(CustomerRefreshToken.token_hash == digest)
+        )
     ).scalar_one_or_none()
     if row and not row.revoked_at:
-        row.revoked_at = datetime.now(timezone.utc)
+        row.revoked_at = datetime.now(UTC)
         await db.commit()
     return None
 
@@ -322,7 +339,9 @@ async def change_password(
     db: AsyncSession = Depends(get_db),
     customer: Customer = Depends(current_customer),
 ):
-    if not customer.password_hash or not verify_password(payload.current_password, customer.password_hash):
+    if not customer.password_hash or not verify_password(
+        payload.current_password, customer.password_hash
+    ):
         raise HTTPException(status_code=401, detail="Mevcut şifre hatalı")
     customer.password_hash = hash_password(payload.new_password)
     # Güvenlik: tüm aktif refresh token'larını iptal et (başka cihazlar çıkış yapar)
@@ -332,7 +351,7 @@ async def change_password(
             (CustomerRefreshToken.customer_id == customer.id)
             & (CustomerRefreshToken.revoked_at.is_(None))
         )
-        .values(revoked_at=datetime.now(timezone.utc))
+        .values(revoked_at=datetime.now(UTC))
     )
     await db.commit()
     return {"ok": True}
@@ -350,16 +369,14 @@ async def forgot_password(
     if customer and customer.password_hash:  # sadece gerçek üyeler için
         raw_token = secrets.token_urlsafe(32)
         token_hash = _hash_token(raw_token)
-        expiry = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
+        expiry = datetime.now(UTC) + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
         db.add(
             CustomerPasswordResetToken(
                 customer_id=customer.id, token_hash=token_hash, expires_at=expiry
             )
         )
         await db.commit()
-        reset_url = (
-            f"{settings_cfg.store_public_url.rstrip('/')}/#reset-password/{raw_token}"
-        )
+        reset_url = f"{settings_cfg.store_public_url.rstrip('/')}/#reset-password/{raw_token}"
         try:
             await send_password_reset(
                 email=customer.email,
@@ -369,7 +386,10 @@ async def forgot_password(
             )
         except Exception:
             pass
-    return {"ok": True, "message": "Eğer kayıtlı bir e-posta bulduysak, şifre sıfırlama bağlantısı gönderildi."}
+    return {
+        "ok": True,
+        "message": "Eğer kayıtlı bir e-posta bulduysak, şifre sıfırlama bağlantısı gönderildi.",
+    }
 
 
 @router.post("/reset-password", status_code=200)
@@ -380,10 +400,12 @@ async def reset_password(
     token_hash = _hash_token(payload.token)
     row = (
         await db.execute(
-            select(CustomerPasswordResetToken).where(CustomerPasswordResetToken.token_hash == token_hash)
+            select(CustomerPasswordResetToken).where(
+                CustomerPasswordResetToken.token_hash == token_hash
+            )
         )
     ).scalar_one_or_none()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if not row or row.used_at or _as_utc(row.expires_at) < now:
         raise HTTPException(status_code=400, detail="Bağlantı geçersiz veya süresi dolmuş")
     customer = (
@@ -454,14 +476,19 @@ async def list_my_orders(
     """Müşterinin kendi siparişleri. Email eşleşmesiyle (customer_id NULL'a düşmüş
     eski siparişleri de yakalamak için)."""
     rows = (
-        await db.execute(
-            select(Order)
-            .where(
-                (Order.customer_id == customer.id) | (Order.customer_email == customer.email)
+        (
+            await db.execute(
+                select(Order)
+                .where(
+                    (Order.customer_id == customer.id) | (Order.customer_email == customer.email)
+                )
+                .order_by(Order.created_at.desc())
             )
-            .order_by(Order.created_at.desc())
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
     return rows
 
 
@@ -563,13 +590,18 @@ async def request_account_deletion(
 
     # Aktif (henüz tamamlanmamış) sipariş kontrolü
     open_orders = (
-        await db.execute(
-            select(Order).where(
-                ((Order.customer_id == customer.id) | (Order.customer_email == customer.email))
-                & (Order.status.in_(("pending", "processing", "shipped")))
+        (
+            await db.execute(
+                select(Order).where(
+                    ((Order.customer_id == customer.id) | (Order.customer_email == customer.email))
+                    & (Order.status.in_(("pending", "processing", "shipped")))
+                )
             )
         )
-    ).scalars().unique().all()
+        .scalars()
+        .unique()
+        .all()
+    )
     if open_orders:
         raise HTTPException(
             status_code=409,
@@ -580,7 +612,7 @@ async def request_account_deletion(
         )
 
     raw_token = secrets.token_urlsafe(32)
-    expiry = datetime.now(timezone.utc) + timedelta(minutes=DELETION_TOKEN_TTL_MINUTES)
+    expiry = datetime.now(UTC) + timedelta(minutes=DELETION_TOKEN_TTL_MINUTES)
     ddr = DataDeletionRequest(
         customer_id=customer.id,
         email_snapshot=customer.email,
@@ -600,9 +632,7 @@ async def request_account_deletion(
     )
     await db.commit()
 
-    confirm_url = (
-        f"{settings_cfg.store_public_url.rstrip('/')}/#delete-account/{raw_token}"
-    )
+    confirm_url = f"{settings_cfg.store_public_url.rstrip('/')}/#delete-account/{raw_token}"
     html = (
         f"<p>Merhaba {customer.name},</p>"
         f"<p>TecnoTools hesabınızı ve kişisel verilerinizi silme talebiniz "
@@ -645,7 +675,7 @@ async def confirm_account_deletion(
             select(DataDeletionRequest).where(DataDeletionRequest.token_hash == token_hash)
         )
     ).scalar_one_or_none()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if not ddr:
         raise HTTPException(status_code=400, detail="Bağlantı geçersiz")
     if ddr.status not in (DataDeletionStatus.PENDING.value,):
@@ -664,6 +694,8 @@ async def confirm_account_deletion(
         ddr.status = DataDeletionStatus.PENDING.value  # admin manuel müdahale için
         ddr.error_message = str(e)[:500]
         await db.commit()
-        raise HTTPException(status_code=500, detail="Silme işlemi başarısız, destek ekibi bilgilendirildi")
+        raise HTTPException(
+            status_code=500, detail="Silme işlemi başarısız, destek ekibi bilgilendirildi"
+        )
 
     return {"ok": True, "summary": summary}

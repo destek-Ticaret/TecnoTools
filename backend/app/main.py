@@ -12,7 +12,45 @@ from app.config import get_settings
 from app.database import Base, SessionLocal, engine
 from app.models import User, UserRole
 from app.rate_limit import limiter
-from app.routers import admin_users, algorithms, analytics, auth, banners, blog, campaigns, categories, chat, coupons, currency, customer_auth, events, exports, homepage, imports, invoices, misc, orders, pages, payments, pricing_rules, privacy, products, reservations, returns, reviews, seo, settings as settings_router, questions, shipping, stock_notifications, uploads, wishlist, ws
+from app.routers import (
+    admin_users,
+    algorithms,
+    analytics,
+    auth,
+    banners,
+    blog,
+    campaigns,
+    categories,
+    chat,
+    coupons,
+    currency,
+    customer_auth,
+    events,
+    exports,
+    homepage,
+    imports,
+    invoices,
+    misc,
+    orders,
+    pages,
+    payments,
+    pricing_rules,
+    privacy,
+    products,
+    questions,
+    reservations,
+    returns,
+    reviews,
+    seo,
+    shipping,
+    stock_notifications,
+    uploads,
+    wishlist,
+    ws,
+)
+from app.routers import (
+    settings as settings_router,
+)
 from app.security import hash_password
 
 settings = get_settings()
@@ -28,6 +66,7 @@ if settings.app_env != "production" and not logging.getLogger().handlers:
 # ── Datadog APM (varsa) — auto-instrument fastapi, sqlalchemy, httpx, asyncpg ──
 if settings.dd_agent_host:
     import os as _os
+
     _os.environ.setdefault("DD_SERVICE", settings.dd_service)
     _os.environ.setdefault("DD_ENV", settings.dd_env)
     _os.environ.setdefault("DD_VERSION", settings.dd_version)
@@ -35,6 +74,7 @@ if settings.dd_agent_host:
     _os.environ.setdefault("DD_TRACE_AGENT_PORT", str(settings.dd_trace_agent_port))
     try:
         from ddtrace import patch_all
+
         patch_all()
     except Exception:
         pass
@@ -55,9 +95,9 @@ if settings.sentry_dsn:
         send_default_pii=False,
         attach_stacktrace=True,
         # Tahmin edilebilir 404'leri ve rate-limit 429'ları filtrele
-        before_send=lambda event, hint: None if event.get("transaction") in (
-            "/api/health", "/api/events"
-        ) else event,
+        before_send=lambda event, hint: (
+            None if event.get("transaction") in ("/api/health", "/api/events") else event
+        ),
     )
 
 
@@ -90,6 +130,7 @@ async def lifespan(app: FastAPI):
     await _seed_initial_admin()
     # Periyodik görevler (düşük stok, terk sepet)
     from app.services.scheduled import start_scheduler, stop_scheduler
+
     start_scheduler()
     try:
         yield

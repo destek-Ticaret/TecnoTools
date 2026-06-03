@@ -9,6 +9,7 @@ Her admin kullanıcısının etkin izinleri şöyle hesaplanır:
 UI bu katalogu `GET /api/admin-users/permissions/catalog` ile çekip
 kullanıcı düzenleme ekranında onay kutusu matrisi olarak gösterir.
 """
+
 from __future__ import annotations
 
 from app.models import User, UserRole
@@ -55,14 +56,30 @@ ALL_PERMISSIONS: list[str] = [p["key"] for group in PERMISSION_CATALOG.values() 
 
 # Rol varsayılanları
 _EDITOR_PERMS = {
-    "orders.view", "orders.edit",
-    "products.view", "products.edit", "products.import", "pricing.manage",
-    "content.banners", "content.homepage", "content.blog", "content.pages",
-    "customers.view", "coupons.manage", "campaigns.manage", "returns.manage",
-    "reviews.moderate", "chat.handle", "reports.view",
+    "orders.view",
+    "orders.edit",
+    "products.view",
+    "products.edit",
+    "products.import",
+    "pricing.manage",
+    "content.banners",
+    "content.homepage",
+    "content.blog",
+    "content.pages",
+    "customers.view",
+    "coupons.manage",
+    "campaigns.manage",
+    "returns.manage",
+    "reviews.moderate",
+    "chat.handle",
+    "reports.view",
 }
 _VIEWER_PERMS = {
-    "orders.view", "products.view", "customers.view", "reports.view", "audit.view",
+    "orders.view",
+    "products.view",
+    "customers.view",
+    "reports.view",
+    "audit.view",
 }
 
 ROLE_DEFAULTS: dict[str, set[str]] = {

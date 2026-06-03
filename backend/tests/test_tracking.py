@@ -6,7 +6,7 @@ Kapsam:
   - GET /api/customer-auth/orders/{n}/tracking: üye için zenginleştirilmiş
   - Başkasının siparişine erişememe
 """
-import pytest
+
 
 from app.services.tracking import carrier_for
 
@@ -42,17 +42,22 @@ def test_carrier_none_returns_none():
 
 
 # ── Public /api/orders/track ──────────────────────────────────────────────
-async def _create_order_via_checkout(client, auth_client, email="trackuser@example.com", name="Track User"):
+async def _create_order_via_checkout(
+    client, auth_client, email="trackuser@example.com", name="Track User"
+):
     pr = await auth_client.post("/api/products", json={"name": "Ürün", "price": 200, "stock": 5})
     pid = pr.json()["id"]
-    co = await client.post("/api/orders/checkout", json={
-        "items": [{"product_id": pid, "qty": 1}],
-        "customer_name": name,
-        "customer_email": email,
-        "customer_phone": "+905551234567",
-        "customer_city": "İstanbul",
-        "customer_address": "Mahalle, Sokak No:1 Daire:5",
-    })
+    co = await client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": 1}],
+            "customer_name": name,
+            "customer_email": email,
+            "customer_phone": "+905551234567",
+            "customer_city": "İstanbul",
+            "customer_address": "Mahalle, Sokak No:1 Daire:5",
+        },
+    )
     assert co.status_code == 200, co.text
     return co.json()["order_no"]
 
@@ -107,14 +112,21 @@ async def test_cancelled_timeline_has_two_steps(client, auth_client):
 # ── Üye tracking endpoint'i ───────────────────────────────────────────────
 async def test_member_tracking_owns_order(client, auth_client):
     # Üye kayıt
-    reg = await client.post("/api/customer-auth/register", json={
-        "email": "alice@example.com", "password": "AliceStrong1!",
-        "name": "Alice Tester", "marketing_opt_in": False,
-    })
+    reg = await client.post(
+        "/api/customer-auth/register",
+        json={
+            "email": "alice@example.com",
+            "password": "AliceStrong1!",
+            "name": "Alice Tester",
+            "marketing_opt_in": False,
+        },
+    )
     tok = reg.json()["access_token"]
 
     # Alice email'iyle sipariş aç (anonim checkout — sahiplik email ile eşleşir)
-    order_no = await _create_order_via_checkout(client, auth_client, email="alice@example.com", name="Alice Tester")
+    order_no = await _create_order_via_checkout(
+        client, auth_client, email="alice@example.com", name="Alice Tester"
+    )
 
     client.headers["Authorization"] = f"Bearer {tok}"
     r = await client.get(f"/api/customer-auth/orders/{order_no}/tracking")
@@ -127,14 +139,21 @@ async def test_member_tracking_owns_order(client, auth_client):
 
 async def test_member_cannot_track_other_customers_order(client, auth_client):
     # Bob üye olur
-    reg = await client.post("/api/customer-auth/register", json={
-        "email": "bob@example.com", "password": "BobStrong12!",
-        "name": "Bob Tester", "marketing_opt_in": False,
-    })
+    reg = await client.post(
+        "/api/customer-auth/register",
+        json={
+            "email": "bob@example.com",
+            "password": "BobStrong12!",
+            "name": "Bob Tester",
+            "marketing_opt_in": False,
+        },
+    )
     tok = reg.json()["access_token"]
 
     # Başka biri sipariş açar
-    order_no = await _create_order_via_checkout(client, auth_client, email="someone@example.com", name="Some One")
+    order_no = await _create_order_via_checkout(
+        client, auth_client, email="someone@example.com", name="Some One"
+    )
 
     client.headers["Authorization"] = f"Bearer {tok}"
     r = await client.get(f"/api/customer-auth/orders/{order_no}/tracking")

@@ -79,7 +79,11 @@ async def test_serve_404_for_missing(auth_client):
 async def test_upload_idempotent_same_content(auth_client):
     """Aynı içerik aynı dosyaya yazılır (SHA-256 dedup)."""
     data = _make_png_bytes()
-    r1 = await auth_client.post("/api/uploads/images", files={"file": ("a.png", io.BytesIO(data), "image/png")})
-    r2 = await auth_client.post("/api/uploads/images", files={"file": ("b.png", io.BytesIO(data), "image/png")})
+    r1 = await auth_client.post(
+        "/api/uploads/images", files={"file": ("a.png", io.BytesIO(data), "image/png")}
+    )
+    r2 = await auth_client.post(
+        "/api/uploads/images", files={"file": ("b.png", io.BytesIO(data), "image/png")}
+    )
     assert r1.status_code == 200 and r2.status_code == 200
     assert r1.json()["url"] == r2.json()["url"]

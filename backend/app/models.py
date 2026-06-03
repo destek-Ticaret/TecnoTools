@@ -62,7 +62,9 @@ class User(Base):
     # rol varsayılanlarını override eder. ADMIN her zaman tüm izinlere sahiptir.
     permissions: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="1", nullable=False
+    )
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     recovery_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -82,7 +84,9 @@ class Product(Base):
     sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(8), nullable=True)
-    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id", ondelete="SET NULL"), nullable=True)
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
     price: Mapped[float] = mapped_column(Numeric(10, 2))
     old_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     # Alış maliyeti — kâr raporu ve marj-tabanlı otomatik fiyatlandırma için.
@@ -95,7 +99,9 @@ class Product(Base):
     images: Mapped[list | None] = mapped_column(JSONType, nullable=True)  # list of URLs
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     category: Mapped["Category | None"] = relationship(lazy="joined")
 
@@ -110,6 +116,7 @@ class Customer(Base):
          giriş yapan müşteriler. password_hash dolu, is_verified email
          doğrulamasıyla True'ya geçer.
     """
+
     __tablename__ = "customers"
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
@@ -119,10 +126,18 @@ class Customer(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Üyelik alanları — pasif kayıt için NULL kalabilir
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    is_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
-    verification_token_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1", nullable=False)
-    marketing_opt_in: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
+    verification_token_hash: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="1", nullable=False
+    )
+    marketing_opt_in: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -131,7 +146,9 @@ class Order(Base):
     __tablename__ = "orders"
     id: Mapped[int] = mapped_column(primary_key=True)
     order_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
-    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+    )
     # Snapshot - sipariş anındaki müşteri bilgisi (müşteri sonradan değişse de etkilenmez)
     customer_name: Mapped[str] = mapped_column(String(255))
     customer_email: Mapped[str] = mapped_column(String(255))
@@ -147,7 +164,9 @@ class Order(Base):
     total: Mapped[float] = mapped_column(Numeric(12, 2))
 
     status: Mapped[str] = mapped_column(String(16), default=OrderStatus.PENDING.value, index=True)
-    payment_status: Mapped[str] = mapped_column(String(16), default=PaymentStatus.INITIATED.value, index=True)
+    payment_status: Mapped[str] = mapped_column(
+        String(16), default=PaymentStatus.INITIATED.value, index=True
+    )
     payment_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
     payment_brand: Mapped[str | None] = mapped_column(String(16), nullable=True)
     payment_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
@@ -158,7 +177,9 @@ class Order(Base):
     carrier: Mapped[str | None] = mapped_column(String(16), nullable=True)
     shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_tracking_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_tracking_sync_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_notes: Mapped[list | None] = mapped_column(JSONType, nullable=True)
 
@@ -168,17 +189,25 @@ class Order(Base):
     tax_office: Mapped[str | None] = mapped_column(String(128), nullable=True)
     company_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
-    items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan", lazy="selectin")
+    items: Mapped[list["OrderItem"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class OrderItem(Base):
     __tablename__ = "order_items"
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"))
-    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True
+    )
     # Snapshot
     name: Mapped[str] = mapped_column(String(255))
     icon: Mapped[str | None] = mapped_column(String(8), nullable=True)
@@ -196,6 +225,7 @@ class ShipmentEvent(Base):
     out_for_delivery | delivered | failed_attempt | returned | cancelled.
     `raw_status` orijinal firma metnini saklar (debug için).
     """
+
     __tablename__ = "shipment_events"
     id: Mapped[int] = mapped_column(primary_key=True)
     order_no: Mapped[str] = mapped_column(String(32), index=True)
@@ -210,7 +240,9 @@ class ShipmentEvent(Base):
     raw_payload: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (
-        UniqueConstraint("carrier", "tracking_no", "code", "occurred_at", name="uq_shipment_event_dedupe"),
+        UniqueConstraint(
+            "carrier", "tracking_no", "code", "occurred_at", name="uq_shipment_event_dedupe"
+        ),
     )
 
 
@@ -231,16 +263,21 @@ class Coupon(Base):
 class StockMovement(Base):
     __tablename__ = "stock_movements"
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id", ondelete="SET NULL"), nullable=True)
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True
+    )
     product_name: Mapped[str] = mapped_column(String(255))
     delta: Mapped[int] = mapped_column(Integer)
     reason: Mapped[str] = mapped_column(String(32))  # sale, manual, init, return, ...
     order_no: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class Reservation(Base):
     """Sepete eklenen ama henüz ödenmemiş stok rezervasyonu. TTL'li."""
+
     __tablename__ = "reservations"
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(String(64), index=True)
@@ -248,7 +285,9 @@ class Reservation(Base):
     qty: Mapped[int] = mapped_column(Integer)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
-    __table_args__ = (UniqueConstraint("session_id", "product_id", name="uq_reservation_session_product"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", "product_id", name="uq_reservation_session_product"),
+    )
 
 
 class AuditLog(Base):
@@ -258,7 +297,9 @@ class AuditLog(Base):
     action: Mapped[str] = mapped_column(String(64), index=True)
     message: Mapped[str] = mapped_column(Text)
     meta: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class NewsletterSubscriber(Base):
@@ -270,16 +311,23 @@ class NewsletterSubscriber(Base):
 
 class AnalyticsEvent(Base):
     """Self-hosted minimal analytics — sayfa görüntüleme, sepete ekleme, satın alma."""
+
     __tablename__ = "analytics_events"
     id: Mapped[int] = mapped_column(primary_key=True)
-    event: Mapped[str] = mapped_column(String(64), index=True)  # page_view, add_to_cart, purchase, ...
+    event: Mapped[str] = mapped_column(
+        String(64), index=True
+    )  # page_view, add_to_cart, purchase, ...
     path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     referrer: Mapped[str | None] = mapped_column(String(255), nullable=True)
     session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     meta: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)  # privacy: IP'nin SHA-256'sının ilk 16 char'ı
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    ip_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )  # privacy: IP'nin SHA-256'sının ilk 16 char'ı
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class NewsletterCampaign(Base):
@@ -291,13 +339,16 @@ class NewsletterCampaign(Base):
     total_recipients: Mapped[int] = mapped_column(Integer, default=0)
     sent_count: Mapped[int] = mapped_column(Integer, default=0)
     failed_count: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[str] = mapped_column(String(16), default="draft")  # draft, sending, completed, failed
+    status: Mapped[str] = mapped_column(
+        String(16), default="draft"
+    )  # draft, sending, completed, failed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class RefreshToken(Base):
     """JWT refresh token kayıt — rotation ve revoke için."""
+
     __tablename__ = "refresh_tokens"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
@@ -309,17 +360,24 @@ class RefreshToken(Base):
 
 class ProductReview(Base):
     """Müşteri ürün yorumu. Admin onayından geçer (is_approved)."""
+
     __tablename__ = "product_reviews"
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     customer_name: Mapped[str] = mapped_column(String(255))
     customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rating: Mapped[int] = mapped_column(Integer)  # 1-5
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     body: Mapped[str] = mapped_column(Text)
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    order_no: Mapped[str | None] = mapped_column(String(32), nullable=True)  # doğrulanmış satın alma
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    order_no: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )  # doğrulanmış satın alma
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class ProductQuestion(Base):
@@ -327,24 +385,32 @@ class ProductQuestion(Base):
 
     Public listede yalnız `is_published=True` ve cevaplanmış sorular görünür.
     """
+
     __tablename__ = "product_questions"
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     customer_name: Mapped[str] = mapped_column(String(255))
     customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str | None] = mapped_column(Text, nullable=True)
     answered_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class StockNotification(Base):
     """Stok geldi bildirimi bekleme listesi."""
+
     __tablename__ = "stock_notifications"
     id: Mapped[int] = mapped_column(primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
     email: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -353,25 +419,29 @@ class StockNotification(Base):
 
 class SiteSetting(Base):
     """Site genel ayarları — admin'den runtime değiştirilebilir key-value."""
+
     __tablename__ = "site_settings"
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str | None] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class OrderCounter(Base):
     """Sipariş numarası counter — yıl bazlı tek satır."""
+
     __tablename__ = "order_counters"
     year: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     seq: Mapped[int] = mapped_column(BigInteger, default=0)
 
 
 class ReturnStatus(str, Enum):
-    REQUESTED = "requested"   # müşteri talebi açtı
-    APPROVED = "approved"     # admin onayladı, kargo bekleniyor
-    REJECTED = "rejected"     # admin reddetti
-    REFUNDED = "refunded"     # ürün iade alındı, para iade edildi
-    CANCELLED = "cancelled"   # müşteri vazgeçti
+    REQUESTED = "requested"  # müşteri talebi açtı
+    APPROVED = "approved"  # admin onayladı, kargo bekleniyor
+    REJECTED = "rejected"  # admin reddetti
+    REFUNDED = "refunded"  # ürün iade alındı, para iade edildi
+    CANCELLED = "cancelled"  # müşteri vazgeçti
 
 
 class ReturnRequest(Base):
@@ -380,25 +450,33 @@ class ReturnRequest(Base):
     items JSONB: [{ "product_id": int, "name": str, "qty": int, "price": float }, ...]
     Müşteri sadece kendi sipariş email'iyle eşleşen siparişlere iade açabilir.
     """
+
     __tablename__ = "return_requests"
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
     order_no: Mapped[str] = mapped_column(String(32), index=True)  # snapshot
     customer_email: Mapped[str] = mapped_column(String(255), index=True)
     customer_name: Mapped[str] = mapped_column(String(255))
-    reason: Mapped[str] = mapped_column(String(64))  # damaged, wrong_item, not_needed, defective, other
+    reason: Mapped[str] = mapped_column(
+        String(64)
+    )  # damaged, wrong_item, not_needed, defective, other
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     items: Mapped[list] = mapped_column(JSONType)  # iade edilecek kalemler
     refund_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
-    status: Mapped[str] = mapped_column(String(16), default=ReturnStatus.REQUESTED.value, index=True)
+    status: Mapped[str] = mapped_column(
+        String(16), default=ReturnStatus.REQUESTED.value, index=True
+    )
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     processed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class PasswordResetToken(Base):
     """Şifre sıfırlama: token plaintext olarak email link'inde, SHA-256 hash DB'de."""
+
     __tablename__ = "password_reset_tokens"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
@@ -410,6 +488,7 @@ class PasswordResetToken(Base):
 
 class CustomerRefreshToken(Base):
     """Müşteri JWT refresh token — admin RefreshToken'dan ayrı, rotation'lı."""
+
     __tablename__ = "customer_refresh_tokens"
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"))
@@ -421,6 +500,7 @@ class CustomerRefreshToken(Base):
 
 class CustomerPasswordResetToken(Base):
     """Müşteri şifre sıfırlama — admin token'larından ayrı tutulur."""
+
     __tablename__ = "customer_password_reset_tokens"
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id", ondelete="CASCADE"))
@@ -431,15 +511,15 @@ class CustomerPasswordResetToken(Base):
 
 
 class InvoiceStatus(str, Enum):
-    PENDING = "pending"      # Entegratöre yollanmadı (taslak)
-    SENT = "sent"            # Entegratör kabul etti, ETTN üretildi
-    FAILED = "failed"        # Entegratör reddetti
+    PENDING = "pending"  # Entegratöre yollanmadı (taslak)
+    SENT = "sent"  # Entegratör kabul etti, ETTN üretildi
+    FAILED = "failed"  # Entegratör reddetti
     CANCELLED = "cancelled"  # Sonradan iptal edildi
 
 
 class InvoiceKind(str, Enum):
-    EARSIV = "earsiv"        # Bireysel (e-arşiv)
-    EFATURA = "efatura"      # Kurumsal mükellef (e-fatura) — gelecekte
+    EARSIV = "earsiv"  # Bireysel (e-arşiv)
+    EFATURA = "efatura"  # Kurumsal mükellef (e-fatura) — gelecekte
 
 
 class Invoice(Base):
@@ -452,6 +532,7 @@ class Invoice(Base):
     items: snapshot JSON list — fatura iptali/yeniden kesim sonrası bile
     fatura içeriği değişmesin.
     """
+
     __tablename__ = "invoices"
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), index=True)
@@ -481,13 +562,16 @@ class Invoice(Base):
     provider_response: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     pdf_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class InvoiceCounter(Base):
     """Yıl bazlı fatura numarası counter — TT-FAT-2026-000123."""
+
     __tablename__ = "invoice_counters"
     year: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     seq: Mapped[int] = mapped_column(BigInteger, default=0)
@@ -504,36 +588,51 @@ class ChatSession(Base):
     session_id browser-side sessionStorage'tan gelir (rezervasyonlar ile aynı kimlik).
     customer_id login olmuş müşteri için doldurulur; ziyaretçi için NULL kalır.
     """
+
     __tablename__ = "chat_sessions"
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id", ondelete="SET NULL"), nullable=True)
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"), nullable=True
+    )
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    status: Mapped[str] = mapped_column(String(16), default=ChatSessionStatus.OPEN.value, index=True)
+    status: Mapped[str] = mapped_column(
+        String(16), default=ChatSessionStatus.OPEN.value, index=True
+    )
     unread_admin: Mapped[int] = mapped_column(Integer, default=0)
     unread_customer: Mapped[int] = mapped_column(Integer, default=0)
-    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    last_message_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class ChatMessage(Base):
     """Tek mesaj — sender 'customer' veya 'admin'."""
+
     __tablename__ = "chat_messages"
     id: Mapped[int] = mapped_column(primary_key=True)
-    session_pk: Mapped[int] = mapped_column(ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True)
+    session_pk: Mapped[int] = mapped_column(
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
+    )
     sender: Mapped[str] = mapped_column(String(16))  # 'customer' | 'admin'
     sender_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     body: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class DataDeletionStatus(str, Enum):
     """KVKK 11. madde silme/unutulma hakkı talep durumu."""
-    PENDING = "pending"        # token mailde, müşteri henüz onaylamadı
-    CONFIRMED = "confirmed"    # müşteri linki tıkladı, kuyrukta
-    COMPLETED = "completed"    # işlem tamamlandı (anonimleştirme + silme)
-    CANCELLED = "cancelled"    # müşteri vazgeçti veya admin reddetti
+
+    PENDING = "pending"  # token mailde, müşteri henüz onaylamadı
+    CONFIRMED = "confirmed"  # müşteri linki tıkladı, kuyrukta
+    COMPLETED = "completed"  # işlem tamamlandı (anonimleştirme + silme)
+    CANCELLED = "cancelled"  # müşteri vazgeçti veya admin reddetti
 
 
 class DataDeletionRequest(Base):
@@ -550,6 +649,7 @@ class DataDeletionRequest(Base):
 
     Snapshot email/name: müşteri zaten silinmişse bile talep izlenebilir kalsın.
     """
+
     __tablename__ = "data_deletion_requests"
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int | None] = mapped_column(
@@ -557,13 +657,21 @@ class DataDeletionRequest(Base):
     )
     email_snapshot: Mapped[str] = mapped_column(String(255), index=True)
     name_snapshot: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    token_hash: Mapped[str | None] = mapped_column(String(128), unique=True, index=True, nullable=True)
+    token_hash: Mapped[str | None] = mapped_column(
+        String(128), unique=True, index=True, nullable=True
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    status: Mapped[str] = mapped_column(String(16), default=DataDeletionStatus.PENDING.value, index=True)
+    status: Mapped[str] = mapped_column(
+        String(16), default=DataDeletionStatus.PENDING.value, index=True
+    )
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    result: Mapped[dict | None] = mapped_column(JSONType, nullable=True)  # anonymize_count, deletion_count vb.
+    result: Mapped[dict | None] = mapped_column(
+        JSONType, nullable=True
+    )  # anonymize_count, deletion_count vb.
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -575,17 +683,22 @@ class ConsentLog(Base):
     Anonim ziyaretçi → session_id, üye → customer_id de dolar.
     IP gizliliği: SHA-256'nın ilk 16 char'ı (analytics ile aynı yöntem).
     """
+
     __tablename__ = "consent_logs"
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int | None] = mapped_column(
         ForeignKey("customers.id", ondelete="SET NULL"), nullable=True, index=True
     )
     session_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
-    categories: Mapped[dict] = mapped_column(JSONType)  # {"essential": true, "preference": true, "analytics": false, "marketing": false}
+    categories: Mapped[dict] = mapped_column(
+        JSONType
+    )  # {"essential": true, "preference": true, "analytics": false, "marketing": false}
     policy_version: Mapped[str] = mapped_column(String(16), default="1.0")
     user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
     ip_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
 
 
 class WishlistItem(Base):
@@ -594,6 +707,7 @@ class WishlistItem(Base):
     Üye olmayan ziyaretçilerin favorileri frontend'de localStorage'da kalır;
     müşteri giriş yapınca `POST /api/wishlist/merge` ile sunucuya taşınır.
     """
+
     __tablename__ = "wishlist_items"
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(
@@ -620,6 +734,7 @@ class Banner(Base):
     sort_order'a göre sıralanır. starts_at/ends_at ile zamanlı yayın yapılır
     (boşsa süresiz). Public endpoint yalnız aktif + tarih penceresindekileri döner.
     """
+
     __tablename__ = "banners"
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -634,7 +749,9 @@ class Banner(Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class HomepageSection(Base):
@@ -645,6 +762,7 @@ class HomepageSection(Base):
     {"source": "trending", "limit": 8} veya category_grid için {"category_ids": [..]}.
     Frontend ana sayfayı bu sıralı, aktif bölümlere göre render eder.
     """
+
     __tablename__ = "homepage_sections"
     id: Mapped[int] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(String(32), index=True)
@@ -653,7 +771,9 @@ class HomepageSection(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class BlogPost(Base):
@@ -662,6 +782,7 @@ class BlogPost(Base):
     slug benzersizdir, public URL'de kullanılır. body HTML'dir (admin editör).
     is_published False ise yalnız admin görür. tags JSON list[str].
     """
+
     __tablename__ = "blog_posts"
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(200), unique=True, index=True)
@@ -675,9 +796,13 @@ class BlogPost(Base):
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     meta_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     meta_description: Mapped[str | None] = mapped_column(String(320), nullable=True)
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class CmsPage(Base):
@@ -685,6 +810,7 @@ class CmsPage(Base):
 
     legal/ klasöründeki sabit HTML'lerden farklı: runtime düzenlenebilir.
     """
+
     __tablename__ = "cms_pages"
     id: Mapped[int] = mapped_column(primary_key=True)
     slug: Mapped[str] = mapped_column(String(200), unique=True, index=True)
@@ -696,7 +822,9 @@ class CmsPage(Base):
     meta_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     meta_description: Mapped[str | None] = mapped_column(String(320), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class PricingRule(Base):
@@ -714,6 +842,7 @@ class PricingRule(Base):
     Not: percent/fixed mevcut fiyata göredir; tekrar uygulanırsa birikir
     (önizleme bunu gösterir). margin/round_99 idempotenttir.
     """
+
     __tablename__ = "pricing_rules"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
@@ -729,4 +858,6 @@ class PricingRule(Base):
     last_applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_affected: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

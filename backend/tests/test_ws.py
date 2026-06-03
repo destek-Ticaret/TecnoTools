@@ -14,6 +14,7 @@ Beklenen close kodları (`/api/ws/chat/*`):
     doğrulaması bağlantıyı handler'a girmeden kapatır)
   • token var ama GEÇERSİZSE → 4401 (handler'ın açık `close(code=4401)`'i)
 """
+
 import pytest
 from starlette.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect

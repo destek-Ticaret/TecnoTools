@@ -1,8 +1,10 @@
 """KVKK / privacy uçları: veri ihracı, silme, çerez izni, vergi sorgu."""
+
+from datetime import UTC
+
 import pytest
 
-from app.services.gib import classify, lookup, validate_tckn, validate_vkn
-
+from app.services.gib import classify, validate_tckn, validate_vkn
 
 REGISTER = {
     "email": "bob@example.com",
@@ -53,28 +55,43 @@ async def test_delete_request_wrong_password(client):
 
 async def test_delete_request_then_confirm_anonymizes_customer(client, db_session):
     """Tam akış: talep → token → onayla → customer silinmiş, order anonim."""
-    from datetime import datetime, timedelta, timezone
-    import secrets, hashlib
+    import hashlib
+    import secrets
+    from datetime import datetime, timedelta
 
     from app.models import (
-        Customer, DataDeletionRequest, DataDeletionStatus, Order, OrderStatus,
+        Customer,
+        DataDeletionRequest,
+        DataDeletionStatus,
+        Order,
+        OrderStatus,
         PaymentStatus,
     )
 
     await _register_and_auth(client)
 
     # Müşteriye delivered sipariş ekle (mali kayıt zorunluluğu testi)
-    cust = (await db_session.execute(
-        __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
-    )).scalar_one()
+    cust = (
+        await db_session.execute(
+            __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
+        )
+    ).scalar_one()
     order = Order(
-        order_no="TT-2026-9001", customer_id=cust.id,
-        customer_name=cust.name, customer_email=cust.email,
-        customer_phone="05551112233", customer_city="İstanbul",
+        order_no="TT-2026-9001",
+        customer_id=cust.id,
+        customer_name=cust.name,
+        customer_email=cust.email,
+        customer_phone="05551112233",
+        customer_city="İstanbul",
         customer_address="Sokak 1",
-        subtotal=100, discount=0, tax=20, shipping=0, total=120,
+        subtotal=100,
+        discount=0,
+        tax=20,
+        shipping=0,
+        total=120,
         status=OrderStatus.DELIVERED.value,
-        payment_status=PaymentStatus.SUCCESS.value, admin_notes=[],
+        payment_status=PaymentStatus.SUCCESS.value,
+        admin_notes=[],
     )
     db_session.add(order)
     await db_session.commit()
@@ -90,12 +107,15 @@ async def test_delete_request_then_confirm_anonymizes_customer(client, db_sessio
     # endpoint için yeni bir token üretip request'i confirm'e geçiriyoruz.
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-    ddr = (await db_session.execute(
-        __import__("sqlalchemy").select(DataDeletionRequest)
-        .where(DataDeletionRequest.email_snapshot == REGISTER["email"])
-    )).scalar_one()
+    ddr = (
+        await db_session.execute(
+            __import__("sqlalchemy")
+            .select(DataDeletionRequest)
+            .where(DataDeletionRequest.email_snapshot == REGISTER["email"])
+        )
+    ).scalar_one()
     ddr.token_hash = token_hash
-    ddr.expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    ddr.expires_at = datetime.now(UTC) + timedelta(minutes=10)
     ddr.status = DataDeletionStatus.PENDING.value
     await db_session.commit()
 
@@ -112,14 +132,18 @@ async def test_delete_request_then_confirm_anonymizes_customer(client, db_sessio
     db_session.expire_all()
 
     # Doğrula: customer kaydı silindi, order anonim
-    cust_after = (await db_session.execute(
-        __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
-    )).scalar_one_or_none()
+    cust_after = (
+        await db_session.execute(
+            __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
+        )
+    ).scalar_one_or_none()
     assert cust_after is None
 
-    order_after = (await db_session.execute(
-        __import__("sqlalchemy").select(Order).where(Order.order_no == "TT-2026-9001")
-    )).scalar_one()
+    order_after = (
+        await db_session.execute(
+            __import__("sqlalchemy").select(Order).where(Order.order_no == "TT-2026-9001")
+        )
+    ).scalar_one()
     assert order_after.customer_id is None
     assert order_after.customer_name == "[Silinmiş Müşteri]"
     assert order_after.customer_email != REGISTER["email"]
@@ -130,17 +154,28 @@ async def test_delete_request_blocks_when_open_order(client, db_session):
     from app.models import Customer, Order, OrderStatus, PaymentStatus
 
     await _register_and_auth(client)
-    cust = (await db_session.execute(
-        __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
-    )).scalar_one()
-    db_session.add(Order(
-        order_no="TT-2026-9002", customer_id=cust.id,
-        customer_name=cust.name, customer_email=cust.email,
-        customer_phone="05551112233", customer_address="A",
-        subtotal=10, tax=2, shipping=0, total=12,
-        status=OrderStatus.PROCESSING.value,
-        payment_status=PaymentStatus.SUCCESS.value, admin_notes=[],
-    ))
+    cust = (
+        await db_session.execute(
+            __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
+        )
+    ).scalar_one()
+    db_session.add(
+        Order(
+            order_no="TT-2026-9002",
+            customer_id=cust.id,
+            customer_name=cust.name,
+            customer_email=cust.email,
+            customer_phone="05551112233",
+            customer_address="A",
+            subtotal=10,
+            tax=2,
+            shipping=0,
+            total=12,
+            status=OrderStatus.PROCESSING.value,
+            payment_status=PaymentStatus.SUCCESS.value,
+            admin_notes=[],
+        )
+    )
     await db_session.commit()
 
     r = await client.post(
@@ -151,22 +186,29 @@ async def test_delete_request_blocks_when_open_order(client, db_session):
 
 
 async def test_delete_confirm_expired_token(client, db_session):
-    from datetime import datetime, timedelta, timezone
-    import secrets, hashlib
+    import hashlib
+    import secrets
+    from datetime import datetime, timedelta
 
     from app.models import Customer, DataDeletionRequest, DataDeletionStatus
 
     await _register_and_auth(client)
-    cust = (await db_session.execute(
-        __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
-    )).scalar_one()
+    cust = (
+        await db_session.execute(
+            __import__("sqlalchemy").select(Customer).where(Customer.email == REGISTER["email"])
+        )
+    ).scalar_one()
     raw = secrets.token_urlsafe(16)
-    db_session.add(DataDeletionRequest(
-        customer_id=cust.id, email_snapshot=cust.email, name_snapshot=cust.name,
-        token_hash=hashlib.sha256(raw.encode()).hexdigest(),
-        expires_at=datetime.now(timezone.utc) - timedelta(minutes=1),
-        status=DataDeletionStatus.PENDING.value,
-    ))
+    db_session.add(
+        DataDeletionRequest(
+            customer_id=cust.id,
+            email_snapshot=cust.email,
+            name_snapshot=cust.name,
+            token_hash=hashlib.sha256(raw.encode()).hexdigest(),
+            expires_at=datetime.now(UTC) - timedelta(minutes=1),
+            status=DataDeletionStatus.PENDING.value,
+        )
+    )
     await db_session.commit()
 
     r = await client.post("/api/customer-auth/me/delete-confirm", json={"token": raw})
@@ -177,11 +219,19 @@ async def test_delete_confirm_expired_token(client, db_session):
 
 
 async def test_consent_log_stores_categories(client, db_session):
-    r = await client.post("/api/privacy/consent", json={
-        "session_id": "sess_test_123",
-        "categories": {"essential": True, "preference": True, "analytics": False, "marketing": False},
-        "policy_version": "1.0",
-    })
+    r = await client.post(
+        "/api/privacy/consent",
+        json={
+            "session_id": "sess_test_123",
+            "categories": {
+                "essential": True,
+                "preference": True,
+                "analytics": False,
+                "marketing": False,
+            },
+            "policy_version": "1.0",
+        },
+    )
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["categories"]["essential"] is True
@@ -190,19 +240,25 @@ async def test_consent_log_stores_categories(client, db_session):
 
 async def test_consent_log_forces_essential_true(client):
     """Zorunlu çerezler kapatılamaz — backend sessizce true'ya çevirir."""
-    r = await client.post("/api/privacy/consent", json={
-        "session_id": "sess_test_x",
-        "categories": {"essential": False, "marketing": True},
-    })
+    r = await client.post(
+        "/api/privacy/consent",
+        json={
+            "session_id": "sess_test_x",
+            "categories": {"essential": False, "marketing": True},
+        },
+    )
     assert r.status_code == 201
     assert r.json()["categories"]["essential"] is True
 
 
 async def test_consent_ignores_unknown_categories(client):
-    r = await client.post("/api/privacy/consent", json={
-        "session_id": "sess_test_y",
-        "categories": {"essential": True, "tracking_pixels": True, "marketing": True},
-    })
+    r = await client.post(
+        "/api/privacy/consent",
+        json={
+            "session_id": "sess_test_y",
+            "categories": {"essential": True, "tracking_pixels": True, "marketing": True},
+        },
+    )
     assert r.status_code == 201
     assert "tracking_pixels" not in r.json()["categories"]
 
@@ -225,7 +281,11 @@ def test_validate_tckn_rejects_bad_checksum():
 
 def test_validate_vkn_known_valid():
     # GİB örnek VKN
-    assert validate_vkn("1234567890") is True or validate_vkn("0123456789") is True or validate_vkn("4350309852") is True
+    assert (
+        validate_vkn("1234567890") is True
+        or validate_vkn("0123456789") is True
+        or validate_vkn("4350309852") is True
+    )
 
 
 def test_validate_vkn_wrong_length():
@@ -260,6 +320,7 @@ async def test_tax_lookup_skips_gib_when_disabled(client):
     # 4350309852 GİB örneği — gerçek doğrulansın diye runtime'da çalıştır
     # Format geçerliyse VKN dön, geçmezse skip
     from app.services.gib import validate_vkn
+
     candidate = None
     for v in ("4350309852", "1234567890", "0123456789", "8900000023"):
         if validate_vkn(v):
@@ -280,10 +341,13 @@ async def test_tax_lookup_skips_gib_when_disabled(client):
 async def test_admin_lists_deletion_requests(auth_client, db_session):
     from app.models import DataDeletionRequest, DataDeletionStatus
 
-    db_session.add(DataDeletionRequest(
-        email_snapshot="legacy@example.com", name_snapshot="Legacy User",
-        status=DataDeletionStatus.PENDING.value,
-    ))
+    db_session.add(
+        DataDeletionRequest(
+            email_snapshot="legacy@example.com",
+            name_snapshot="Legacy User",
+            status=DataDeletionStatus.PENDING.value,
+        )
+    )
     await db_session.commit()
     r = await auth_client.get("/api/privacy/deletion-requests")
     assert r.status_code == 200
@@ -292,11 +356,12 @@ async def test_admin_lists_deletion_requests(auth_client, db_session):
 
 
 async def test_admin_cancels_deletion_request(auth_client, db_session):
+
     from app.models import DataDeletionRequest, DataDeletionStatus
-    import sqlalchemy as sa
 
     ddr = DataDeletionRequest(
-        email_snapshot="cancel@example.com", name_snapshot="X",
+        email_snapshot="cancel@example.com",
+        name_snapshot="X",
         status=DataDeletionStatus.PENDING.value,
     )
     db_session.add(ddr)

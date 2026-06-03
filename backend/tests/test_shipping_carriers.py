@@ -7,22 +7,24 @@ Kapsam:
   - POST /api/shipping/webhook/ptt end-to-end
   - POST /api/shipping/sync (admin) ve assign
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
 from app.config import get_settings
 from app.models import Order, OrderStatus, PaymentStatus
-from app.services.carriers import apply_event, get_adapter
+from app.services.carriers import apply_event
 from app.services.carriers.base import NormalizedEvent
 from app.services.carriers.dispatch import _EVENT_TO_STATUS
-from app.services.carriers.ptt import PttAdapter, _classify as ptt_classify
+from app.services.carriers.ptt import PttAdapter
+from app.services.carriers.ptt import _classify as ptt_classify
 
 
 async def _make_order(db_session, *, tracking_no="PTT123456", carrier=None, status="processing"):
@@ -33,8 +35,11 @@ async def _make_order(db_session, *, tracking_no="PTT123456", carrier=None, stat
         customer_phone="+905551112233",
         customer_city="İstanbul",
         customer_address="Yenidoğan Mah.",
-        subtotal=Decimal("100"), discount=Decimal("0"), tax=Decimal("20"),
-        shipping=Decimal("40"), total=Decimal("160"),
+        subtotal=Decimal("100"),
+        discount=Decimal("0"),
+        tax=Decimal("20"),
+        shipping=Decimal("40"),
+        total=Decimal("160"),
         status=status,
         payment_status=PaymentStatus.SUCCESS.value,
         tracking_no=tracking_no,
@@ -61,13 +66,23 @@ def test_ptt_classify_text_fallback():
 
 def test_ptt_parse_webhook_json():
     a = PttAdapter()
-    payload = json.dumps([
-        {"barkod": "PTT123", "durumKodu": "50",
-         "durum": "Teslim Edildi", "tarih": "2026-05-27T14:32:11",
-         "birim": "İstanbul Merkez"},
-        {"barkod": "PTT123", "durumKodu": "30",
-         "durum": "Aktarmada", "tarih": "2026-05-26T09:00:00"},
-    ]).encode()
+    payload = json.dumps(
+        [
+            {
+                "barkod": "PTT123",
+                "durumKodu": "50",
+                "durum": "Teslim Edildi",
+                "tarih": "2026-05-27T14:32:11",
+                "birim": "İstanbul Merkez",
+            },
+            {
+                "barkod": "PTT123",
+                "durumKodu": "30",
+                "durum": "Aktarmada",
+                "tarih": "2026-05-26T09:00:00",
+            },
+        ]
+    ).encode()
     events = a.parse_webhook({}, payload)
     assert len(events) == 2
     assert {e.code for e in events} == {"delivered", "in_transit"}
@@ -77,9 +92,11 @@ def test_ptt_parse_webhook_json():
 
 def test_ptt_parse_webhook_xml():
     a = PttAdapter()
-    xml = (b"<events><hareket><barkod>PTT999</barkod>"
-           b"<durumKodu>30</durumKodu><durum>Aktarma</durum>"
-           b"<tarih>2026-05-26 09:00:00</tarih></hareket></events>")
+    xml = (
+        b"<events><hareket><barkod>PTT999</barkod>"
+        b"<durumKodu>30</durumKodu><durum>Aktarma</durum>"
+        b"<tarih>2026-05-26 09:00:00</tarih></hareket></events>"
+    )
     out = a.parse_webhook({}, xml)
     assert len(out) == 1 and out[0].code == "in_transit" and out[0].tracking_no == "PTT999"
 
@@ -103,9 +120,13 @@ def test_ptt_signature_verification():
 async def test_apply_event_advances_status_and_is_idempotent(db_session):
     order = await _make_order(db_session)
     ev = NormalizedEvent(
-        carrier="ptt", tracking_no=order.tracking_no, code="in_transit",
-        occurred_at=datetime(2026, 5, 27, 10, 0, tzinfo=timezone.utc),
-        raw_status="Transferde", description="Aktarma", location="Ankara",
+        carrier="ptt",
+        tracking_no=order.tracking_no,
+        code="in_transit",
+        occurred_at=datetime(2026, 5, 27, 10, 0, tzinfo=UTC),
+        raw_status="Transferde",
+        description="Aktarma",
+        location="Ankara",
     )
     row, o, changed = await apply_event(db_session, ev)
     assert row is not None and changed is True
@@ -122,8 +143,10 @@ async def test_apply_event_advances_status_and_is_idempotent(db_session):
 async def test_apply_event_delivered_sets_delivered_at(db_session):
     order = await _make_order(db_session, status="shipped", carrier="ptt")
     ev = NormalizedEvent(
-        carrier="ptt", tracking_no=order.tracking_no, code="delivered",
-        occurred_at=datetime(2026, 5, 28, 12, 0, tzinfo=timezone.utc),
+        carrier="ptt",
+        tracking_no=order.tracking_no,
+        code="delivered",
+        occurred_at=datetime(2026, 5, 28, 12, 0, tzinfo=UTC),
     )
     _, o, changed = await apply_event(db_session, ev)
     assert changed is True
@@ -135,8 +158,10 @@ async def test_apply_event_delivered_sets_delivered_at(db_session):
 async def test_apply_event_does_not_regress_status(db_session):
     order = await _make_order(db_session, status="delivered", carrier="ptt")
     ev = NormalizedEvent(
-        carrier="ptt", tracking_no=order.tracking_no, code="in_transit",
-        occurred_at=datetime(2026, 5, 27, 10, 0, tzinfo=timezone.utc),
+        carrier="ptt",
+        tracking_no=order.tracking_no,
+        code="in_transit",
+        occurred_at=datetime(2026, 5, 27, 10, 0, tzinfo=UTC),
     )
     _, o, changed = await apply_event(db_session, ev)
     assert changed is False
@@ -144,7 +169,14 @@ async def test_apply_event_does_not_regress_status(db_session):
 
 
 def test_event_to_status_mapping_complete():
-    for code in ("picked_up", "in_transit", "out_for_delivery", "delivered", "returned", "cancelled"):
+    for code in (
+        "picked_up",
+        "in_transit",
+        "out_for_delivery",
+        "delivered",
+        "returned",
+        "cancelled",
+    ):
         assert code in _EVENT_TO_STATUS
 
 
@@ -152,25 +184,32 @@ def test_event_to_status_mapping_complete():
 @pytest.mark.asyncio
 async def test_ptt_webhook_endpoint_applies_event(auth_client, db_session):
     await _make_order(db_session, tracking_no="PTTE2E1", carrier="ptt", status="processing")
-    body = json.dumps([{
-        "barkod": "PTTE2E1",
-        "durumKodu": "50",
-        "durum": "Teslim Edildi",
-        "tarih": "2026-05-28T11:00:00",
-        "birim": "Çankaya Merkez",
-    }]).encode()
+    body = json.dumps(
+        [
+            {
+                "barkod": "PTTE2E1",
+                "durumKodu": "50",
+                "durum": "Teslim Edildi",
+                "tarih": "2026-05-28T11:00:00",
+                "birim": "Çankaya Merkez",
+            }
+        ]
+    ).encode()
 
-    resp = await auth_client.post("/api/shipping/webhook/ptt", content=body,
-                                  headers={"content-type": "application/json"})
+    resp = await auth_client.post(
+        "/api/shipping/webhook/ptt", content=body, headers={"content-type": "application/json"}
+    )
     assert resp.status_code == 202, resp.text
     data = resp.json()
     assert data["accepted"] == 1
     assert data["applied"] == 1
 
     await db_session.commit()
-    o = (await db_session.execute(
-        __import__("sqlalchemy").select(Order).where(Order.order_no == "TT-2026-0001")
-    )).scalar_one()
+    o = (
+        await db_session.execute(
+            __import__("sqlalchemy").select(Order).where(Order.order_no == "TT-2026-0001")
+        )
+    ).scalar_one()
     await db_session.refresh(o)
     assert o.status == OrderStatus.DELIVERED.value
     assert o.delivered_at is not None
@@ -187,9 +226,11 @@ async def test_webhook_invalid_signature_401(auth_client, db_session):
     s = get_settings()
     s.ptt_webhook_secret = "rotated-secret"
     try:
-        resp = await auth_client.post("/api/shipping/webhook/ptt",
-                                      content=b'[{"barkod":"X"}]',
-                                      headers={"x-ptt-signature": "wrong"})
+        resp = await auth_client.post(
+            "/api/shipping/webhook/ptt",
+            content=b'[{"barkod":"X"}]',
+            headers={"x-ptt-signature": "wrong"},
+        )
         assert resp.status_code == 401
     finally:
         s.ptt_webhook_secret = ""
@@ -199,8 +240,9 @@ async def test_webhook_invalid_signature_401(auth_client, db_session):
 @pytest.mark.asyncio
 async def test_assign_then_sync_uses_mock_events(auth_client, db_session):
     await _make_order(db_session, tracking_no="OLD", carrier=None, status="processing")
-    r = await auth_client.post("/api/shipping/assign/TT-2026-0001",
-                               json={"carrier": "ptt", "tracking_no": "PTTNEW1"})
+    r = await auth_client.post(
+        "/api/shipping/assign/TT-2026-0001", json={"carrier": "ptt", "tracking_no": "PTTNEW1"}
+    )
     assert r.status_code == 200
     assert r.json()["carrier"] == "ptt"
 
@@ -220,6 +262,7 @@ async def test_assign_then_sync_uses_mock_events(auth_client, db_session):
 @pytest.mark.asyncio
 async def test_assign_rejects_non_ptt_carrier(auth_client, db_session):
     await _make_order(db_session, tracking_no="OLD2", carrier=None, status="processing")
-    r = await auth_client.post("/api/shipping/assign/TT-2026-0001",
-                               json={"carrier": "aras", "tracking_no": "X1234"})
+    r = await auth_client.post(
+        "/api/shipping/assign/TT-2026-0001", json={"carrier": "aras", "tracking_no": "X1234"}
+    )
     assert r.status_code == 422

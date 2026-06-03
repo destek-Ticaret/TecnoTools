@@ -8,6 +8,7 @@ Geliştirme modunda (APP_ENV=development) LAN aralıkları (RFC1918 + link-local
 otomatik whitelist'e dahil edilir — telefondan/diğer cihazlardan test rahat olsun.
 Production'da bu davranış pasiftir; sadece explicit IP'ler kabul edilir.
 """
+
 import ipaddress
 import os
 
@@ -23,8 +24,8 @@ _DEV_LAN_NETWORKS = [
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
     ipaddress.ip_network("169.254.0.0/16"),  # link-local
-    ipaddress.ip_network("fc00::/7"),         # IPv6 unique-local
-    ipaddress.ip_network("fe80::/10"),        # IPv6 link-local
+    ipaddress.ip_network("fc00::/7"),  # IPv6 unique-local
+    ipaddress.ip_network("fe80::/10"),  # IPv6 link-local
 ]
 
 

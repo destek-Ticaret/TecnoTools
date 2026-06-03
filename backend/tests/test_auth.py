@@ -2,9 +2,13 @@
 
 
 async def test_login_success(client, seed_admin):
-    resp = await client.post("/api/auth/login", json={
-        "username": "testadmin", "password": "TestPass123!",
-    })
+    resp = await client.post(
+        "/api/auth/login",
+        json={
+            "username": "testadmin",
+            "password": "TestPass123!",
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "access_token" in data and "refresh_token" in data
@@ -12,17 +16,25 @@ async def test_login_success(client, seed_admin):
 
 
 async def test_login_wrong_password(client, seed_admin):
-    resp = await client.post("/api/auth/login", json={
-        "username": "testadmin", "password": "WrongPass!",
-    })
+    resp = await client.post(
+        "/api/auth/login",
+        json={
+            "username": "testadmin",
+            "password": "WrongPass!",
+        },
+    )
     assert resp.status_code == 401
     assert "hatalı" in resp.json()["detail"].lower()
 
 
 async def test_login_unknown_user(client, seed_admin):
-    resp = await client.post("/api/auth/login", json={
-        "username": "noone", "password": "Whatever123!",
-    })
+    resp = await client.post(
+        "/api/auth/login",
+        json={
+            "username": "noone",
+            "password": "Whatever123!",
+        },
+    )
     assert resp.status_code == 401
 
 
@@ -41,9 +53,13 @@ async def test_me_returns_user(auth_client):
 
 
 async def test_refresh_token_rotation(client, seed_admin):
-    login = await client.post("/api/auth/login", json={
-        "username": "testadmin", "password": "TestPass123!",
-    })
+    login = await client.post(
+        "/api/auth/login",
+        json={
+            "username": "testadmin",
+            "password": "TestPass123!",
+        },
+    )
     refresh1 = login.json()["refresh_token"]
     r = await client.post("/api/auth/refresh", json={"refresh_token": refresh1})
     assert r.status_code == 200
@@ -55,9 +71,13 @@ async def test_refresh_token_rotation(client, seed_admin):
 
 
 async def test_logout_revokes_refresh(client, seed_admin):
-    login = await client.post("/api/auth/login", json={
-        "username": "testadmin", "password": "TestPass123!",
-    })
+    login = await client.post(
+        "/api/auth/login",
+        json={
+            "username": "testadmin",
+            "password": "TestPass123!",
+        },
+    )
     refresh = login.json()["refresh_token"]
     out = await client.post("/api/auth/logout", json={"refresh_token": refresh})
     assert out.status_code == 204
@@ -74,7 +94,11 @@ async def test_forgot_password_unknown_user_returns_same(client, seed_admin):
 
 
 async def test_reset_password_with_invalid_token(client, seed_admin):
-    r = await client.post("/api/auth/reset-password", json={
-        "token": "invalid-token", "new_password": "NewPass123!",
-    })
+    r = await client.post(
+        "/api/auth/reset-password",
+        json={
+            "token": "invalid-token",
+            "new_password": "NewPass123!",
+        },
+    )
     assert r.status_code == 400

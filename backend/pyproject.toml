@@ -12,3 +12,66 @@ addopts = [
 filterwarnings = [
     "ignore::DeprecationWarning:passlib.*",
 ]
+
+# ─────────────────────────────────────────────────────────────
+# Ruff — linter + formatter (tek araç)
+# ─────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Otomatik üretilen / dış kod
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# Profesyonel, güçlü kural seti
+select = [
+    "E", "W",    # pycodestyle
+    "F",          # pyflakes
+    "I",          # isort
+    "UP",         # pyupgrade
+    "B",          # flake8-bugbear
+    "C4",         # comprehensions
+    "SIM",        # flake8-simplify
+    "PIE",        # flake8-pie
+    "PT",         # flake8-pytest-style
+    "TID",        # tidy-imports
+    "DTZ",        # datetime timezone
+    "LOG", "G",  # logging
+    "ASYNC",      # async hataları
+    "RUF",        # ruff'a özel
+]
+ignore = [
+    "E501",                       # satır uzunluğu → formatter yönetir
+    "RUF001", "RUF002", "RUF003", # Türkçe metin "belirsiz unicode" değil
+    "B008",                       # FastAPI Depends() default-arg deseni idiomatik
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Testlerde "assert a and b" (PT018) ve gevşek importlar kabul edilir
+"tests/*" = ["PT018", "E402"]
+# Manuel/canlı smoke scriptleri kuralları gevşek
+"test_*.py" = ["PT018", "E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+# ─────────────────────────────────────────────────────────────
+# Mypy — statik tip kontrolü
+# ─────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+no_implicit_optional = true
+check_untyped_defs = true
+# Kademeli sertleştirme: yeni kod için strict, mevcut kod için makul taban
+disallow_untyped_defs = false
+exclude = ["alembic/", "tests/", "^test_.*\\.py$"]
+
+[[tool.mypy.overrides]]
+# 3. parti tipsiz kütüphaneler
+module = ["jose.*", "passlib.*", "slowapi.*", "openpyxl.*", "boto3.*"]
+ignore_missing_imports = true

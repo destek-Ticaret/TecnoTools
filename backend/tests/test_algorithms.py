@@ -1,4 +1,5 @@
 """Yeni algoritma servisleri için birim ve entegrasyon testleri."""
+
 import math
 
 from app.services import forecasting, loyalty, shipping
@@ -61,6 +62,7 @@ def test_ttl_cache_ttl_expiry():
     c.set("k", "v")
     assert c.get("k") == "v"
     import time
+
     time.sleep(0.1)
     assert c.get("k") is None
 
@@ -143,9 +145,36 @@ def test_linear_forecast_with_zero_variance():
 
 def test_pareto_summary_classes():
     rows = [
-        {"product_id": 1, "name": "A", "revenue": 800, "qty": 1, "class": "A", "cum_share": 0.8, "rank": 1, "revenue_pct": 80},
-        {"product_id": 2, "name": "B", "revenue": 150, "qty": 1, "class": "B", "cum_share": 0.95, "rank": 2, "revenue_pct": 15},
-        {"product_id": 3, "name": "C", "revenue": 50, "qty": 1, "class": "C", "cum_share": 1.0, "rank": 3, "revenue_pct": 5},
+        {
+            "product_id": 1,
+            "name": "A",
+            "revenue": 800,
+            "qty": 1,
+            "class": "A",
+            "cum_share": 0.8,
+            "rank": 1,
+            "revenue_pct": 80,
+        },
+        {
+            "product_id": 2,
+            "name": "B",
+            "revenue": 150,
+            "qty": 1,
+            "class": "B",
+            "cum_share": 0.95,
+            "rank": 2,
+            "revenue_pct": 15,
+        },
+        {
+            "product_id": 3,
+            "name": "C",
+            "revenue": 50,
+            "qty": 1,
+            "class": "C",
+            "cum_share": 1.0,
+            "rank": 3,
+            "revenue_pct": 5,
+        },
     ]
     summary = forecasting.pareto_summary(rows)
     assert summary["A"]["count"] == 1
@@ -200,7 +229,8 @@ async def test_fuzzy_search_finds_turkish_match(auth_client):
 
 async def test_autocomplete_prefix(auth_client):
     await auth_client.post(
-        "/api/products", json={"name": "iPhone 15 Pro", "price": 50000, "stock": 3},
+        "/api/products",
+        json={"name": "iPhone 15 Pro", "price": 50000, "stock": 3},
     )
     s = await auth_client.get("/api/products/search/autocomplete?q=iph")
     assert s.status_code == 200
@@ -210,7 +240,8 @@ async def test_autocomplete_prefix(auth_client):
 
 async def test_seo_meta_product(auth_client):
     pr = await auth_client.post(
-        "/api/products", json={"name": "Test Ürün", "price": 99, "stock": 1, "description": "Açıklama"},
+        "/api/products",
+        json={"name": "Test Ürün", "price": 99, "stock": 1, "description": "Açıklama"},
     )
     pid = pr.json()["id"]
     r = await auth_client.get(f"/api/seo/meta/product/{pid}")

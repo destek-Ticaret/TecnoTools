@@ -1,8 +1,9 @@
 """SEO endpoint'leri: sitemap.xml, robots.txt, meta üretici, slug arama."""
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 from xml.sax.saxutils import escape
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models import Category, Product
-from app.services.text_utils import normalize, slugify
+from app.services.text_utils import slugify
 
 router = APIRouter(tags=["seo"])
 _cfg = get_settings()
@@ -27,28 +28,32 @@ async def sitemap(db: AsyncSession = Depends(get_db)):
     ).all()
     categories = (await db.execute(select(Category))).scalars().all()
 
-    now_iso = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    now_iso = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
     urls: list[str] = [
-        f'<url><loc>{base}/</loc><lastmod>{now_iso}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>',
-        f'<url><loc>{base}/legal/kvkk.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>',
-        f'<url><loc>{base}/legal/gizlilik.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>',
-        f'<url><loc>{base}/legal/mesafeli-satis.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>',
+        f"<url><loc>{base}/</loc><lastmod>{now_iso}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>",
+        f"<url><loc>{base}/legal/kvkk.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>",
+        f"<url><loc>{base}/legal/gizlilik.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>",
+        f"<url><loc>{base}/legal/mesafeli-satis.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>",
     ]
 
     for cat in categories:
         slug = slugify(cat.name)
         urls.append(
-            f'<url><loc>{escape(base)}/#category/{cat.id}/{slug}</loc>'
-            f'<changefreq>weekly</changefreq><priority>0.7</priority></url>'
+            f"<url><loc>{escape(base)}/#category/{cat.id}/{slug}</loc>"
+            f"<changefreq>weekly</changefreq><priority>0.7</priority></url>"
         )
 
     for pid, name, updated_at in products:
-        lastmod = (updated_at or datetime.now(timezone.utc)).isoformat(timespec="seconds").replace("+00:00", "Z")
+        lastmod = (
+            (updated_at or datetime.now(UTC))
+            .isoformat(timespec="seconds")
+            .replace("+00:00", "Z")
+        )
         slug = slugify(name or f"urun-{pid}")
         urls.append(
-            f'<url><loc>{escape(base)}/#product/{pid}/{slug}</loc>'
-            f'<lastmod>{lastmod}</lastmod>'
-            f'<changefreq>weekly</changefreq><priority>0.8</priority></url>'
+            f"<url><loc>{escape(base)}/#product/{pid}/{slug}</loc>"
+            f"<lastmod>{lastmod}</lastmod>"
+            f"<changefreq>weekly</changefreq><priority>0.8</priority></url>"
         )
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -107,7 +112,8 @@ async def product_meta(product_id: int, db: AsyncSession = Depends(get_db)):
             "url": url,
             "priceCurrency": _cfg.base_currency,
             "price": float(p.price),
-            "availability": "https://schema.org/InStock" if (p.stock or 0) > 0
+            "availability": "https://schema.org/InStock"
+            if (p.stock or 0) > 0
             else "https://schema.org/OutOfStock",
         },
         "aggregateRating": (
@@ -133,6 +139,11 @@ async def product_meta(product_id: int, db: AsyncSession = Depends(get_db)):
             "image": image,
             "url": url,
         },
-        "twitter": {"card": "summary_large_image", "title": title, "description": desc, "image": image},
+        "twitter": {
+            "card": "summary_large_image",
+            "title": title,
+            "description": desc,
+            "image": image,
+        },
         "json_ld": structured,
     }

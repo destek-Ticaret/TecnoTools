@@ -2,6 +2,7 @@
 
 Bütün arama/öneri/SEO modülleri buradaki primitifleri kullanır.
 """
+
 from __future__ import annotations
 
 import re
@@ -9,11 +10,28 @@ import unicodedata
 from functools import lru_cache
 
 # Türkçe → ASCII karakter eşlemesi (lower-case).
-_TR_MAP = str.maketrans({
-    "ı": "i", "İ": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g",
-    "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c",
-    "â": "a", "Â": "a", "î": "i", "Î": "i", "û": "u", "Û": "u",
-})
+_TR_MAP = str.maketrans(
+    {
+        "ı": "i",
+        "İ": "i",
+        "ş": "s",
+        "Ş": "s",
+        "ğ": "g",
+        "Ğ": "g",
+        "ü": "u",
+        "Ü": "u",
+        "ö": "o",
+        "Ö": "o",
+        "ç": "c",
+        "Ç": "c",
+        "â": "a",
+        "Â": "a",
+        "î": "i",
+        "Î": "i",
+        "û": "u",
+        "Û": "u",
+    }
+)
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 _MULTI_DASH = re.compile(r"-+")
@@ -89,8 +107,8 @@ def levenshtein(a: str, b: str, max_distance: int | None = None) -> int:
         for i, ca in enumerate(a, 1):
             cost = 0 if ca == cb else 1
             cur[i] = min(
-                cur[i - 1] + 1,      # insertion
-                prev[i] + 1,         # deletion
+                cur[i - 1] + 1,  # insertion
+                prev[i] + 1,  # deletion
                 prev[i - 1] + cost,  # substitution
             )
             row_min = min(row_min, cur[i])

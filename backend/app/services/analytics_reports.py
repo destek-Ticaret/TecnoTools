@@ -8,9 +8,10 @@
   * sales_timeseries       → günlük ciro + 7 gün hareketli ortalama
   * dau_mau                → günlük/aylık tekil ziyaretçi (ip_hash bazlı)
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,14 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import AnalyticsEvent, Category, Order, OrderItem, PaymentStatus, Product
 
 
-async def sales_heatmap(
-    db: AsyncSession, days: int = 30, mode: str = "count"
-) -> list[dict]:
+async def sales_heatmap(db: AsyncSession, days: int = 30, mode: str = "count") -> list[dict]:
     """Pazartesi=0..Pazar=6 × 0..23 saat matrisi.
 
     mode="count": sipariş sayısı | mode="revenue": ciro toplamı
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(Order.created_at, Order.total).where(
@@ -39,7 +38,7 @@ async def sales_heatmap(
     matrix = [[0.0] * 24 for _ in range(7)]
     for created_at, total in rows:
         if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
+            created_at = created_at.replace(tzinfo=UTC)
         dow = created_at.weekday()
         hour = created_at.hour
         matrix[dow][hour] += float(total or 0) if mode == "revenue" else 1
@@ -47,12 +46,19 @@ async def sales_heatmap(
     out: list[dict] = []
     for dow in range(7):
         for hour in range(24):
-            out.append({"day": days_tr[dow], "dow": dow, "hour": hour, "value": round(matrix[dow][hour], 2)})
+            out.append(
+                {
+                    "day": days_tr[dow],
+                    "dow": dow,
+                    "hour": hour,
+                    "value": round(matrix[dow][hour], 2),
+                }
+            )
     return out
 
 
 async def top_products(db: AsyncSession, days: int = 30, limit: int = 10) -> list[dict]:
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(
@@ -86,7 +92,7 @@ async def top_products(db: AsyncSession, days: int = 30, limit: int = 10) -> lis
 
 
 async def revenue_by_category(db: AsyncSession, days: int = 30) -> list[dict]:
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(
@@ -111,12 +117,14 @@ async def revenue_by_category(db: AsyncSession, days: int = 30) -> list[dict]:
     ).all()
     out = []
     for cid, name, rev, qty in rows:
-        out.append({
-            "category_id": int(cid) if cid else None,
-            "category": name or "(Kategorisiz)",
-            "revenue": round(float(rev or 0), 2),
-            "qty": int(qty or 0),
-        })
+        out.append(
+            {
+                "category_id": int(cid) if cid else None,
+                "category": name or "(Kategorisiz)",
+                "revenue": round(float(rev or 0), 2),
+                "qty": int(qty or 0),
+            }
+        )
     total = sum(r["revenue"] for r in out) or 1.0
     for r in out:
         r["share_pct"] = round(100 * r["revenue"] / total, 2)
@@ -129,7 +137,7 @@ async def conversion_funnel(db: AsyncSession, days: int = 30) -> dict:
     Self-hosted analytics olayları üzerinden çalışır. purchase olayı yoksa
     Order tablosundan başarılı siparişler sayılır (fallback).
     """
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     counts = {"page_view": 0, "add_to_cart": 0, "checkout_started": 0, "purchase": 0}
     rows = (
         await db.execute(
@@ -162,9 +170,21 @@ async def conversion_funnel(db: AsyncSession, days: int = 30) -> dict:
         "days": days,
         "stages": [
             {"name": "Sayfa görüntüleme", "count": counts["page_view"], "share_pct": 100.0},
-            {"name": "Sepete ekleme", "count": counts["add_to_cart"], "share_pct": pct(counts["add_to_cart"], counts["page_view"])},
-            {"name": "Ödeme başlangıç", "count": counts["checkout_started"], "share_pct": pct(counts["checkout_started"], counts["page_view"])},
-            {"name": "Satın alma", "count": counts["purchase"], "share_pct": pct(counts["purchase"], counts["page_view"])},
+            {
+                "name": "Sepete ekleme",
+                "count": counts["add_to_cart"],
+                "share_pct": pct(counts["add_to_cart"], counts["page_view"]),
+            },
+            {
+                "name": "Ödeme başlangıç",
+                "count": counts["checkout_started"],
+                "share_pct": pct(counts["checkout_started"], counts["page_view"]),
+            },
+            {
+                "name": "Satın alma",
+                "count": counts["purchase"],
+                "share_pct": pct(counts["purchase"], counts["page_view"]),
+            },
         ],
         "overall_conversion_pct": pct(counts["purchase"], counts["page_view"]),
     }
@@ -172,7 +192,7 @@ async def conversion_funnel(db: AsyncSession, days: int = 30) -> dict:
 
 async def sales_timeseries(db: AsyncSession, days: int = 30, ma_window: int = 7) -> list[dict]:
     """Günlük ciro + hareketli ortalama (`ma_window` günlük SMA)."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await db.execute(
             select(
@@ -195,7 +215,7 @@ async def sales_timeseries(db: AsyncSession, days: int = 30, ma_window: int = 7)
     for d, rev, n in rows:
         key = str(d)
         series_map[key] = {"date": key, "revenue": float(rev), "orders": int(n)}
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     full: list[dict] = []
     for i in range(days - 1, -1, -1):
         day = (today - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -213,19 +233,21 @@ async def sales_timeseries(db: AsyncSession, days: int = 30, ma_window: int = 7)
 
 async def dau_mau(db: AsyncSession) -> dict:
     """Günlük (24h) ve aylık (30g) tekil ziyaretçi (ip_hash distinct)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     day_cut = now - timedelta(hours=24)
     month_cut = now - timedelta(days=30)
     dau = (
         await db.execute(
-            select(func.count(func.distinct(AnalyticsEvent.ip_hash)))
-            .where(AnalyticsEvent.created_at >= day_cut)
+            select(func.count(func.distinct(AnalyticsEvent.ip_hash))).where(
+                AnalyticsEvent.created_at >= day_cut
+            )
         )
     ).scalar_one()
     mau = (
         await db.execute(
-            select(func.count(func.distinct(AnalyticsEvent.ip_hash)))
-            .where(AnalyticsEvent.created_at >= month_cut)
+            select(func.count(func.distinct(AnalyticsEvent.ip_hash))).where(
+                AnalyticsEvent.created_at >= month_cut
+            )
         )
     ).scalar_one()
     return {

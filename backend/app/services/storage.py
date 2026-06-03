@@ -5,6 +5,7 @@ S3:    S3-compatible bucket'a yükler, public URL döner.
 
 Üretimde S3'e geçiş için sadece STORAGE_BACKEND=s3 ve S3_* env'leri doldur.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -55,6 +56,7 @@ class S3Storage:
 
     async def save(self, data: bytes, ext: str, content_type: str) -> str:
         import asyncio
+
         digest = hashlib.sha256(data).hexdigest()[:16]
         key = f"uploads/{digest}{ext}"
         await asyncio.to_thread(

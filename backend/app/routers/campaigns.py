@@ -6,8 +6,9 @@ Senaryo:
 3. Backend asyncio task ile abonelere throttled gönderir
 4. Frontend status'u polling ile takip eder (GET /api/newsletter/campaigns/{id})
 """
+
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -42,34 +43,59 @@ class CampaignOut(BaseModel):
 
 def _to_out(c: NewsletterCampaign) -> CampaignOut:
     return CampaignOut(
-        id=c.id, subject=c.subject, status=c.status,
-        total_recipients=c.total_recipients, sent_count=c.sent_count, failed_count=c.failed_count,
-        created_at=c.created_at, completed_at=c.completed_at,
+        id=c.id,
+        subject=c.subject,
+        status=c.status,
+        total_recipients=c.total_recipients,
+        sent_count=c.sent_count,
+        failed_count=c.failed_count,
+        created_at=c.created_at,
+        completed_at=c.completed_at,
     )
 
 
 @router.get("")
 async def list_campaigns(db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    rows = (await db.execute(select(NewsletterCampaign).order_by(NewsletterCampaign.id.desc()).limit(50))).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(NewsletterCampaign).order_by(NewsletterCampaign.id.desc()).limit(50)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return [_to_out(r) for r in rows]
 
 
 @router.post("", response_model=CampaignOut, status_code=201)
-async def create_campaign(payload: CampaignIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
+async def create_campaign(
+    payload: CampaignIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)
+):
     c = NewsletterCampaign(
-        subject=payload.subject, html_body=payload.html_body,
-        created_by=user.username, status="draft",
+        subject=payload.subject,
+        html_body=payload.html_body,
+        created_by=user.username,
+        status="draft",
     )
     db.add(c)
-    db.add(AuditLog(actor=user.username, action="campaign-add", message=f"Kampanya oluşturuldu: {c.subject}"))
+    db.add(
+        AuditLog(
+            actor=user.username, action="campaign-add", message=f"Kampanya oluşturuldu: {c.subject}"
+        )
+    )
     await db.commit()
     await db.refresh(c)
     return _to_out(c)
 
 
 @router.get("/{campaign_id}", response_model=CampaignOut)
-async def get_campaign(campaign_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)):
-    c = (await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))).scalar_one_or_none()
+async def get_campaign(
+    campaign_id: int, db: AsyncSession = Depends(get_db), _: User = Depends(require_admin)
+):
+    c = (
+        await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))
+    ).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Kampanya bulunamadı")
     return _to_out(c)
@@ -77,7 +103,9 @@ async def get_campaign(campaign_id: int, db: AsyncSession = Depends(get_db), _: 
 
 async def _send_campaign_background(campaign_id: int) -> None:
     async with SessionLocal() as db:
-        c = (await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))).scalar_one_or_none()
+        c = (
+            await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))
+        ).scalar_one_or_none()
         if not c or c.status != "sending":
             return
         subs = (await db.execute(select(NewsletterSubscriber))).scalars().all()
@@ -96,17 +124,24 @@ async def _send_campaign_background(campaign_id: int) -> None:
                 await db.commit()
 
         c.status = "completed"
-        c.completed_at = datetime.now(timezone.utc)
-        db.add(AuditLog(
-            actor=c.created_by, action="campaign-sent",
-            message=f"Kampanya gönderildi: {c.subject} ({c.sent_count}/{c.total_recipients})",
-        ))
+        c.completed_at = datetime.now(UTC)
+        db.add(
+            AuditLog(
+                actor=c.created_by,
+                action="campaign-sent",
+                message=f"Kampanya gönderildi: {c.subject} ({c.sent_count}/{c.total_recipients})",
+            )
+        )
         await db.commit()
 
 
 @router.post("/{campaign_id}/send", response_model=CampaignOut)
-async def send_campaign(campaign_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
-    c = (await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))).scalar_one_or_none()
+async def send_campaign(
+    campaign_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)
+):
+    c = (
+        await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))
+    ).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Kampanya bulunamadı")
     if c.status not in ("draft", "failed"):
@@ -120,8 +155,12 @@ async def send_campaign(campaign_id: int, db: AsyncSession = Depends(get_db), us
 
 
 @router.delete("/{campaign_id}", status_code=204)
-async def delete_campaign(campaign_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)):
-    c = (await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))).scalar_one_or_none()
+async def delete_campaign(
+    campaign_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_admin)
+):
+    c = (
+        await db.execute(select(NewsletterCampaign).where(NewsletterCampaign.id == campaign_id))
+    ).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Kampanya bulunamadı")
     if c.status == "sending":

@@ -102,7 +102,9 @@ async def test_cancel_invoice_ok(auth_client, db_session):
     if issue.json()["status"] != "sent":
         pytest.skip("Mock provider 'sent' üretmedi, skip")
     inv_id = issue.json()["id"]
-    r = await auth_client.post(f"/api/invoices/{inv_id}/cancel", json={"reason": "Müşteri iptal talebi"})
+    r = await auth_client.post(
+        f"/api/invoices/{inv_id}/cancel", json={"reason": "Müşteri iptal talebi"}
+    )
     assert r.status_code == 200
     assert r.json()["ok"] is True
 

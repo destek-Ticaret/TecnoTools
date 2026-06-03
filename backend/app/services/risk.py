@@ -12,9 +12,10 @@ Faktörler (ağırlıkları yapılandırılabilir):
 
 Skor >=70 → ÇOK YÜKSEK; 40..69 → orta; 0..39 → düşük.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,9 +23,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Order, OrderItem, PaymentStatus
 
 DISPOSABLE_DOMAINS = {
-    "mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com",
-    "yopmail.com", "trashmail.com", "fakeinbox.com", "throwawaymail.com",
-    "getnada.com", "dispostable.com", "maildrop.cc", "mintemail.com",
+    "mailinator.com",
+    "guerrillamail.com",
+    "10minutemail.com",
+    "tempmail.com",
+    "yopmail.com",
+    "trashmail.com",
+    "fakeinbox.com",
+    "throwawaymail.com",
+    "getnada.com",
+    "dispostable.com",
+    "maildrop.cc",
+    "mintemail.com",
 }
 
 
@@ -33,7 +43,7 @@ def _email_domain(email: str) -> str:
 
 
 async def _avg_order_total(db: AsyncSession, days: int = 30) -> float:
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     val = (
         await db.execute(
             select(func.avg(Order.total)).where(
@@ -55,7 +65,7 @@ async def score_order(
     """Sipariş için risk değerlendirmesi. Sipariş henüz commit edilmemiş olsa da çalışır."""
     reasons: list[dict] = []
     score = 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Velocity by email
     last_1h = (
@@ -70,7 +80,13 @@ async def score_order(
     ).scalar_one()
     if int(last_1h or 0) >= 3:
         score += 25
-        reasons.append({"code": "EMAIL_VELOCITY", "weight": 25, "detail": f"Son 1 saat: {int(last_1h)} sipariş"})
+        reasons.append(
+            {
+                "code": "EMAIL_VELOCITY",
+                "weight": 25,
+                "detail": f"Son 1 saat: {int(last_1h)} sipariş",
+            }
+        )
 
     # Başarısız ödeme geçmişi
     failed_24h = (
@@ -86,13 +102,25 @@ async def score_order(
     ).scalar_one()
     if int(failed_24h or 0) >= 2:
         score += 15
-        reasons.append({"code": "FAILED_PAYMENTS", "weight": 15, "detail": f"Son 24 saat başarısız: {int(failed_24h)}"})
+        reasons.append(
+            {
+                "code": "FAILED_PAYMENTS",
+                "weight": 15,
+                "detail": f"Son 24 saat başarısız: {int(failed_24h)}",
+            }
+        )
 
     # Yüksek tutar — ortalamanın 5+ katı
     avg = await _avg_order_total(db)
     if avg > 0 and total >= avg * 5:
         score += 15
-        reasons.append({"code": "HIGH_AMOUNT", "weight": 15, "detail": f"Tutar ortalama ({avg:.0f}₺) × {total/avg:.1f}"})
+        reasons.append(
+            {
+                "code": "HIGH_AMOUNT",
+                "weight": 15,
+                "detail": f"Tutar ortalama ({avg:.0f}₺) × {total / avg:.1f}",
+            }
+        )
 
     # Disposable mail
     dom = _email_domain(email)
@@ -104,7 +132,9 @@ async def score_order(
     high_priced = sum(1 for price, _ in items if price >= 5000)
     if high_priced >= 3:
         score += 10
-        reasons.append({"code": "MANY_HIGH_TICKET", "weight": 10, "detail": f"{high_priced} adet ≥5000₺ ürün"})
+        reasons.append(
+            {"code": "MANY_HIGH_TICKET", "weight": 10, "detail": f"{high_priced} adet ≥5000₺ ürün"}
+        )
 
     # Aynı ürünü yüksek miktarda
     if any(qty >= 5 for _, qty in items):
@@ -130,15 +160,11 @@ async def score_order(
 
 async def evaluate_order_db(db: AsyncSession, order_no: str) -> dict:
     """DB'deki kayıtlı bir siparişi geriye dönük skorla."""
-    row = (
-        await db.execute(select(Order).where(Order.order_no == order_no))
-    ).scalar_one_or_none()
+    row = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not row:
         return {"error": "not_found"}
     items_rows = (
         await db.execute(select(OrderItem.price, OrderItem.qty).where(OrderItem.order_id == row.id))
     ).all()
     items = [(float(p), int(q)) for p, q in items_rows]
-    return await score_order(
-        db, email=row.customer_email, total=float(row.total), items=items
-    )
+    return await score_order(db, email=row.customer_email, total=float(row.total), items=items)

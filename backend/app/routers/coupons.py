@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -28,19 +28,24 @@ async def validate_coupon(request: Request, code: str, db: AsyncSession = Depend
         raise HTTPException(status_code=404, detail="Kupon geçersiz")
     if c.expires_at:
         # SQLite naive datetime → UTC-aware. Postgres zaten aware döner.
-        exp = c.expires_at if c.expires_at.tzinfo else c.expires_at.replace(tzinfo=timezone.utc)
-        if exp < datetime.now(timezone.utc):
+        exp = c.expires_at if c.expires_at.tzinfo else c.expires_at.replace(tzinfo=UTC)
+        if exp < datetime.now(UTC):
             raise HTTPException(status_code=410, detail="Kuponun süresi dolmuş")
     if c.max_uses is not None and c.used_count >= c.max_uses:
         raise HTTPException(status_code=409, detail="Kupon kullanım limiti dolu")
     return {
-        "code": c.code, "type": c.type, "value": float(c.value),
-        "min_order": float(c.min_order), "expires_at": c.expires_at,
+        "code": c.code,
+        "type": c.type,
+        "value": float(c.value),
+        "min_order": float(c.min_order),
+        "expires_at": c.expires_at,
     }
 
 
 @router.post("", response_model=CouponOut, status_code=status.HTTP_201_CREATED)
-async def create_coupon(payload: CouponIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
+async def create_coupon(
+    payload: CouponIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
     payload_dict = payload.model_dump()
     payload_dict["code"] = payload_dict["code"].upper()
     c = Coupon(**payload_dict)
@@ -53,13 +58,20 @@ async def create_coupon(payload: CouponIn, db: AsyncSession = Depends(get_db), u
 
 
 @router.put("/{coupon_id}", response_model=CouponOut)
-async def update_coupon(coupon_id: int, payload: CouponIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
+async def update_coupon(
+    coupon_id: int,
+    payload: CouponIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
+):
     c = (await db.execute(select(Coupon).where(Coupon.id == coupon_id))).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Kupon bulunamadı")
     for k, v in payload.model_dump().items():
         setattr(c, k, v.upper() if k == "code" else v)
-    db.add(AuditLog(actor=user.username, action="coupon-edit", message=f"Kupon güncellendi: {c.code}"))
+    db.add(
+        AuditLog(actor=user.username, action="coupon-edit", message=f"Kupon güncellendi: {c.code}")
+    )
     await db.commit()
     await db.refresh(c)
     await bus.publish("coupon_updated", {"id": c.id, "code": c.code})
@@ -67,7 +79,9 @@ async def update_coupon(coupon_id: int, payload: CouponIn, db: AsyncSession = De
 
 
 @router.delete("/{coupon_id}", status_code=204)
-async def delete_coupon(coupon_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)):
+async def delete_coupon(
+    coupon_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
+):
     c = (await db.execute(select(Coupon).where(Coupon.id == coupon_id))).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Kupon bulunamadı")

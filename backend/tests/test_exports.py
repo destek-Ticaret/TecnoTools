@@ -1,5 +1,7 @@
 """XLSX dışa aktarma endpoint'leri — admin."""
+
 import io
+
 import openpyxl
 
 
@@ -34,11 +36,20 @@ async def test_export_orders_xlsx(auth_client):
 async def test_export_orders_includes_created(auth_client, db_session):
     """DB'deki sipariş export'a yansır."""
     from app.models import Order, OrderStatus, PaymentStatus
+
     o = Order(
-        order_no="TT-EXP-1", customer_name="Test", customer_email="t@t.com",
-        customer_phone="+905551112233", customer_address="Adres",
-        status=OrderStatus.PENDING.value, payment_status=PaymentStatus.SUCCESS.value,
-        subtotal=100, total=100, tax=0, shipping=0, discount=0,
+        order_no="TT-EXP-1",
+        customer_name="Test",
+        customer_email="t@t.com",
+        customer_phone="+905551112233",
+        customer_address="Adres",
+        status=OrderStatus.PENDING.value,
+        payment_status=PaymentStatus.SUCCESS.value,
+        subtotal=100,
+        total=100,
+        tax=0,
+        shipping=0,
+        discount=0,
     )
     db_session.add(o)
     await db_session.commit()
@@ -50,6 +61,7 @@ async def test_export_orders_includes_created(auth_client, db_session):
 
 async def test_export_products_xlsx(auth_client, db_session):
     from app.models import Product
+
     p = Product(name="Export Ürün", price=99.9, stock=5, is_active=True)
     db_session.add(p)
     await db_session.commit()
@@ -64,6 +76,7 @@ async def test_export_products_xlsx(auth_client, db_session):
 async def test_export_products_includes_margin(auth_client, db_session):
     """cost varsa kâr marjı yüzdesi hesaplanır."""
     from app.models import Product
+
     p = Product(name="Kârlı", price=200.0, cost=100.0, stock=5, is_active=True)
     db_session.add(p)
     await db_session.commit()
@@ -80,7 +93,13 @@ async def test_export_products_includes_margin(auth_client, db_session):
 async def test_export_customers_xlsx(auth_client, db_session):
     from app.models import Customer
     from app.security import hash_password
-    c = Customer(name="Export Müşteri", email="export@x.com", password_hash=hash_password("Pass1234!"), is_active=True)
+
+    c = Customer(
+        name="Export Müşteri",
+        email="export@x.com",
+        password_hash=hash_password("Pass1234!"),
+        is_active=True,
+    )
     db_session.add(c)
     await db_session.commit()
 
@@ -91,24 +110,46 @@ async def test_export_customers_xlsx(auth_client, db_session):
 
 
 async def test_export_returns_xlsx(auth_client, db_session):
-    from app.models import Order, OrderItem, OrderStatus, PaymentStatus, Product, ReturnRequest, ReturnStatus
+    from app.models import (
+        Order,
+        OrderItem,
+        OrderStatus,
+        PaymentStatus,
+        Product,
+        ReturnRequest,
+        ReturnStatus,
+    )
+
     p = Product(name="X", price=100.0, stock=10, is_active=True)
     db_session.add(p)
     await db_session.flush()
     o = Order(
-        order_no="TT-RET-EXP", customer_name="X", customer_email="x@x.com",
-        customer_phone="+905551112233", customer_address="Adres",
-        status=OrderStatus.DELIVERED.value, payment_status=PaymentStatus.SUCCESS.value,
-        subtotal=100, total=100, tax=0, shipping=0, discount=0,
+        order_no="TT-RET-EXP",
+        customer_name="X",
+        customer_email="x@x.com",
+        customer_phone="+905551112233",
+        customer_address="Adres",
+        status=OrderStatus.DELIVERED.value,
+        payment_status=PaymentStatus.SUCCESS.value,
+        subtotal=100,
+        total=100,
+        tax=0,
+        shipping=0,
+        discount=0,
     )
     db_session.add(o)
     await db_session.flush()
     db_session.add(OrderItem(order_id=o.id, product_id=p.id, name=p.name, qty=1, price=100))
     await db_session.commit()
     rr = ReturnRequest(
-        order_id=o.id, order_no="TT-RET-EXP", customer_name="X", customer_email="x@x.com",
-        reason="damaged", status=ReturnStatus.REQUESTED.value,
-        items=[{"name": "X", "qty": 1, "price": 100}], refund_amount=100.0,
+        order_id=o.id,
+        order_no="TT-RET-EXP",
+        customer_name="X",
+        customer_email="x@x.com",
+        reason="damaged",
+        status=ReturnStatus.REQUESTED.value,
+        items=[{"name": "X", "qty": 1, "price": 100}],
+        refund_amount=100.0,
     )
     db_session.add(rr)
     await db_session.commit()

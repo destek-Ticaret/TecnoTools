@@ -9,7 +9,8 @@ Public:
 Bu modül endpoint + servisi içerir, products router'ı stok güncellemesinde
 `notify_restocked(db, product_id)` çağırır.
 """
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr
@@ -58,12 +59,17 @@ async def notify_restocked(db: AsyncSession, product_id: int) -> int:
     if not p or (p.stock or 0) <= 0:
         return 0
     rows = (
-        await db.execute(
-            select(StockNotification).where(
-                (StockNotification.product_id == product_id) & (StockNotification.notified_at.is_(None))
+        (
+            await db.execute(
+                select(StockNotification).where(
+                    (StockNotification.product_id == product_id)
+                    & (StockNotification.notified_at.is_(None))
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not rows:
         return 0
     html = f"""
@@ -71,7 +77,7 @@ async def notify_restocked(db: AsyncSession, product_id: int) -> int:
     <p>Bekleme listesinde olduğunuz <strong>{p.name}</strong> ürünü artık stokta. Birinin daha alması ihtimaline karşı hemen sipariş vermenizi öneririz.</p>
     <a href="#" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 22px;border-radius:9px;text-decoration:none;font-weight:600;margin-top:14px;">Hemen Satın Al</a>
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     sent = 0
     for r in rows:
         try:

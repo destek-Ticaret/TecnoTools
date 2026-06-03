@@ -1,11 +1,16 @@
 """Checkout akışı + PayTR mock token + sipariş ID counter testi."""
-from app.models import Coupon
+
 
 
 async def test_checkout_creates_order_and_returns_token(auth_client, db_session):
-    pr = await auth_client.post("/api/products", json={
-        "name": "Çekiç", "price": 100.0, "stock": 50,
-    })
+    pr = await auth_client.post(
+        "/api/products",
+        json={
+            "name": "Çekiç",
+            "price": 100.0,
+            "stock": 50,
+        },
+    )
     pid = pr.json()["id"]
 
     payload = {
@@ -35,18 +40,26 @@ async def test_checkout_creates_order_and_returns_token(auth_client, db_session)
 
 
 async def test_checkout_rejects_oversold(auth_client):
-    pr = await auth_client.post("/api/products", json={
-        "name": "Az Stoklu", "price": 50, "stock": 1,
-    })
+    pr = await auth_client.post(
+        "/api/products",
+        json={
+            "name": "Az Stoklu",
+            "price": 50,
+            "stock": 1,
+        },
+    )
     pid = pr.json()["id"]
-    r = await auth_client.post("/api/orders/checkout", json={
-        "items": [{"product_id": pid, "qty": 5}],
-        "customer_name": "Test User",
-        "customer_email": "t@t.com",
-        "customer_phone": "+905551112233",
-        "customer_city": "X",
-        "customer_address": "Mahalle Sokak No:1 Daire:5",
-    })
+    r = await auth_client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": 5}],
+            "customer_name": "Test User",
+            "customer_email": "t@t.com",
+            "customer_phone": "+905551112233",
+            "customer_city": "X",
+            "customer_address": "Mahalle Sokak No:1 Daire:5",
+        },
+    )
     assert r.status_code == 409
     assert "stok" in r.json()["detail"].lower()
 
@@ -56,8 +69,10 @@ async def test_order_no_counter_monotonic(auth_client):
     pid = pr.json()["id"]
     payload = {
         "items": [{"product_id": pid, "qty": 1}],
-        "customer_name": "User", "customer_email": "u@u.com",
-        "customer_phone": "+905551112233", "customer_city": "X",
+        "customer_name": "User",
+        "customer_email": "u@u.com",
+        "customer_phone": "+905551112233",
+        "customer_city": "X",
         "customer_address": "Mahalle Sokak No:1 Daire:5",
     }
     nums = []
@@ -73,12 +88,17 @@ async def test_order_no_counter_monotonic(auth_client):
 async def test_admin_status_update(auth_client):
     pr = await auth_client.post("/api/products", json={"name": "P", "price": 10, "stock": 5})
     pid = pr.json()["id"]
-    co = await auth_client.post("/api/orders/checkout", json={
-        "items": [{"product_id": pid, "qty": 1}],
-        "customer_name": "User", "customer_email": "u@u.com",
-        "customer_phone": "+905551112233", "customer_city": "X",
-        "customer_address": "Mahalle Sokak No:1 Daire:5",
-    })
+    co = await auth_client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": 1}],
+            "customer_name": "User",
+            "customer_email": "u@u.com",
+            "customer_phone": "+905551112233",
+            "customer_city": "X",
+            "customer_address": "Mahalle Sokak No:1 Daire:5",
+        },
+    )
     order_no = co.json()["order_no"]
 
     r = await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "shipped"})

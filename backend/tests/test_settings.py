@@ -1,5 +1,5 @@
 """Site ayarları endpoint'leri."""
-import pytest
+
 
 
 async def test_list_returns_defaults(client):

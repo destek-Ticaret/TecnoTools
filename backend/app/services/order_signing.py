@@ -9,11 +9,12 @@ Mimari:
 Token QR koduyla taşınır; herhangi biri /api/orders/verify-barcode ile public
 doğrulama yapabilir. Yalnız sipariş_no + total bilgisi gösterilir.
 """
+
 from __future__ import annotations
 
 import base64
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,15 +44,19 @@ def _ensure_keys_loaded() -> tuple[rsa.RSAPrivateKey, rsa.RSAPublicKey]:
     else:
         _private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         _public_key = _private_key.public_key()
-        _PRIV_PATH.write_bytes(_private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        ))
-        _PUB_PATH.write_bytes(_public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        ))
+        _PRIV_PATH.write_bytes(
+            _private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+        _PUB_PATH.write_bytes(
+            _public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
     return _private_key, _public_key
 
 
@@ -70,7 +75,7 @@ def sign_order(order_no: str, total: float | str) -> dict[str, str]:
     payload = {
         "order_no": str(order_no),
         "total": f"{float(total):.2f}",
-        "issued_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "issued_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }
     payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
     sig = priv.sign(payload_bytes, padding.PKCS1v15(), hashes.SHA256())

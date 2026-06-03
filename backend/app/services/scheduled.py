@@ -5,16 +5,17 @@
 Lifespan'da `start_scheduler()` çağrılır. Tek instance için asyncio task yeterli;
 multi-instance deploy'da Celery beat veya cron container'a taşınmalı.
 """
+
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import SessionLocal
-from app.models import Customer, Order, OrderStatus, Product, Reservation, User
-from app.services.email import render_template, send_email
+from app.models import Order, OrderStatus, Product, Reservation, User
+from app.services.email import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -25,17 +26,30 @@ CART_ABANDON_MIN_AGE_MIN = 60
 
 async def _low_stock_alert(db: AsyncSession) -> None:
     from app.routers.settings import get_setting
+
     threshold = int(float(await get_setting(db, "low_stock_threshold", "5") or "5"))
     rows = (
-        await db.execute(
-            select(Product).where((Product.is_active == True) & (Product.stock > 0) & (Product.stock <= threshold))  # noqa: E712
+        (
+            await db.execute(
+                select(Product).where(
+                    (Product.is_active == True) & (Product.stock > 0) & (Product.stock <= threshold)
+                )
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not rows:
         return
     out_of_stock = (
-        await db.execute(select(Product).where((Product.is_active == True) & (Product.stock <= 0)))  # noqa: E712
-    ).scalars().all()
+        (
+            await db.execute(
+                select(Product).where((Product.is_active == True) & (Product.stock <= 0))
+            )
+        )
+        .scalars()
+        .all()
+    )
 
     admins = (await db.execute(select(User).where(User.role == "admin"))).scalars().all()
     admin_emails = [a.email for a in admins if a.email]
@@ -75,11 +89,11 @@ async def _abandoned_cart_alert(db: AsyncSession) -> None:
     görmesi için özet rapor mail'i gönderilir (gerçek müşteriye ulaşmak için
     "Cart" tablosu eklemek gerekir, şimdilik admin'e durum bildirilir).
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=CART_ABANDON_MIN_AGE_MIN)
+    cutoff = datetime.now(UTC) - timedelta(minutes=CART_ABANDON_MIN_AGE_MIN)
     abandoned = (
         await db.execute(
             select(Reservation.session_id, func.sum(Reservation.qty).label("total_qty"))
-            .where(Reservation.expires_at > datetime.now(timezone.utc))
+            .where(Reservation.expires_at > datetime.now(UTC))
             .group_by(Reservation.session_id)
         )
     ).all()
@@ -112,19 +126,23 @@ async def _shipment_poll(db: AsyncSession) -> None:
     from app.services.carriers import apply_event, get_adapter
 
     s = get_settings()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=s.shipment_poll_max_age_days)
+    cutoff = datetime.now(UTC) - timedelta(days=s.shipment_poll_max_age_days)
     orders = (
-        await db.execute(
-            select(Order).where(
-                and_(
-                    Order.status == OrderStatus.SHIPPED.value,
-                    Order.tracking_no.isnot(None),
-                    Order.carrier.isnot(None),
-                    Order.shipped_at >= cutoff,
+        (
+            await db.execute(
+                select(Order).where(
+                    and_(
+                        Order.status == OrderStatus.SHIPPED.value,
+                        Order.tracking_no.isnot(None),
+                        Order.carrier.isnot(None),
+                        Order.shipped_at >= cutoff,
+                    )
                 )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     for o in orders:
         try:
             adapter = get_adapter(o.carrier)
@@ -144,6 +162,7 @@ async def _shipment_poll(db: AsyncSession) -> None:
 async def _scheduler_loop() -> None:
     """Her 30dk'da bir çalış; düşük stok 6 saatte bir, kargo poll ayar bazında."""
     from app.config import get_settings
+
     s = get_settings()
     ship_interval = max(1, s.shipment_poll_interval_minutes) * 60
 
@@ -160,7 +179,9 @@ async def _scheduler_loop() -> None:
                     await _shipment_poll(db)
         except Exception as e:
             logger.error("Scheduler error: %s", e)
-        low_stock_counter = (low_stock_counter + 1) % (LOW_STOCK_INTERVAL_SEC // CART_ABANDON_INTERVAL_SEC)
+        low_stock_counter = (low_stock_counter + 1) % (
+            LOW_STOCK_INTERVAL_SEC // CART_ABANDON_INTERVAL_SEC
+        )
         ship_counter = (ship_counter + 1) % ship_period
         await asyncio.sleep(CART_ABANDON_INTERVAL_SEC)
 

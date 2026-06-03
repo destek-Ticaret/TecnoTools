@@ -13,12 +13,13 @@ CLV (basit model):
   AOV (Average Order Value) = toplam ciro / sipariş sayısı
   Beklenen yaşam: satın alma aralığının tersine + sabit (default 2 yıl).
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import NamedTuple
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Customer, Order, PaymentStatus
@@ -37,7 +38,7 @@ class CustomerStats(NamedTuple):
 
 async def collect_customer_stats(db: AsyncSession, since_days: int = 365) -> list[CustomerStats]:
     """Tüm müşterilerin satın alma istatistikleri."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Tek sorgu, customer üzerinden join.
     stmt = (
         select(
@@ -56,7 +57,9 @@ async def collect_customer_stats(db: AsyncSession, since_days: int = 365) -> lis
     rows = (await db.execute(stmt)).all()
     out: list[CustomerStats] = []
     for cid, email, name, freq, monetary, first_o, last_o in rows:
-        last_dt = last_o.replace(tzinfo=timezone.utc) if last_o and last_o.tzinfo is None else last_o
+        last_dt = (
+            last_o.replace(tzinfo=UTC) if last_o and last_o.tzinfo is None else last_o
+        )
         recency = int((now - last_dt).days) if last_dt else 9999
         out.append(
             CustomerStats(
@@ -131,17 +134,21 @@ def rfm_segments(stats: list[CustomerStats]) -> list[dict]:
         r = _quintile_score(s.recency_days, r_values, reverse=True)
         f = _quintile_score(s.frequency, f_values)
         m = _quintile_score(s.monetary, m_values)
-        out.append({
-            "customer_id": s.customer_id,
-            "email": s.email,
-            "name": s.name,
-            "recency_days": s.recency_days,
-            "frequency": s.frequency,
-            "monetary": round(s.monetary, 2),
-            "r_score": r, "f_score": f, "m_score": m,
-            "rfm_code": f"{r}{f}{m}",
-            "segment": _segment_label(r, f, m),
-        })
+        out.append(
+            {
+                "customer_id": s.customer_id,
+                "email": s.email,
+                "name": s.name,
+                "recency_days": s.recency_days,
+                "frequency": s.frequency,
+                "monetary": round(s.monetary, 2),
+                "r_score": r,
+                "f_score": f,
+                "m_score": m,
+                "rfm_code": f"{r}{f}{m}",
+                "segment": _segment_label(r, f, m),
+            }
+        )
     return out
 
 
@@ -171,8 +178,16 @@ def customer_clv(s: CustomerStats, expected_lifetime_years: float | None = None)
     days_span = max(
         1,
         (
-            (s.last_order.replace(tzinfo=timezone.utc) if s.last_order and s.last_order.tzinfo is None else s.last_order)
-            - (s.first_order.replace(tzinfo=timezone.utc) if s.first_order and s.first_order.tzinfo is None else s.first_order)
+            (
+                s.last_order.replace(tzinfo=UTC)
+                if s.last_order and s.last_order.tzinfo is None
+                else s.last_order
+            )
+            - (
+                s.first_order.replace(tzinfo=UTC)
+                if s.first_order and s.first_order.tzinfo is None
+                else s.first_order
+            )
         ).days,
     )
     annual_freq = s.frequency * 365.0 / days_span
@@ -191,15 +206,17 @@ def customer_clv(s: CustomerStats, expected_lifetime_years: float | None = None)
 def clv_table(stats: list[CustomerStats]) -> list[dict]:
     out = []
     for s in stats:
-        out.append({
-            "customer_id": s.customer_id,
-            "email": s.email,
-            "name": s.name,
-            "orders": s.frequency,
-            "total_spend": round(s.monetary, 2),
-            "aov": round(s.monetary / s.frequency, 2) if s.frequency else 0.0,
-            "clv": customer_clv(s),
-        })
+        out.append(
+            {
+                "customer_id": s.customer_id,
+                "email": s.email,
+                "name": s.name,
+                "orders": s.frequency,
+                "total_spend": round(s.monetary, 2),
+                "aov": round(s.monetary / s.frequency, 2) if s.frequency else 0.0,
+                "clv": customer_clv(s),
+            }
+        )
     out.sort(key=lambda x: x["clv"], reverse=True)
     return out
 
@@ -208,8 +225,4 @@ async def churn_risk(db: AsyncSession, days_threshold: int = 120) -> list[dict]:
     """Son `days_threshold` günden uzun süredir alışveriş yapmamış aktif müşteriler."""
     stats = await collect_customer_stats(db)
     rfm = rfm_segments(stats)
-    return [
-        r
-        for r in rfm
-        if r["recency_days"] >= days_threshold and r["frequency"] >= 2
-    ]
+    return [r for r in rfm if r["recency_days"] >= days_threshold and r["frequency"] >= 2]

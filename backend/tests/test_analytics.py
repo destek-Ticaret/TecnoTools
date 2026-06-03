@@ -3,19 +3,25 @@
 
 async def test_track_event_persists(client, db_engine):
     """track endpoint'i 204 döner, DB'ye yazar."""
-    r = await client.post("/api/analytics/track", json={
-        "event": "page_view",
-        "path": "/",
-        "session_id": "test-session-1",
-    })
+    r = await client.post(
+        "/api/analytics/track",
+        json={
+            "event": "page_view",
+            "path": "/",
+            "session_id": "test-session-1",
+        },
+    )
     assert r.status_code == 204
 
     # Aynı client'tan bir tane daha
-    r2 = await client.post("/api/analytics/track", json={
-        "event": "add_to_cart",
-        "path": "/product/42",
-        "session_id": "test-session-1",
-    })
+    r2 = await client.post(
+        "/api/analytics/track",
+        json={
+            "event": "add_to_cart",
+            "path": "/product/42",
+            "session_id": "test-session-1",
+        },
+    )
     assert r2.status_code == 204
 
 
@@ -50,9 +56,14 @@ async def test_summary_aggregates_correctly(client, auth_client):
     """Birden fazla event gönderip unique visitor + count doğrula."""
     # 3 farklı IP (XFF header ile) → 3 unique visitor
     for i, ip in enumerate(["1.2.3.1", "1.2.3.2", "1.2.3.3"]):
-        await client.post("/api/analytics/track", json={
-            "event": "page_view", "session_id": f"s-{i}",
-        }, headers={"x-forwarded-for": ip})
+        await client.post(
+            "/api/analytics/track",
+            json={
+                "event": "page_view",
+                "session_id": f"s-{i}",
+            },
+            headers={"x-forwarded-for": ip},
+        )
 
     r = await auth_client.get("/api/analytics/summary")
     body = r.json()
@@ -71,8 +82,12 @@ async def test_summary_days_param(auth_client):
 async def test_ip_hash_is_anonymous(client, auth_client):
     """Aynı IP, iki farklı session_id ile → unique visitor hâlâ 1."""
     h1 = {"x-forwarded-for": "5.6.7.8"}
-    await client.post("/api/analytics/track", json={"event": "page_view", "session_id": "a"}, headers=h1)
-    await client.post("/api/analytics/track", json={"event": "page_view", "session_id": "b"}, headers=h1)
+    await client.post(
+        "/api/analytics/track", json={"event": "page_view", "session_id": "a"}, headers=h1
+    )
+    await client.post(
+        "/api/analytics/track", json={"event": "page_view", "session_id": "b"}, headers=h1
+    )
 
     r = await auth_client.get("/api/analytics/summary", params={"days": 1})
     # 5.6.7.8'i sayan unique visitor sayısı 1 olmalı (her IP hash'i 1)

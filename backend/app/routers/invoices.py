@@ -11,10 +11,11 @@ Müşteri:
   GET    /api/customer-auth/invoices             — kendi faturaları (customer_auth.py)
   GET    /api/invoices/public/{ettn}?email=...   — public PDF (email doğrulamalı)
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -123,7 +124,13 @@ def _serialize(inv: Invoice) -> dict[str, Any]:
 
 def _esc(s: Any) -> str:
     """HTML escape."""
-    return (str(s) if s is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    return (
+        (str(s) if s is not None else "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def _tr_money(n: float) -> str:
@@ -145,9 +152,7 @@ async def issue_invoice(
 ):
     """Sipariş için e-arşiv fatura kes. Halihazırda kesilmiş 'sent' fatura varsa
     409 döner; 'failed' veya iptal edilmiş varsa yeniden denenebilir."""
-    o = (
-        await db.execute(select(Order).where(Order.order_no == order_no))
-    ).scalar_one_or_none()
+    o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
     if not o:
         raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
 
@@ -177,13 +182,15 @@ async def issue_invoice(
 
     items_snap: list[dict] = []
     for it in o.items:
-        items_snap.append({
-            "name": it.name,
-            "qty": int(it.qty),
-            "unit_price": float(it.price),
-            "line_total": float(it.price) * int(it.qty),
-            "tax_rate": tax_rate,
-        })
+        items_snap.append(
+            {
+                "name": it.name,
+                "qty": int(it.qty),
+                "unit_price": float(it.price),
+                "line_total": float(it.price) * int(it.qty),
+                "tax_rate": tax_rate,
+            }
+        )
 
     invoice_no = await next_invoice_no(db)
     inv = Invoice(
@@ -232,16 +239,19 @@ async def issue_invoice(
         inv.uuid = result.uuid
         inv.pdf_url = result.pdf_url  # mock'ta None; backend kendisi servis eder
         inv.provider_response = result.raw or None
-        inv.sent_at = datetime.now(timezone.utc)
+        inv.sent_at = datetime.now(UTC)
     else:
         inv.status = InvoiceStatus.FAILED.value
         inv.error_message = result.error or "Bilinmeyen entegratör hatası"
         inv.provider_response = result.raw or None
 
-    db.add(AuditLog(
-        actor=user.username, action="invoice-issue",
-        message=f"Fatura {inv.invoice_no} ({inv.status}) — sipariş {o.order_no}",
-    ))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="invoice-issue",
+            message=f"Fatura {inv.invoice_no} ({inv.status}) — sipariş {o.order_no}",
+        )
+    )
     await db.commit()
     await db.refresh(inv)
 
@@ -257,7 +267,9 @@ async def issue_invoice(
                <strong>ETTN:</strong> <code>{_esc(inv.ettn)}</code></p>
             <p><a href="{pdf_link}" style="display:inline-block;background:#2563eb;color:#fff;padding:11px 22px;border-radius:9px;text-decoration:none;font-weight:600;">Faturayı Görüntüle</a></p>
             """
-            await send_email(to=inv.customer_email, subject=f"🧾 Faturanız: {inv.invoice_no}", html=html)
+            await send_email(
+                to=inv.customer_email, subject=f"🧾 Faturanız: {inv.invoice_no}", html=html
+            )
         except Exception:
             logger.exception("Fatura email gönderim hatası")
         await bus.publish("invoice_issued", {"id": inv.id, "order_no": o.order_no})
@@ -287,9 +299,7 @@ async def get_invoice(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_editor),
 ):
-    inv = (
-        await db.execute(select(Invoice).where(Invoice.id == invoice_id))
-    ).scalar_one_or_none()
+    inv = (await db.execute(select(Invoice).where(Invoice.id == invoice_id))).scalar_one_or_none()
     if not inv:
         raise HTTPException(status_code=404, detail="Fatura bulunamadı")
     return _serialize(inv)
@@ -305,24 +315,27 @@ async def cancel_invoice(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_editor),
 ):
-    inv = (
-        await db.execute(select(Invoice).where(Invoice.id == invoice_id))
-    ).scalar_one_or_none()
+    inv = (await db.execute(select(Invoice).where(Invoice.id == invoice_id))).scalar_one_or_none()
     if not inv:
         raise HTTPException(status_code=404, detail="Fatura bulunamadı")
     if inv.status != InvoiceStatus.SENT.value:
-        raise HTTPException(status_code=409, detail="Sadece 'sent' durumdaki faturalar iptal edilebilir")
+        raise HTTPException(
+            status_code=409, detail="Sadece 'sent' durumdaki faturalar iptal edilebilir"
+        )
     provider = get_provider()
     ok = await provider.cancel(inv.ettn or "", payload.reason)
     if not ok:
         raise HTTPException(status_code=502, detail="Entegratör iptali reddetti")
     inv.status = InvoiceStatus.CANCELLED.value
-    inv.cancelled_at = datetime.now(timezone.utc)
+    inv.cancelled_at = datetime.now(UTC)
     inv.error_message = f"İptal: {payload.reason}"
-    db.add(AuditLog(
-        actor=user.username, action="invoice-cancel",
-        message=f"Fatura iptal {inv.invoice_no} — {payload.reason}",
-    ))
+    db.add(
+        AuditLog(
+            actor=user.username,
+            action="invoice-cancel",
+            message=f"Fatura iptal {inv.invoice_no} — {payload.reason}",
+        )
+    )
     await db.commit()
     await bus.publish("invoice_cancelled", {"id": inv.id})
     return {"ok": True}
@@ -339,10 +352,10 @@ def _render_invoice_html(inv: Invoice) -> str:
     fatura_tipi = "e-Arşiv Fatura" + (" (Kurumsal)" if is_corp else " (Bireysel)")
     items_html = "\n".join(
         f"""<tr>
-              <td>{_esc(it.get('name'))}</td>
-              <td style="text-align:center;">{int(it.get('qty', 1))}</td>
-              <td style="text-align:right;">{_tr_money(float(it.get('unit_price', 0)))}</td>
-              <td style="text-align:right;">{_tr_money(float(it.get('line_total', it.get('unit_price', 0) * it.get('qty', 1))))}</td>
+              <td>{_esc(it.get("name"))}</td>
+              <td style="text-align:center;">{int(it.get("qty", 1))}</td>
+              <td style="text-align:right;">{_tr_money(float(it.get("unit_price", 0)))}</td>
+              <td style="text-align:right;">{_tr_money(float(it.get("line_total", it.get("unit_price", 0) * it.get("qty", 1))))}</td>
             </tr>"""
         for it in (inv.items or [])
     )
@@ -404,7 +417,7 @@ def _render_invoice_html(inv: Invoice) -> str:
       <div class="sub">Fatura No: <strong>{_esc(inv.invoice_no)}</strong></div>
       <div class="sub">Tarih: {issued_str}</div>
       <div class="stamp">{status_label}</div>
-      {f'<div class="ettn">ETTN: {_esc(inv.ettn)}</div>' if inv.ettn else ''}
+      {f'<div class="ettn">ETTN: {_esc(inv.ettn)}</div>' if inv.ettn else ""}
     </div>
   </div>
 
@@ -455,13 +468,13 @@ async def invoice_pdf_admin(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_editor),
 ):
-    inv = (
-        await db.execute(select(Invoice).where(Invoice.id == invoice_id))
-    ).scalar_one_or_none()
+    inv = (await db.execute(select(Invoice).where(Invoice.id == invoice_id))).scalar_one_or_none()
     if not inv:
         raise HTTPException(status_code=404, detail="Fatura bulunamadı")
     # Bytes olarak gönder → response header'ından bağımsız UTF-8 garantisi
-    return HTMLResponse(_render_invoice_html(inv).encode("utf-8"), media_type="text/html; charset=utf-8")
+    return HTMLResponse(
+        _render_invoice_html(inv).encode("utf-8"), media_type="text/html; charset=utf-8"
+    )
 
 
 @router.get("/public/{ettn}", response_class=HTMLResponse)
@@ -483,7 +496,9 @@ async def invoice_pdf_public(
     ).scalar_one_or_none()
     if not inv:
         raise HTTPException(status_code=404, detail="Fatura bulunamadı")
-    return HTMLResponse(_render_invoice_html(inv).encode("utf-8"), media_type="text/html; charset=utf-8")
+    return HTMLResponse(
+        _render_invoice_html(inv).encode("utf-8"), media_type="text/html; charset=utf-8"
+    )
 
 
 # ──────────────────────── Customer: kendi faturaları ─────────────────────
@@ -496,10 +511,14 @@ async def my_invoices(
 ):
     """Login olmuş müşterinin tüm faturaları."""
     rows = (
-        await db.execute(
-            select(Invoice)
-            .where(Invoice.customer_email == customer.email)
-            .order_by(Invoice.id.desc())
+        (
+            await db.execute(
+                select(Invoice)
+                .where(Invoice.customer_email == customer.email)
+                .order_by(Invoice.id.desc())
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [_serialize(r) for r in rows]

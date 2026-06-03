@@ -9,7 +9,8 @@ Tanımlı anahtarlar (env'den override edilebilir):
 - cod_enabled:             "0"|"1"  (kapıda ödeme)
 - wire_enabled:            "0"|"1"  (havale)
 """
-from fastapi import APIRouter, Body, Depends, HTTPException
+
+from fastapi import APIRouter, Body, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

@@ -41,9 +41,7 @@ async def _open_sse(path: str, *, timeout: float = 5.0):
     async def send(message):
         if message["type"] == "http.response.start":
             captured["status"] = message["status"]
-            captured["headers"] = {
-                k.decode().lower(): v.decode() for k, v in message["headers"]
-            }
+            captured["headers"] = {k.decode().lower(): v.decode() for k, v in message["headers"]}
             started.set()
         # http.response.body mesajlarını yok say — stream'e girmeyeceğiz.
 

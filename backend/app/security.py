@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -24,7 +24,7 @@ def verify_password(plaintext: str, hashed: str) -> bool:
 
 
 def create_access_token(subject: str, role: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": subject,
         "role": role,
@@ -37,7 +37,7 @@ def create_access_token(subject: str, role: str) -> str:
 
 def create_customer_access_token(customer_id: int, email: str) -> str:
     """Müşteri JWT'si — admin token'larından `type` ile ayrılır."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(customer_id),
         "email": email,
@@ -60,7 +60,7 @@ def create_refresh_token() -> tuple[str, str, datetime]:
     """Refresh token: kullanıcıya verilen plaintext + DB'ye hash + expiry."""
     raw = secrets.token_urlsafe(48)
     digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
-    expiry = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_ttl_days)
+    expiry = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_ttl_days)
     return raw, digest, expiry
 
 

@@ -8,10 +8,10 @@ Kur sağlayıcı: frankfurter.app — Avrupa Merkez Bankası verisi, API key ger
 
 Cache: in-memory dict, 6 saat TTL.
 """
+
 import asyncio
 import logging
 import time
-from typing import Dict
 
 import httpx
 
@@ -20,7 +20,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-_RATE_CACHE: Dict[str, tuple[float, float]] = {}  # base→{ "USD": (rate, fetched_at), ... }
+_RATE_CACHE: dict[str, tuple[float, float]] = {}  # base→{ "USD": (rate, fetched_at), ... }
 _LOCK = asyncio.Lock()
 
 
