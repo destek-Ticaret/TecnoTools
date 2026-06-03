@@ -1,6 +1,11 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Production'da kullanılması yasak varsayılan/zayıf değerler.
+_INSECURE_SECRETS = {"dev-secret-change-me", "", "change-me", "secret"}
+_INSECURE_ADMIN_PASSWORDS = {"ChangeMeOnFirstLogin!", "", "admin", "password"}
 
 
 class Settings(BaseSettings):
@@ -106,6 +111,25 @@ class Settings(BaseSettings):
     @property
     def admin_ip_list(self) -> list[str]:
         return [ip.strip() for ip in self.admin_ip_whitelist.split(",") if ip.strip()]
+
+    @model_validator(mode="after")
+    def _guard_production_secrets(self) -> "Settings":
+        """Production'da zayıf/varsayılan secret ile başlamayı engelle (fail-fast).
+
+        Aksi halde APP_SECRET_KEY set edilmezse bilinen varsayılan secret ile
+        çalışılır → JWT taklidi (forgery) mümkün olurdu."""
+        if self.app_env.lower() != "production":
+            return self
+        problems = []
+        if self.app_secret_key in _INSECURE_SECRETS or len(self.app_secret_key) < 32:
+            problems.append(
+                "APP_SECRET_KEY zayıf/varsayılan (≥32 karakter rastgele bir değer gerekli)"
+            )
+        if self.initial_admin_password in _INSECURE_ADMIN_PASSWORDS:
+            problems.append("INITIAL_ADMIN_PASSWORD varsayılan/zayıf")
+        if problems:
+            raise ValueError("Production yapılandırması güvensiz: " + "; ".join(problems))
+        return self
 
 
 @lru_cache

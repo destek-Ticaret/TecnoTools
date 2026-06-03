@@ -24,6 +24,9 @@ async def current_user(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Kullanıcı bulunamadı")
+    if not user.is_active:
+        # Devre dışı bırakılan kullanıcının mevcut token'ı da geçersiz sayılır.
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Hesap devre dışı")
     return user
 
 

@@ -53,4 +53,5 @@ async def serve_image(filename: str):
     fpath = UPLOAD_DIR / filename
     if not fpath.exists() or not fpath.is_file():
         raise HTTPException(status_code=404, detail="Dosya bulunamadı")
-    return FileResponse(fpath)
+    # nosniff: tarayıcı içeriği declared type dışında yorumlamasın (stored-XSS savunması)
+    return FileResponse(fpath, headers={"X-Content-Type-Options": "nosniff"})
