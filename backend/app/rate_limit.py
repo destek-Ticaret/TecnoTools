@@ -16,10 +16,12 @@ from slowapi.util import get_remote_address
 
 
 def _key(request):
-    # X-Forwarded-For desteği (ngrok/nginx arkasından)
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
+    # GÜVENLİK: X-Real-IP nginx tarafından $remote_addr'a sabitlenir (spoof edilemez).
+    # X-Forwarded-For'un ilk değeri client-kontrollü olabileceğinden ona güvenmiyoruz
+    # (yoksa saldırgan sahte IP ile rate-limit'i atlatabilirdi).
+    real = request.headers.get("x-real-ip")
+    if real:
+        return real.strip()
     return get_remote_address(request)
 
 

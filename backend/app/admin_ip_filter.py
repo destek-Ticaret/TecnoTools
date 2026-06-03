@@ -30,9 +30,12 @@ _DEV_LAN_NETWORKS = [
 
 
 def _client_ip(request) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
+    # GÜVENLİK: X-Real-IP nginx tarafından $remote_addr'a sabitlenir (client
+    # spoof'layamaz). X-Forwarded-For'un İLK değeri client-kontrollü olabilir,
+    # bu yüzden ona güvenmiyoruz. nginx yoksa (dev) doğrudan bağlantı IP'si.
+    real = request.headers.get("x-real-ip")
+    if real:
+        return real.strip()
     return request.client.host if request.client else ""
 
 

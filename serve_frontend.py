@@ -73,9 +73,11 @@ class IPFilteredHandler(http.server.SimpleHTTPRequestHandler):
         return any(path == p or path.startswith(p + ".") for p in ADMIN_PATHS)
 
     def _client_ip(self) -> str:
-        fwd = self.headers.get("X-Forwarded-For")
-        if fwd:
-            return fwd.split(",")[0].strip()
+        # GÜVENLİK: X-Real-IP (nginx $remote_addr'a sabitler) tercih edilir;
+        # X-Forwarded-For ilk değeri client-kontrollü olabileceğinden güvenilmez.
+        real = self.headers.get("X-Real-IP")
+        if real:
+            return real.strip()
         return self.client_address[0]
 
     def _check_admin_access(self) -> bool:

@@ -56,6 +56,25 @@ def test_development_allows_default_secret():
     assert s.app_env == "development"
 
 
+def test_client_ip_ignores_spoofed_xff():
+    """admin IP filtresi/rate-limit X-Forwarded-For'a güvenmemeli (spoof edilebilir);
+    nginx'in sabitlediği X-Real-IP tercih edilmeli."""
+    from app.admin_ip_filter import _client_ip
+
+    class _FakeReq:
+        def __init__(self, headers, host):
+            self.headers = headers
+            self.client = type("C", (), {"host": host})()
+
+    # Sahte XFF=127.0.0.1 YOK SAYILMALI; X-Real-IP (nginx) esas alınır
+    req = _FakeReq({"x-forwarded-for": "127.0.0.1", "x-real-ip": "5.6.7.8"}, "5.6.7.8")
+    assert _client_ip(req) == "5.6.7.8"
+    # X-Real-IP yoksa (dev) doğrudan bağlantı IP'si
+    assert _client_ip(_FakeReq({}, "9.9.9.9")) == "9.9.9.9"
+    # Tek başına sahte XFF güvenilmemeli → bağlantı IP'sine düş
+    assert _client_ip(_FakeReq({"x-forwarded-for": "127.0.0.1"}, "9.9.9.9")) == "9.9.9.9"
+
+
 async def test_deactivated_admin_token_rejected(auth_client, db_session):
     """Login sonrası kullanıcı devre dışı bırakılırsa mevcut token'ı 401 alır."""
     # Önce token çalışıyor
