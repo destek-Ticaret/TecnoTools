@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gizlilik & Çerez Politikası · TecnoTools</title>
+  <style>
+    body { font-family: 'Inter', sans-serif; max-width: 760px; margin: 2rem auto; padding: 1rem 1.4rem; line-height: 1.7; color: #1a1f2e; }
+    h1 { font-size: 1.7rem; margin-bottom: 1rem; }
+    h2 { font-size: 1.05rem; margin-top: 1.8rem; margin-bottom: .5rem; color: #2563eb; }
+    p, li { font-size: .92rem; color: #475569; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #e2e8f0; padding: .55rem .8rem; text-align: left; font-size: .85rem; }
+    th { background: #f8fafc; }
+    a { color: #2563eb; }
+    .actions { background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:1rem 1.2rem;margin:1rem 0; }
+    .actions a { display:inline-block;margin:.2rem .6rem .2rem 0; }
+  </style>
+</head>
+<body>
+  <a href="../index.html">← Mağazaya dön</a>
+  <h1>Gizlilik &amp; Çerez Politikası</h1>
+
+  <p>Bu politika, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca TecnoTools mağazasında toplanan kişisel verilerin işlenme amaçlarını, çerezlerin kullanımını ve veri sahibinin haklarını açıklar. <strong>Politika sürümü: 1.0</strong>.</p>
+
+  <h2>Çerez kategorileri</h2>
+  <p>Çerezler dört kategoride toplanır. Zorunlu çerezler dışındaki tüm kategoriler için açık rıza alırız; izninizi istediğiniz an aşağıdaki bağlantıdan değiştirebilirsiniz.</p>
+  <table>
+    <thead><tr><th>Kategori</th><th>Çerezler</th><th>Amaç</th><th>İzin</th></tr></thead>
+    <tbody>
+      <tr><td>Zorunlu</td><td><code>tt_cart</code>, <code>tt_session_id</code>, <code>tt_consent_v2</code>, JWT token'ları</td><td>Sepet, oturum, güvenlik, izin kaydı.</td><td>Opt-out yok</td></tr>
+      <tr><td>Tercih</td><td><code>tt_theme</code>, <code>tt_lang</code>, <code>tt_currency</code></td><td>Tema, dil, para birimi tercihinizin hatırlanması.</td><td>Opt-in</td></tr>
+      <tr><td>Analitik</td><td><code>tt_session_id</code> (anonim event'ler)</td><td>Self-hosted sayfa görüntüleme / satın alma istatistikleri. 3. taraf yok.</td><td>Opt-in</td></tr>
+      <tr><td>Pazarlama</td><td>(yalnız üye için)</td><td>Önerilen ürünler ve kişiselleştirilmiş kampanya e-postaları.</td><td>Opt-in</td></tr>
+    </tbody>
+  </table>
+
+  <div class="actions">
+    <strong>Tercihinizi değiştirin:</strong>
+    <a href="../index.html" data-tt-open-consent="1">Çerez ayarları</a> ·
+    <a href="kvkk.html">KVKK Aydınlatma Metni</a>
+  </div>
+
+  <h2>Analitik</h2>
+  <p>Sitede self-hosted bir analitik altyapısı çalışır. Sayfa görüntülemeleri, sepete ekleme ve satın alma olayları kaydedilir. IP adresi tuzlanmış SHA-256 ile hash'lenir (ilk 16 karakter); kişi takip edilemez. Hiçbir 3. taraf analitik servisi (Google Analytics, Facebook Pixel vb.) kullanılmaz. Analitik kategorisini kapatırsanız <code>/api/analytics/track</code> uç noktasına hiçbir istek gönderilmez.</p>
+
+  <h2>Üçüncü taraflar</h2>
+  <ul>
+    <li><strong>PayTR / Stripe</strong> — ödeme işlemleri (kart bilgisi bizim sunucumuza ulaşmaz)</li>
+    <li><strong>Kargo şirketleri</strong> — sipariş teslimat bilgisi</li>
+    <li><strong>GİB / e-arşiv entegratörü</strong> — VKN/TCKN bazlı mükellef sorgu ve fatura iletimi (yalnız satın alma yapanlar için)</li>
+  </ul>
+
+  <h2>Veri sahibi hakları (KVKK m.11)</h2>
+  <p>Aşağıdaki haklara sahipsiniz:</p>
+  <ul>
+    <li>Kişisel verinizin işlenip işlenmediğini öğrenme,</li>
+    <li>İşlenmişse buna ilişkin bilgi talep etme,</li>
+    <li>İşlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme,</li>
+    <li>Yurt içinde / yurt dışında verinin aktarıldığı üçüncü kişileri bilme,</li>
+    <li>Eksik veya yanlış işlenmişse düzeltilmesini isteme,</li>
+    <li><strong>Verinin silinmesini veya yok edilmesini isteme</strong> (unutulma hakkı),</li>
+    <li>Düzeltme / silme işlemlerinin aktarıldığı üçüncü kişilere bildirilmesini isteme,</li>
+    <li>İşlenen verinin münhasıran otomatik sistemlerle analiz edilmesi suretiyle aleyhine bir sonuç doğmasına itiraz etme,</li>
+    <li>Kanuna aykırı işleme nedeniyle zarara uğranılması halinde zararın giderilmesini talep etme.</li>
+  </ul>
+
+  <h2>Kolay erişim — hesabınızdan</h2>
+  <ul>
+    <li><strong>Veri ihracı:</strong> Üye girişi yaptıktan sonra "Hesabım → Verilerimi indir" — tüm kişisel veriniz JSON olarak dökülür.</li>
+    <li><strong>Hesap silme:</strong> "Hesabım → Hesabımı sil" — parolanız ile talep edilir, e-postanıza onay linki gönderilir. Onayladıktan sonra:
+      <ul>
+        <li>Hesabınız ve tercih bilgileriniz silinir,</li>
+        <li>Yorumlar, stok bildirim aboneliği, bülten kaydı, canlı destek geçmişi silinir,</li>
+        <li>Geçmiş siparişleriniz VUK 5 yıl saklama zorunluluğu gereği <em>anonimleştirilir</em> (ad/e-posta/adres maskelenir) — tamamen silinmez.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Saklama süreleri</h2>
+  <table>
+    <thead><tr><th>Veri</th><th>Süre</th><th>Dayanak</th></tr></thead>
+    <tbody>
+      <tr><td>Sipariş + fatura kayıtları</td><td>5 yıl</td><td>VUK m.253</td></tr>
+      <tr><td>Üyelik bilgileri</td><td>Üyelik aktif olduğu sürece</td><td>KVKK m.5(2)c</td></tr>
+      <tr><td>Pazarlama izni</td><td>İzin geri alınana kadar</td><td>KVKK m.5(1)</td></tr>
+      <tr><td>Analitik event'leri</td><td>24 ay (anonim)</td><td>Meşru menfaat</td></tr>
+      <tr><td>Çerez izin logları</td><td>3 yıl</td><td>KVKK ispat</td></tr>
+    </tbody>
+  </table>
+
+  <h2>İletişim</h2>
+  <p>Veri sahibi başvuruları için: <a href="mailto:destek@tecnotools.org">destek@tecnotools.org</a> · Yazılı başvurularda kimlik teyidi ile sürec 30 gün içinde sonuçlandırılır.</p>
+
+  <p style="margin-top:2.5rem;font-size:.8rem;color:#94a3b8;">Detaylı KVKK aydınlatma metni için <a href="kvkk.html">tıklayın</a>.</p>
+</body>
+</html>

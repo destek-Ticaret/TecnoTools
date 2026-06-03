@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="tt-api-base" content="http://localhost:8000" />
+  <meta name="description" content="Siparişinizin kargo durumunu ve tahmini teslimat tarihini sorgulayın." />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Sipariş Takibi — TecnoTools</title>
+  <link rel="icon" href="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="js/api.js?v=20260602" defer></script>
+  <style>
+    :root {
+      --bg: #f6f7fb; --bg2: #eef0f7; --surface: #ffffff;
+      --border: #e1e5ef; --border-2: #d3d9e6;
+      --primary: #2563eb; --primary-dark: #1d4ed8; --primary-soft: #dbeafe;
+      --success: #10b981; --success-soft: #d1fae5;
+      --warning: #f59e0b; --warning-soft: #fef3c7;
+      --danger:  #ef4444; --danger-soft: #fee2e2;
+      --info:    #3b82f6; --info-soft: #dbeafe;
+      --text: #0f172a; --text-2: #334155; --muted: #64748b;
+      --shadow: 0 4px 16px rgba(15,23,42,.06);
+      --shadow-lg: 0 16px 40px rgba(15,23,42,.10);
+      --radius: 14px;
+    }
+    [data-theme="dark"] {
+      --bg: #0b1220; --bg2: #111a2e; --surface: #131d36;
+      --border: #233356; --border-2: #2c4070;
+      --primary-soft: #1e3a8a; --info-soft: #1e3a8a;
+      --text: #e6ecf7; --text-2: #c1cce0; --muted: #8b97b3;
+      --shadow: 0 4px 16px rgba(0,0,0,.30);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { font-family: inherit; cursor: pointer; }
+    img { display: block; max-width: 100%; }
+
+    .hdr { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.92); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); border-bottom: 1px solid var(--border); }
+    [data-theme="dark"] .hdr { background: rgba(11,18,32,.85); }
+    .hdr-inner { max-width: 1100px; margin: 0 auto; padding: .85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .brand { display: flex; align-items: center; gap: .55rem; font-weight: 800; color: var(--text); font-size: 1.05rem; text-decoration: none; }
+    .brand:hover { text-decoration: none; }
+    .brand-logo { width: 38px; height: 38px; border-radius: 10px; overflow: hidden; background: var(--surface); box-shadow: 0 2px 6px rgba(15,23,42,.08); }
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .hdr-actions { display: flex; align-items: center; gap: .5rem; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: grid; place-items: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+    .icon-btn:hover { background: var(--bg2); color: var(--primary); border-color: var(--primary); }
+    .icon-btn svg { width: 18px; height: 18px; }
+
+    .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    .page-head { text-align: center; margin-bottom: 1.5rem; }
+    .page-head h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.01em; }
+    .page-head p { color: var(--muted); font-size: .95rem; margin-top: .35rem; }
+
+    /* Form card */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.75rem; box-shadow: var(--shadow); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; margin-top: 1rem; }
+    @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: .35rem; }
+    .label { font-size: .82rem; font-weight: 600; color: var(--text-2); }
+    .label .req { color: var(--danger); margin-left: 2px; }
+    .input { width: 100%; padding: .7rem .85rem; border: 1px solid var(--border-2); border-radius: 10px; font: inherit; font-size: .92rem; color: var(--text); background: var(--surface); outline: none; transition: border-color .15s, box-shadow .15s; }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .85rem 1.5rem; border-radius: 11px; font-weight: 700; font-size: .95rem; border: 1px solid transparent; transition: transform .1s, box-shadow .15s, background .15s; text-decoration: none; }
+    .btn:active { transform: scale(.99); }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.28); }
+    .btn-primary:hover { box-shadow: 0 8px 22px rgba(37,99,235,.38); }
+    .btn-primary:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+    .btn-block { width: 100%; }
+    .btn-ghost { background: var(--bg2); color: var(--text); border-color: var(--border-2); }
+    .btn-ghost:hover { background: var(--border); }
+
+    /* Status banner */
+    .alert { padding: .85rem 1rem; border-radius: 10px; font-size: .88rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+    .alert.err { background: var(--danger-soft); color: var(--danger); border: 1px solid #fecaca; }
+    [data-theme="dark"] .alert.err { border-color: #7f1d1d; }
+    .alert.info { background: var(--info-soft); color: var(--primary-dark); border: 1px solid #bfdbfe; }
+    [data-theme="dark"] .alert.info { color: #93c5fd; border-color: #1e3a8a; }
+    .alert svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* Result */
+    .result { margin-top: 1.5rem; }
+    .result-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .status-pill { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .85rem; border-radius: 999px; font-size: .82rem; font-weight: 700; }
+    .status-pill.pending { background: var(--warning-soft); color: var(--warning); }
+    .status-pill.processing { background: var(--info-soft); color: var(--primary-dark); }
+    .status-pill.shipped { background: var(--primary-soft); color: var(--primary); }
+    .status-pill.delivered { background: var(--success-soft); color: var(--success); }
+    .status-pill.cancelled { background: var(--danger-soft); color: var(--danger); }
+
+    .info-grid { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+    .info-row { display: flex; justify-content: space-between; align-items: baseline; padding: .45rem 0; gap: 1rem; }
+    .info-row + .info-row { border-top: 1px dashed var(--border-2); }
+    .info-key { color: var(--muted); font-size: .82rem; font-weight: 600; }
+    .info-val { font-weight: 700; font-size: .92rem; text-align: right; word-break: break-word; font-variant-numeric: tabular-nums; }
+    .info-val.mono { font-family: 'Inter', monospace; letter-spacing: .01em; }
+
+    /* Timeline (kargo event) */
+    .timeline { margin-top: 1.5rem; }
+    .timeline h3 { font-size: 1rem; font-weight: 800; margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem; }
+    .timeline-track { position: relative; padding-left: 28px; }
+    .timeline-track::before { content: ''; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px; background: var(--border-2); }
+    .tl-item { position: relative; padding: .5rem 0; }
+    .tl-item::before { content: ''; position: absolute; left: -22px; top: 14px; width: 12px; height: 12px; border-radius: 50%; background: var(--border-2); border: 2px solid var(--surface); }
+    .tl-item.active::before { background: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .tl-item.done::before { background: var(--success); }
+    .tl-item.failed::before { background: var(--danger); }
+    .tl-title { font-weight: 700; font-size: .9rem; color: var(--text); }
+    .tl-meta { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+    .tl-desc { font-size: .85rem; color: var(--text-2); margin-top: 4px; line-height: 1.5; }
+
+    /* Items */
+    .items { margin-top: 1.5rem; }
+    .items h3 { font-size: 1rem; font-weight: 800; margin-bottom: .65rem; }
+    .item-row { display: grid; grid-template-columns: 44px 1fr auto; gap: .65rem; padding: .55rem 0; align-items: center; border-bottom: 1px dashed var(--border); }
+    .item-row:last-child { border-bottom: none; }
+    .item-thumb { width: 44px; height: 44px; border-radius: 8px; background: var(--bg2); display: grid; place-items: center; overflow: hidden; font-size: 1.2rem; }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .item-name { font-size: .88rem; font-weight: 600; color: var(--text); }
+    .item-qty { font-size: .75rem; color: var(--muted); }
+    .item-price { font-size: .9rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .actions-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1.25rem; }
+    .member-link { text-align: center; margin-top: 1rem; font-size: .85rem; color: var(--muted); }
+    .member-link a { color: var(--primary); font-weight: 600; }
+
+    /* Loader */
+    .loader { padding: 2rem 1rem; text-align: center; }
+    .loader .spinner { width: 36px; height: 36px; margin: 0 auto .75rem; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast-stack { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: .5rem; z-index: 200; }
+    .toast { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .75rem 1.1rem; box-shadow: var(--shadow); font-size: .88rem; font-weight: 600; animation: slideIn .25s ease; max-width: 360px; }
+    .toast.danger { border-left: 4px solid var(--danger); }
+    @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } }
+
+    .ftr { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--muted); }
+    .ftr a { color: var(--muted); margin: 0 .5rem; }
+    .ftr a:hover { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <header class="hdr">
+    <div class="hdr-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-logo"><img src="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" alt="TecnoTools" /></div>
+        <span>TecnoTools</span>
+      </a>
+      <div class="hdr-actions">
+        <button class="icon-btn" title="Tema değiştir" onclick="toggleTheme()" aria-label="Tema değiştir">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <a href="#main-content" class="skip-link">İçeriğe atla</a>
+  <style>
+  .skip-link { position: absolute; top: -100px; left: 1rem; z-index: 1000; background: var(--primary); color: #fff; padding: .65rem 1rem; border-radius: 8px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.4); transition: top .2s ease; }
+  .skip-link:focus { top: .75rem; outline: 3px solid #fbbf24; outline-offset: 2px; }
+  </style>
+
+  <main class="wrap" id="main-content" tabindex="-1">
+    <div class="page-head">
+      <h1>Sipariş Takibi</h1>
+      <p>Siparişinizin kargo durumunu sorgulamak için sipariş no ve e-posta adresinizi girin.</p>
+    </div>
+
+    <div class="card">
+      <form id="trackForm" onsubmit="event.preventDefault(); submitTrack();">
+        <div class="form-grid">
+          <div class="field">
+            <label class="label" for="orderNo">Sipariş No <span class="req">*</span></label>
+            <input class="input" id="orderNo" name="order_no" required maxlength="32" placeholder="örn: TT-2026-001234" />
+          </div>
+          <div class="field">
+            <label class="label" for="email">E-posta <span class="req">*</span></label>
+            <input class="input" id="email" name="email" type="email" required maxlength="255" placeholder="ornek@email.com" />
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" id="submitBtn" style="margin-top:1rem;">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Sorgula
+        </button>
+        <p class="member-link">Hesabınız var mı? <a href="index.html#login">Üye girişi yapın</a> — tüm siparişlerinizi tek yerden görün.</p>
+      </form>
+
+      <div id="result"></div>
+    </div>
+  </main>
+
+  <footer class="ftr">
+    <a href="index.html">Ana Sayfa</a> ·
+    <a href="legal/gizlilik.html">Gizlilik</a> ·
+    <a href="legal/mesafeli-satis.html">Mesafeli Satış</a> ·
+    <a href="mailto:destek@tecnotools.org">Destek</a>
+    <div style="margin-top:.5rem;">© TecnoTools — Sipariş Takip · Kargo Sorgu</div>
+  </footer>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+<script>
+/* ── STATE ── */
+let lastOrder = null;
+let shippingEvents = null;
+
+/* ── HELPERS ── */
+const $ = sel => document.querySelector(sel);
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escapeAttr = s => escapeHtml(s);
+const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = iso => iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const STATUS_LABEL = {
+  pending: 'Beklemede', processing: 'Hazırlanıyor', shipped: 'Kargoda',
+  delivered: 'Teslim edildi', cancelled: 'İptal edildi',
+};
+
+const SHIPMENT_LABEL = {
+  created: 'Sipariş alındı',
+  picked_up: 'Kargo şubeden alındı',
+  in_transit: 'Yolda',
+  out_for_delivery: 'Dağıtımda',
+  delivered: 'Teslim edildi',
+  failed_attempt: 'Teslim başarısız',
+  returned: 'İade edildi',
+  cancelled: 'İptal edildi',
+};
+
+function showToast(text, kind = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${kind}`;
+  el.textContent = text;
+  $('#toastStack').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 3000);
+}
+
+function applyTheme() {
+  const t = localStorage.getItem('tt_theme') || 'light';
+  document.documentElement.dataset.theme = t === 'dark' ? 'dark' : '';
+}
+function toggleTheme() {
+  const cur = localStorage.getItem('tt_theme') || 'light';
+  localStorage.setItem('tt_theme', cur === 'dark' ? 'light' : 'dark');
+  applyTheme();
+}
+
+/* ── RENDER ── */
+function renderLoading() {
+  $('#result').innerHTML = `
+    <div class="loader">
+      <div class="spinner"></div>
+      <div style="color:var(--muted);">Siparişiniz sorgulanıyor…</div>
+    </div>
+  `;
+}
+
+function renderError(msg) {
+  $('#result').innerHTML = `
+    <div class="alert err">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>${escapeHtml(msg)}</span>
+    </div>
+  `;
+}
+
+function renderResult(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const status = order.status || 'pending';
+  const statusLabel = STATUS_LABEL[status] || status;
+  const carrier = order.carrier || '';
+  const trackingNo = order.tracking_no || '';
+
+  $('#result').innerHTML = `
+    <div class="result">
+      <div class="result-head">
+        <div>
+          <div style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Sipariş</div>
+          <div style="font-size:1.1rem;font-weight:800;font-family:monospace;">${escapeHtml(order.order_no || '—')}</div>
+        </div>
+        <span class="status-pill ${status}">${escapeHtml(statusLabel)}</span>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-row">
+          <span class="info-key">Tarih</span>
+          <span class="info-val">${fmtDate(order.created_at)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Toplam</span>
+          <span class="info-val">${fmt(order.total)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Ödeme</span>
+          <span class="info-val">${escapeHtml(order.payment_method || '—')}${order.payment_brand ? ' · ' + escapeHtml(order.payment_brand) : ''}</span>
+        </div>
+        ${carrier ? `
+          <div class="info-row">
+            <span class="info-key">Kargo Firması</span>
+            <span class="info-val">${escapeHtml(carrier.toUpperCase())}</span>
+          </div>
+        ` : ''}
+        ${trackingNo ? `
+          <div class="info-row">
+            <span class="info-key">Takip No</span>
+            <span class="info-val mono">${escapeHtml(trackingNo)}</span>
+          </div>
+        ` : ''}
+        ${order.shipped_at ? `
+          <div class="info-row">
+            <span class="info-key">Kargoya Verildi</span>
+            <span class="info-val">${fmtDate(order.shipped_at)}</span>
+          </div>
+        ` : ''}
+        ${order.delivered_at ? `
+          <div class="info-row">
+            <span class="info-key">Teslim Edildi</span>
+            <span class="info-val">${fmtDate(order.delivered_at)}</span>
+          </div>
+        ` : ''}
+      </div>
+
+      <div id="timelineWrap"></div>
+
+      ${items.length ? `
+        <div class="items">
+          <h3>Sipariş Kalemleri (${items.length})</h3>
+          ${items.map(it => `
+            <div class="item-row">
+              <div class="item-thumb">${it.image ? `<img src="${escapeAttr(it.image)}" alt="" />` : escapeHtml(it.icon || '📦')}</div>
+              <div>
+                <div class="item-name">${escapeHtml(it.name || '')}</div>
+                <div class="item-qty">${it.qty || 1} adet · ${fmt(it.price || 0)}</div>
+              </div>
+              <div class="item-price">${fmt((it.price || 0) * (it.qty || 0))}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
+      <div class="actions-row">
+        <a class="btn btn-ghost" href="https://${carrier || 'mng'}.com.tr/${trackingNo ? 'kargo-takip?tn=' + encodeURIComponent(trackingNo) : ''}" target="_blank" rel="noopener" ${!trackingNo ? 'style="display:none;"' : ''}>
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Kargo Sitesinde Aç
+        </a>
+        <a class="btn btn-ghost" href="mailto:destek@tecnotools.org?subject=Sipariş ${encodeURIComponent(order.order_no || '')}">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          Destek
+        </a>
+      </div>
+    </div>
+  `;
+
+  loadShippingEvents(order.order_no);
+}
+
+async function loadShippingEvents(orderNo) {
+  if (!window.api || !api.shipping || !api.shipping.track) return;
+  try {
+    const events = await api.shipping.track(orderNo);
+    if (Array.isArray(events) && events.length) {
+      shippingEvents = events;
+      renderTimeline(events);
+    }
+  } catch (_) { /* yoksa sessizce geç */ }
+}
+
+function renderTimeline(events) {
+  const wrap = document.getElementById('timelineWrap');
+  if (!wrap) return;
+  // Tarihe göre azalan
+  const sorted = [...events].sort((a, b) => new Date(b.occurred_at) - new Date(a.occurred_at));
+  // Aktif olan (en yeni) işaretlenir
+  const items = sorted.map((e, idx) => {
+    const isActive = idx === 0;
+    const isFailed = ['failed_attempt', 'returned', 'cancelled'].includes(e.code);
+    const cls = isFailed ? 'failed' : (isActive ? 'active' : 'done');
+    const label = SHIPMENT_LABEL[e.code] || e.code || 'Güncelleme';
+    return `
+      <div class="tl-item ${cls}">
+        <div class="tl-title">${escapeHtml(label)}</div>
+        <div class="tl-meta">${fmtDate(e.occurred_at)}${e.location ? ' · ' + escapeHtml(e.location) : ''}</div>
+        ${e.description ? `<div class="tl-desc">${escapeHtml(e.description)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="timeline">
+      <h3>
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-7 3.5"/><polyline points="3 4 3 10 9 10"/></svg>
+        Kargo Hareketleri
+      </h3>
+      <div class="timeline-track">${items}</div>
+    </div>
+  `;
+}
+
+/* ── SUBMIT ── */
+async function submitTrack() {
+  const orderNo = ($('#orderNo').value || '').trim();
+  const email = ($('#email').value || '').trim();
+  if (!orderNo) { showToast('Sipariş no girin.', 'danger'); $('#orderNo').focus(); return; }
+  if (!email) { showToast('E-posta girin.', 'danger'); $('#email').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Geçerli bir e-posta girin.', 'danger'); $('#email').focus(); return; }
+
+  const btn = $('#submitBtn');
+  btn.disabled = true;
+  renderLoading();
+  try {
+    const res = await api.orders.track(orderNo, email);
+    if (!res) throw new Error('Sipariş bulunamadı.');
+    const order = res.order || res;
+    lastOrder = order;
+    renderResult(order);
+    // Sonuç başarılıysa email'i sakla
+    try { localStorage.setItem('tt_last_order_email', email); } catch (_) {}
+  } catch (e) {
+    if (e && (e.status === 404 || /bulunamadı|not found/i.test(e.message || ''))) {
+      renderError('Bu sipariş numarası ve e-posta ile eşleşen bir kayıt bulunamadı. Bilgileri kontrol edip tekrar deneyin.');
+    } else if (e && e.status === 0) {
+      renderError('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.');
+    } else {
+      renderError(e.message || 'Sorgu başarısız oldu.');
+    }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── INIT ── */
+function init() {
+  applyTheme();
+  // URL'den ?order_no=...&email=... varsa otomatik doldur + sorgula
+  const u = new URLSearchParams(location.search);
+  const orderNo = (u.get('order_no') || '').trim();
+  const email = (u.get('email') || '').trim();
+  if (orderNo) $('#orderNo').value = orderNo;
+  if (email) $('#email').value = email;
+  // localStorage'tan email
+  if (!email) {
+    const last = (localStorage.getItem('tt_last_order_email') || '').trim();
+    if (last) $('#email').value = last;
+  }
+  // İkisi de varsa otomatik sorgula
+  if (orderNo && (email || $('#email').value)) {
+    submitTrack();
+  }
+}
+
+(async () => {
+  let tries = 0;
+  while (!window.api && tries++ < 30) await new Promise(r => setTimeout(r, 100));
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ subject | default("TecnoTools") }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f5fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;color:#1a1f2e;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3f5fa;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.06);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#2563eb,#1e40af);padding:22px 28px;color:#fff;">
+              <div style="font-weight:800;font-size:20px;letter-spacing:-.02em;">TecnoTools</div>
+              <div style="font-size:11px;opacity:.85;letter-spacing:.15em;text-transform:uppercase;margin-top:2px;">{{ header_sub | default("Profesyonel Aletler") }}</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;line-height:1.6;font-size:14.5px;">
+              {% block content %}{% endblock %}
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8fafc;padding:18px 28px;font-size:12px;color:#64748b;text-align:center;border-top:1px solid #e2e8f0;">
+              <div>Bu otomatik bir bilgilendirme e-postasıdır.</div>
+              <div style="margin-top:4px;"><a href="{{ store_url }}" style="color:#2563eb;text-decoration:none;">tecnotools.com</a></div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

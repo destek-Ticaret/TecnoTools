@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="tt-api-base" content="http://localhost:8000" />
+  <meta name="description" content="Siparişinizi tamamlayın — güvenli ödeme, hızlı kargo." />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Ödeme — TecnoTools</title>
+  <link rel="icon" href="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="js/api.js?v=20260602" defer></script>
+  <style>
+    :root {
+      --bg: #f6f7fb; --bg2: #eef0f7; --surface: #ffffff;
+      --border: #e1e5ef; --border-2: #d3d9e6;
+      --primary: #2563eb; --primary-dark: #1d4ed8; --primary-soft: #dbeafe;
+      --accent: #db2777; --accent-soft: #fce7f3;
+      --success: #10b981; --success-soft: #d1fae5;
+      --warning: #f59e0b; --warning-soft: #fef3c7;
+      --danger:  #ef4444; --danger-soft: #fee2e2;
+      --info:    #3b82f6; --info-soft: #dbeafe;
+      --text: #0f172a; --text-2: #334155; --muted: #64748b;
+      --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
+      --shadow: 0 4px 16px rgba(15,23,42,.06);
+      --shadow-lg: 0 16px 40px rgba(15,23,42,.10);
+      --radius: 14px; --radius-sm: 10px;
+    }
+    [data-theme="dark"] {
+      --bg: #0b1220; --bg2: #111a2e; --surface: #131d36;
+      --border: #233356; --border-2: #2c4070;
+      --primary-soft: #1e3a8a; --accent-soft: #831843;
+      --info-soft: #1e3a8a;
+      --text: #e6ecf7; --text-2: #c1cce0; --muted: #8b97b3;
+      --shadow: 0 4px 16px rgba(0,0,0,.30);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { font-family: inherit; cursor: pointer; }
+    img { display: block; max-width: 100%; }
+
+    /* ── HEADER ── */
+    .hdr { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.92); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); border-bottom: 1px solid var(--border); }
+    [data-theme="dark"] .hdr { background: rgba(11,18,32,.85); }
+    .hdr-inner { max-width: 1280px; margin: 0 auto; padding: .85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .brand { display: flex; align-items: center; gap: .55rem; font-weight: 800; color: var(--text); font-size: 1.05rem; text-decoration: none; }
+    .brand:hover { text-decoration: none; }
+    .brand-logo { width: 38px; height: 38px; border-radius: 10px; overflow: hidden; background: var(--surface); box-shadow: 0 2px 6px rgba(15,23,42,.08); }
+    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .hdr-steps { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .85rem; }
+    .hdr-steps .step { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .55rem; border-radius: 999px; }
+    .hdr-steps .step.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+    .hdr-steps .step.done { color: var(--success); }
+    .hdr-steps .num { width: 20px; height: 20px; border-radius: 50%; background: var(--bg2); color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; font-size: .72rem; font-weight: 800; }
+    .hdr-steps .step.active .num { background: var(--primary); color: #fff; }
+    .hdr-steps .step.done .num { background: var(--success); color: #fff; }
+    .hdr-steps .sep { color: var(--border-2); }
+    .hdr-actions { display: flex; align-items: center; gap: .5rem; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); display: grid; place-items: center; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+    .icon-btn:hover { background: var(--bg2); color: var(--primary); border-color: var(--primary); }
+    .icon-btn svg { width: 18px; height: 18px; }
+    @media (max-width: 800px) { .hdr-steps { display: none; } }
+
+    /* ── CONTAINER ── */
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+    .page-head { margin-bottom: 1.5rem; }
+    .page-head h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.01em; }
+    .page-head p { color: var(--muted); font-size: .92rem; margin-top: .25rem; }
+
+    /* ── LAYOUT ── */
+    .checkout-grid { display: grid; grid-template-columns: 1fr 400px; gap: 1.5rem; align-items: start; }
+    @media (max-width: 980px) { .checkout-grid { grid-template-columns: 1fr; } }
+
+    /* ── SECTION CARDS ── */
+    .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.25rem; }
+    .section h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: .55rem; }
+    .section h2 .num { width: 24px; height: 24px; border-radius: 50%; background: var(--primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .85rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .85rem; }
+    @media (max-width: 600px) { .grid, .grid-3 { grid-template-columns: 1fr; } }
+    .field { display: flex; flex-direction: column; gap: .3rem; }
+    .field.full { grid-column: 1 / -1; }
+    .label { font-size: .82rem; font-weight: 600; color: var(--text-2); }
+    .label .req { color: var(--danger); margin-left: 2px; }
+    .label .opt { color: var(--muted); font-weight: 500; font-size: .78rem; margin-left: 4px; }
+    .input, .select, .textarea {
+      width: 100%; padding: .7rem .85rem; border: 1px solid var(--border-2); border-radius: 10px;
+      font: inherit; font-size: .92rem; color: var(--text); background: var(--surface); outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .input:disabled, .select:disabled, .textarea:disabled { background: var(--bg2); color: var(--muted); cursor: not-allowed; }
+    .input.err, .select.err, .textarea.err { border-color: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
+    .textarea { resize: vertical; min-height: 70px; }
+    .field-hint { font-size: .76rem; color: var(--muted); }
+    .field-hint.err { color: var(--danger); }
+    .field-hint.ok { color: var(--success); }
+
+    /* Radio / Choice cards */
+    .choices { display: flex; flex-direction: column; gap: .5rem; }
+    .choice { display: flex; align-items: center; gap: .75rem; padding: .85rem 1rem; border: 1px solid var(--border-2); border-radius: 12px; cursor: pointer; transition: border-color .15s, background .15s; background: var(--surface); }
+    .choice:hover { border-color: var(--primary); }
+    .choice input[type="radio"] { margin: 0; accent-color: var(--primary); width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+    .choice.selected { border-color: var(--primary); background: var(--primary-soft); }
+    [data-theme="dark"] .choice.selected { background: rgba(37,99,235,.15); }
+    .choice .lbl { font-weight: 600; color: var(--text); font-size: .95rem; }
+    .choice .desc { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+    .choice .meta { margin-left: auto; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .card-logos { display: inline-flex; align-items: center; gap: .35rem; }
+    .card-logo { display: block; box-shadow: 0 1px 2px rgba(15,23,42,.08); border-radius: 4px; }
+    [data-theme="dark"] .card-logo { box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+
+    /* Kupon chip */
+    .coupon-bar { display: flex; align-items: center; gap: .5rem; padding: .65rem .85rem; background: var(--success-soft); color: var(--success); border-radius: 10px; font-size: .9rem; font-weight: 600; margin-top: .5rem; }
+    .coupon-bar button { margin-left: auto; background: none; border: none; color: var(--success); text-decoration: underline; cursor: pointer; font-weight: 600; }
+
+    /* ── SUMMARY ── */
+    .summary { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; position: sticky; top: 5.5rem; }
+    .summary h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; }
+    .item-list { margin-bottom: 1rem; }
+    .item-list .item { display: grid; grid-template-columns: 48px 1fr auto; gap: .65rem; padding: .55rem 0; border-bottom: 1px dashed var(--border); align-items: center; }
+    .item-list .item:last-child { border-bottom: none; }
+    .item-thumb { width: 48px; height: 48px; border-radius: 8px; background: var(--bg2); display: grid; place-items: center; overflow: hidden; font-size: 1.3rem; }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .item-name { font-size: .85rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+    .item-qty { font-size: .75rem; color: var(--muted); }
+    .item-price { font-size: .9rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .sum-row { display: flex; justify-content: space-between; align-items: baseline; padding: .45rem 0; font-size: .9rem; }
+    .sum-row .k { color: var(--muted); }
+    .sum-row .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .sum-row .v.discount { color: var(--success); }
+    .sum-divider { border: none; border-top: 1px dashed var(--border-2); margin: .35rem 0; }
+    .sum-row.total { font-size: 1.1rem; margin-top: .25rem; }
+    .sum-row.total .k { color: var(--text); font-weight: 700; }
+    .sum-row.total .v { color: var(--primary); font-weight: 800; font-size: 1.25rem; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; padding: .85rem 1.25rem; border-radius: 11px; font-weight: 700; font-size: .92rem; border: 1px solid transparent; transition: transform .1s, box-shadow .15s, background .15s, border-color .15s; text-decoration: none; }
+    .btn:active { transform: scale(.99); }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.28); }
+    .btn-primary:hover { box-shadow: 0 8px 22px rgba(37,99,235,.38); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+    .btn-block { width: 100%; }
+    .btn-block.lg { padding: 1rem 1.25rem; font-size: 1rem; margin-top: .5rem; }
+    .btn-link { background: none; color: var(--primary); border: none; padding: .25rem 0; font-weight: 600; cursor: pointer; }
+    .btn-link:hover { text-decoration: underline; }
+
+    /* Loading overlay */
+    .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.7); z-index: 300; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .overlay.show { display: flex; }
+    .overlay .box { background: var(--surface); border-radius: 16px; padding: 2rem; max-width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+    .overlay .spinner { width: 48px; height: 48px; margin: 0 auto 1rem; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty cart redirect */
+    .info-box { background: var(--info-soft); border: 1px solid #93c5fd; border-radius: 12px; padding: 1.5rem; text-align: center; color: var(--text-2); }
+    [data-theme="dark"] .info-box { color: #c1cce0; border-color: #1e3a8a; }
+    .info-box h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: .5rem; color: var(--text); }
+    .info-box p { margin-bottom: 1rem; font-size: .92rem; }
+    .info-box a { display: inline-block; }
+
+    /* Toast */
+    .toast-stack { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: .5rem; z-index: 200; }
+    .toast { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .75rem 1.1rem; box-shadow: var(--shadow); font-size: .88rem; font-weight: 600; animation: slideIn .25s ease; max-width: 360px; }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.danger { border-left: 4px solid var(--danger); }
+    .toast.info { border-left: 4px solid var(--primary); }
+    @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } }
+
+    /* KVKK onay */
+    .consent { display: flex; align-items: flex-start; gap: .55rem; font-size: .85rem; color: var(--text-2); line-height: 1.5; margin-top: .5rem; }
+    .consent input { margin-top: 3px; flex-shrink: 0; accent-color: var(--primary); width: 16px; height: 16px; }
+    .consent a { color: var(--primary); }
+
+    /* Footer */
+    .ftr { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--muted); }
+    .ftr a { color: var(--muted); margin: 0 .5rem; }
+    .ftr a:hover { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <header class="hdr">
+    <div class="hdr-inner">
+      <a class="brand" href="index.html">
+        <div class="brand-logo"><img src="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" alt="TecnoTools" /></div>
+        <span>TecnoTools</span>
+      </a>
+      <div class="hdr-steps" aria-label="Ödeme adımları">
+        <span class="step active" data-step="1"><span class="num">1</span> Sepet</span>
+        <span class="sep">›</span>
+        <span class="step active" data-step="2"><span class="num">2</span> Ödeme</span>
+        <span class="sep">›</span>
+        <span class="step" data-step="3"><span class="num">3</span> Onay</span>
+      </div>
+      <div class="hdr-actions">
+        <button class="icon-btn" title="Tema değiştir" onclick="toggleTheme()" aria-label="Tema değiştir">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <a class="icon-btn" href="cart.html" title="Sepete dön" aria-label="Sepet">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <a href="#main-content" class="skip-link">İçeriğe atla</a>
+  <style>
+  .skip-link { position: absolute; top: -100px; left: 1rem; z-index: 1000; background: var(--primary); color: #fff; padding: .65rem 1rem; border-radius: 8px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.4); transition: top .2s ease; }
+  .skip-link:focus { top: .75rem; outline: 3px solid #fbbf24; outline-offset: 2px; }
+  </style>
+
+  <main class="wrap" id="main-content" tabindex="-1">
+    <div class="page-head">
+      <h1>Ödeme</h1>
+      <p>Teslimat bilgilerini doldurun, kargo ve ödeme yöntemini seçin.</p>
+    </div>
+
+    <div id="content">
+      <!-- JS renderForm() / renderEmpty() doldurur -->
+    </div>
+  </main>
+
+  <footer class="ftr">
+    <a href="legal/gizlilik.html">Gizlilik</a> ·
+    <a href="legal/mesafeli-satis.html">Mesafeli Satış</a> ·
+    <a href="legal/kvkk.html">KVKK</a> ·
+    <a href="mailto:destek@tecnotools.org">Destek</a>
+    <div style="margin-top:.5rem;display:inline-flex;align-items:center;gap:.4rem;flex-wrap:wrap;">© TecnoTools — Güvenli ödeme · 256-bit SSL · 14 gün iade
+      <img src="images/visa.png" alt="Visa" style="height:20px;width:auto;display:block;margin-left:.4rem;" />
+      <img src="images/mastercard.png" alt="Mastercard" style="height:20px;width:auto;display:block;" />
+      <img src="images/troy.webp" alt="Troy" style="height:20px;width:auto;display:block;" />
+    </div>
+  </footer>
+
+  <div class="overlay" id="overlay">
+    <div class="box">
+      <div class="spinner"></div>
+      <h3 id="overlayTitle">İşleniyor…</h3>
+      <p style="color:var(--muted);font-size:.88rem;margin-top:.5rem;" id="overlaySub">Lütfen bekleyin.</p>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+<script>
+/* ── STATE ── */
+let cart = [];
+let productMap = {};
+let appliedCoupon = null;
+let shippingSettings = { shipping_free_threshold: 500, shipping_fee_default: 49.9, tax_rate: 20 };
+let shippingCarriers = [];     // backend'den dinamik (admin tarafından ayarlanabilir)
+let formData = {
+  name: '', email: '', phone: '', city: '', address: '',
+  invoice_type: 'individual',     // individual | corporate
+  tax_no: '', tax_office: '', company_title: '',
+  carrier: 'standard',            // standard, hızlı kargo vs. — şimdilik tek seçenek
+  payment_method: 'card',         // card | wire | cod
+  note: '',
+  consent_kvkk: false,
+  consent_distance_sales: false,
+};
+let submitting = false;
+let lookupDebounce = null;
+
+/* ── HELPERS ── */
+const $ = sel => document.querySelector(sel);
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escapeAttr = s => escapeHtml(s);
+const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const EMAIL_KEY = 'tt_last_order_email';
+const CONSENT_KEY = 'tt_consent_v2';
+const COUPON_SESSION_KEY = 'tt_coupon_for_checkout';
+const SHIPPING_FREE_DEFAULT = 500;
+const SHIPPING_FEE_DEFAULT = 49.9;
+
+function showToast(text, kind = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${kind}`;
+  el.textContent = text;
+  $('#toastStack').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 3000);
+}
+
+function showOverlay(title, sub = '') {
+  $('#overlayTitle').textContent = title;
+  $('#overlaySub').textContent = sub;
+  $('#overlay').classList.add('show');
+}
+function hideOverlay() { $('#overlay').classList.remove('show'); }
+
+function applyTheme() {
+  const t = localStorage.getItem('tt_theme') || 'light';
+  document.documentElement.dataset.theme = t === 'dark' ? 'dark' : '';
+}
+function toggleTheme() {
+  const cur = localStorage.getItem('tt_theme') || 'light';
+  localStorage.setItem('tt_theme', cur === 'dark' ? 'light' : 'dark');
+  applyTheme();
+}
+
+function getCart() { try { return JSON.parse(localStorage.getItem('tt_cart') || '[]'); } catch { return []; } }
+function effectiveStockOf(item) {
+  const p = productMap[item.id];
+  if (!p) return 0;
+  return typeof p.effective_stock === 'number' ? p.effective_stock : (p.stock || 0);
+}
+
+function computeTotals() {
+  const subtotal = cart.reduce((s, it) => {
+    const p = productMap[it.id];
+    const price = p ? Number(p.price || 0) : Number(it.price || 0);
+    return s + price * (it.qty || 0);
+  }, 0);
+  let discount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.type === 'percent') discount = subtotal * (Number(appliedCoupon.value) / 100);
+    else if (appliedCoupon.type === 'fixed') discount = Math.min(Number(appliedCoupon.value), subtotal);
+  }
+  const taxable = Math.max(0, subtotal - discount);
+  const tax = taxable * (Number(shippingSettings.tax_rate) / 100);
+  const fee = Number(shippingSettings.shipping_fee_default) || 0;
+  const threshold = Number(shippingSettings.shipping_free_threshold) || 0;
+  const shipping = (taxable > 0 && taxable < threshold) ? fee : 0;
+  const total = taxable + tax + shipping;
+  return { subtotal, discount, tax, shipping, total, taxable };
+}
+
+function loadCouponFromSession() {
+  try {
+    const raw = sessionStorage.getItem(COUPON_SESSION_KEY);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (c && c.code && (c.type === 'percent' || c.type === 'fixed')) return c;
+  } catch (_) {}
+  return null;
+}
+function clearCouponSession() {
+  try { sessionStorage.removeItem(COUPON_SESSION_KEY); } catch (_) {}
+}
+
+function prefillFromStorage() {
+  // Üye girişi yapmışsa email'i doldur
+  try {
+    const access = localStorage.getItem('tt_customer_access');
+    if (access) {
+      // api mevcut olduğunda init'te detaylı çekeceğiz
+    }
+  } catch (_) {}
+  // Son başarılı siparişten email
+  const lastEmail = localStorage.getItem(EMAIL_KEY);
+  if (lastEmail && !formData.email) formData.email = lastEmail;
+}
+
+/* ── RENDER ── */
+function render() {
+  if (!cart.length) {
+    renderEmpty();
+    return;
+  }
+  renderForm();
+}
+
+function renderEmpty() {
+  $('#content').innerHTML = `
+    <div class="info-box">
+      <h2>Sepetiniz boş</h2>
+      <p>Ödeme yapabilmek için önce sepete ürün eklemelisiniz.</p>
+      <a href="index.html" class="btn btn-primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Alışverişe Başla
+      </a>
+    </div>
+  `;
+}
+
+function renderForm() {
+  const totals = computeTotals();
+  const items = cart.map(it => {
+    const p = productMap[it.id];
+    const currentPrice = p ? Number(p.price || 0) : Number(it.price || 0);
+    return `
+      <div class="item">
+        <div class="item-thumb">${it.image ? `<img src="${escapeAttr(it.image)}" alt="" />` : escapeHtml(it.icon || '📦')}</div>
+        <div>
+          <div class="item-name">${escapeHtml(it.name || '')}</div>
+          <div class="item-qty">${it.qty || 1} adet · ${fmt(currentPrice)}</div>
+        </div>
+        <div class="item-price">${fmt(currentPrice * (it.qty || 0))}</div>
+      </div>
+    `;
+  }).join('');
+
+  const couponChip = appliedCoupon ? `
+    <div class="coupon-bar">
+      ✓ <strong>${escapeHtml(appliedCoupon.code)}</strong> kuponu uygulandı
+      <button type="button" onclick="removeCoupon()">Kaldır</button>
+    </div>
+  ` : '';
+
+  $('#content').innerHTML = `
+    <div class="checkout-grid">
+      <div>
+        <form id="checkoutForm" onsubmit="event.preventDefault(); submitOrder();" novalidate>
+          <!-- 1) Teslimat -->
+          <div class="section">
+            <h2><span class="num">1</span> Teslimat Bilgileri</h2>
+            <div class="grid">
+              <div class="field full">
+                <label class="label" for="fName">Ad Soyad <span class="req">*</span></label>
+                <input class="input" id="fName" name="name" required minlength="3" maxlength="255" value="${escapeAttr(formData.name)}" />
+              </div>
+              <div class="field">
+                <label class="label" for="fEmail">E-posta <span class="req">*</span></label>
+                <input class="input" id="fEmail" name="email" type="email" required maxlength="255" value="${escapeAttr(formData.email)}" />
+                <span class="field-hint" id="hEmail">Sipariş onayı bu adrese gönderilecek.</span>
+              </div>
+              <div class="field">
+                <label class="label" for="fPhone">Telefon <span class="req">*</span></label>
+                <input class="input" id="fPhone" name="phone" type="tel" required minlength="8" maxlength="32" value="${escapeAttr(formData.phone)}" placeholder="0555 123 45 67" />
+              </div>
+              <div class="field">
+                <label class="label" for="fCity">İl / İlçe</label>
+                <input class="input" id="fCity" name="city" maxlength="64" value="${escapeAttr(formData.city)}" placeholder="İstanbul / Kadıköy" />
+              </div>
+              <div class="field">
+                <label class="label" for="fTaxNo">TCKN / VKN <span class="opt">(opsiyonel)</span></label>
+                <input class="input" id="fTaxNo" name="tax_no" inputmode="numeric" maxlength="11" value="${escapeAttr(formData.tax_no)}" placeholder="E-fatura gerekli ise" />
+                <span class="field-hint" id="hTax">11 hane = TCKN (bireysel) · 10 hane = VKN (kurumsal). GİB'den doğrulanır.</span>
+              </div>
+              <div class="field full">
+                <label class="label" for="fAddress">Adres <span class="req">*</span></label>
+                <textarea class="textarea" id="fAddress" name="address" required minlength="10" maxlength="500" placeholder="Mahalle, sokak, bina, daire no, posta kodu...">${escapeHtml(formData.address)}</textarea>
+              </div>
+            </div>
+            <!-- Fatura tipi (TCKN/VKN girilince corporate'a geçebilir) -->
+            <div class="field full" id="corpBox" style="display:none;margin-top:.85rem;">
+              <label class="label" for="fCompanyTitle">Şirket Unvanı <span class="req">*</span></label>
+              <input class="input" id="fCompanyTitle" name="company_title" maxlength="255" value="${escapeAttr(formData.company_title)}" placeholder="GİB sorgusundan otomatik doldurulur" />
+            </div>
+            <div class="field full" id="taxOfficeBox" style="display:none;margin-top:.65rem;">
+              <label class="label" for="fTaxOffice">Vergi Dairesi <span class="opt">(opsiyonel)</span></label>
+              <input class="input" id="fTaxOffice" name="tax_office" maxlength="128" value="${escapeAttr(formData.tax_office)}" />
+            </div>
+          </div>
+
+          <!-- 2) Kargo & Ödeme -->
+          <div class="section">
+            <h2><span class="num">2</span> Kargo &amp; Ödeme</h2>
+            <div class="field">
+              <label class="label">Kargo</label>
+              <div class="choices" id="carrierChoices">
+                <label class="choice selected" data-carrier="standard">
+                  <input type="radio" name="carrier" value="standard" checked />
+                  <div>
+                    <div class="lbl">Standart Kargo</div>
+                    <div class="desc">2-4 iş günü içerisinde teslimat</div>
+                  </div>
+                  <div class="meta">${totals.shipping === 0 ? 'Ücretsiz' : fmt(totals.shipping)}</div>
+                </label>
+              </div>
+            </div>
+            <div class="field" style="margin-top:1rem;">
+              <label class="label">Ödeme Yöntemi</label>
+              <div class="choices" id="paymentChoices">
+                <label class="choice selected" data-method="card">
+                  <input type="radio" name="payment_method" value="card" checked />
+                  <div>
+                    <div class="lbl">Kredi/Banka Kartı</div>
+                    <div class="desc">PayTR güvencesiyle 3D Secure ile ödeme</div>
+                  </div>
+                  <div class="meta card-logos" aria-label="Desteklenen kartlar">
+                    <img src="images/visa.png" alt="Visa" style="height:24px;width:auto;display:block;" />
+                    <img src="images/mastercard.png" alt="Mastercard" style="height:24px;width:auto;display:block;" />
+                    <img src="images/troy.webp" alt="Troy" style="height:24px;width:auto;display:block;" />
+                  </div>
+                </label>
+                <label class="choice" data-method="wire">
+                  <input type="radio" name="payment_method" value="wire" />
+                  <div>
+                    <div class="lbl">Havale / EFT</div>
+                    <div class="desc">Sipariş onayından sonra IBAN'a ödeme yapın</div>
+                  </div>
+                  <div class="meta">₺</div>
+                </label>
+                <label class="choice" data-method="cod">
+                  <input type="radio" name="payment_method" value="cod" />
+                  <div>
+                    <div class="lbl">Kapıda Ödeme</div>
+                    <div class="desc">Kargo geldiğinde nakit veya kart ile ödeyin</div>
+                  </div>
+                  <div class="meta">+₺</div>
+                </label>
+              </div>
+            </div>
+            <div class="field" style="margin-top:1rem;">
+              <label class="label" for="fNote">Sipariş Notu <span class="opt">(opsiyonel)</span></label>
+              <textarea class="textarea" id="fNote" name="note" maxlength="500" placeholder="Kargo için özel notunuz...">${escapeHtml(formData.note)}</textarea>
+            </div>
+          </div>
+
+          <!-- 3) Onay -->
+          <div class="section">
+            <h2><span class="num">3</span> Onay</h2>
+            <label class="consent">
+              <input type="checkbox" id="cKvkk" ${formData.consent_kvkk ? 'checked' : ''} />
+              <span>
+                <a href="legal/kvkk.html" target="_blank">KVKK aydınlatma metnini</a> ve
+                <a href="legal/gizlilik.html" target="_blank">gizlilik politikasını</a> okudum, kişisel verilerimin sipariş sürecinde işlenmesini kabul ediyorum. <span class="req">*</span>
+              </span>
+            </label>
+            <label class="consent" style="margin-top:.5rem;">
+              <input type="checkbox" id="cMs" ${formData.consent_distance_sales ? 'checked' : ''} />
+              <span>
+                <a href="legal/mesafeli-satis.html" target="_blank">Mesafeli satış sözleşmesini</a> okudum, kabul ediyorum. <span class="req">*</span>
+              </span>
+            </label>
+          </div>
+
+          <button class="btn btn-primary btn-block lg" type="submit" id="submitBtn">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <span id="submitLabel">Ödemeyi Tamamla</span> · ${fmt(totals.total)}
+          </button>
+          <div style="text-align:center;margin-top:.75rem;">
+            <a href="cart.html" class="continue-link" style="color:var(--muted);font-size:.85rem;">← Sepete dön</a>
+          </div>
+        </form>
+      </div>
+
+      <aside class="summary">
+        <h2>Sipariş Özeti</h2>
+        <div class="item-list">${items}</div>
+        <div class="sum-row">
+          <span class="k">Ara Toplam</span>
+          <span class="v">${fmt(totals.subtotal)}</span>
+        </div>
+        ${appliedCoupon ? `
+          <div class="sum-row">
+            <span class="k">İndirim${appliedCoupon.type === 'percent' ? ` (${appliedCoupon.value}%)` : ''}</span>
+            <span class="v discount">−${fmt(totals.discount)}</span>
+          </div>
+        ` : ''}
+        <div class="sum-row">
+          <span class="k">Kargo</span>
+          <span class="v">${totals.shipping === 0 ? 'Ücretsiz' : fmt(totals.shipping)}</span>
+        </div>
+        <div class="sum-row">
+          <span class="k">KDV (%${shippingSettings.tax_rate})</span>
+          <span class="v">${fmt(totals.tax)}</span>
+        </div>
+        <hr class="sum-divider" />
+        <div class="sum-row total">
+          <span class="k">Toplam</span>
+          <span class="v">${fmt(totals.total)}</span>
+        </div>
+        ${couponChip}
+        <div style="display:flex;align-items:center;gap:.5rem;margin-top:1.25rem;font-size:.78rem;color:var(--muted);">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          256-bit SSL · Güvenli ödeme
+        </div>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.6rem;">
+          <img src="images/visa.png" alt="Visa" style="height:24px;width:auto;display:block;" />
+          <img src="images/mastercard.png" alt="Mastercard" style="height:24px;width:auto;display:block;" />
+          <img src="images/troy.webp" alt="Troy" style="height:24px;width:auto;display:block;" />
+        </div>
+      </aside>
+    </div>
+  `;
+  attachFormHandlers();
+}
+
+function attachFormHandlers() {
+  // Form alanlarından state'e yaz
+  const fields = ['name', 'email', 'phone', 'city', 'address', 'tax_no', 'tax_office', 'company_title', 'note'];
+  fields.forEach(name => {
+    const el = document.querySelector(`[name="${name}"]`);
+    if (!el) return;
+    el.addEventListener('input', () => { formData[name] = el.value; });
+  });
+
+  // TCKN/VKN → GİB sorgu (debounce 600ms)
+  const taxEl = document.getElementById('fTaxNo');
+  if (taxEl) {
+    taxEl.addEventListener('input', () => {
+      formData.tax_no = taxEl.value;
+      clearTimeout(lookupDebounce);
+      const hint = document.getElementById('hTax');
+      const val = taxEl.value.trim();
+      // 11 hane → TCKN (bireysel), 10 hane → VKN (kurumsal)
+      if (val.length === 10 || val.length === 11) {
+        lookupDebounce = setTimeout(() => lookupTax(val, hint), 600);
+      } else {
+        if (hint) { hint.classList.remove('ok', 'err'); hint.textContent = '11 hane = TCKN (bireysel) · 10 hane = VKN (kurumsal). GİB\'den doğrulanır.'; }
+        document.getElementById('corpBox').style.display = 'none';
+        document.getElementById('taxOfficeBox').style.display = 'none';
+        formData.invoice_type = 'individual';
+      }
+    });
+  }
+
+  // Radio choice kartları (görsel seçili)
+  document.querySelectorAll('.choices').forEach(group => {
+    group.querySelectorAll('.choice').forEach(ch => {
+      ch.addEventListener('click', () => {
+        group.querySelectorAll('.choice').forEach(c => c.classList.remove('selected'));
+        ch.classList.add('selected');
+        const input = ch.querySelector('input');
+        if (input) {
+          input.checked = true;
+          if (input.name === 'carrier') formData.carrier = input.value;
+          if (input.name === 'payment_method') formData.payment_method = input.value;
+        }
+      });
+    });
+  });
+
+  // Consent checkbox'ları
+  const cKvkk = document.getElementById('cKvkk');
+  if (cKvkk) cKvkk.addEventListener('change', () => { formData.consent_kvkk = cKvkk.checked; });
+  const cMs = document.getElementById('cMs');
+  if (cMs) cMs.addEventListener('change', () => { formData.consent_distance_sales = cMs.checked; });
+}
+
+async function lookupTax(value, hintEl) {
+  if (!window.api || !api.tax || !api.tax.lookup) return;
+  try {
+    if (hintEl) { hintEl.classList.remove('err'); hintEl.classList.add('ok'); hintEl.textContent = 'GİB\'den sorgulanıyor…'; }
+    const res = await api.tax.lookup(value, { queryGib: true });
+    if (res && res.success) {
+      const isCorporate = res.kind === 'corporate';
+      formData.invoice_type = isCorporate ? 'corporate' : 'individual';
+      if (isCorporate) {
+        formData.company_title = res.title || '';
+        formData.tax_office = res.tax_office || '';
+        const tEl = document.getElementById('fCompanyTitle'); if (tEl) tEl.value = res.title || '';
+        const oEl = document.getElementById('fTaxOffice'); if (oEl) oEl.value = res.tax_office || '';
+        document.getElementById('corpBox').style.display = 'block';
+        document.getElementById('taxOfficeBox').style.display = 'block';
+        if (hintEl) hintEl.textContent = '✓ Kurumsal mükellef bulundu.';
+      } else {
+        document.getElementById('corpBox').style.display = 'none';
+        document.getElementById('taxOfficeBox').style.display = 'none';
+        if (hintEl) hintEl.textContent = '✓ Bireysel mükellef (TCKN doğrulandı).';
+      }
+    } else {
+      if (hintEl) { hintEl.classList.remove('ok'); hintEl.classList.add('err'); hintEl.textContent = 'GİB\'de bulunamadı — bilgileri manuel girin.'; }
+    }
+  } catch (e) {
+    if (hintEl) { hintEl.classList.remove('ok'); hintEl.classList.add('err'); hintEl.textContent = 'GİB sorgusu başarısız (' + (e.message || '') + ').'; }
+  }
+}
+
+function removeCoupon() {
+  appliedCoupon = null;
+  clearCouponSession();
+  render();
+}
+
+/* ── VALIDATE ── */
+function validateForm() {
+  const required = [
+    { id: 'fName', name: 'Ad Soyad', min: 3 },
+    { id: 'fEmail', name: 'E-posta', test: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
+    { id: 'fPhone', name: 'Telefon', min: 8 },
+    { id: 'fAddress', name: 'Adres', min: 10 },
+  ];
+  for (const f of required) {
+    const el = document.getElementById(f.id);
+    if (!el) continue;
+    const v = (el.value || '').trim();
+    el.classList.remove('err');
+    if (!v) { el.classList.add('err'); showToast(`${f.name} zorunlu.`, 'danger'); el.focus(); return false; }
+    if (f.min && v.length < f.min) { el.classList.add('err'); showToast(`${f.name} en az ${f.min} karakter olmalı.`, 'danger'); el.focus(); return false; }
+    if (f.test && !f.test(v)) { el.classList.add('err'); showToast(`${f.name} geçersiz.`, 'danger'); el.focus(); return false; }
+  }
+  if (!formData.consent_kvkk) { showToast('KVKK onayı zorunlu.', 'danger'); return false; }
+  if (!formData.consent_distance_sales) { showToast('Mesafeli satış sözleşmesi onayı zorunlu.', 'danger'); return false; }
+  return true;
+}
+
+/* ── SUBMIT ── */
+async function submitOrder() {
+  if (submitting) return;
+  if (!validateForm()) return;
+
+  // Sepetteki tüm ürünleri son bir kez stok kontrolünden geçir
+  for (const it of cart) {
+    if (effectiveStockOf(it) < it.qty) {
+      showToast(`${it.name || 'Ürün'} için stok yetersiz. Sepete dönün.`, 'danger');
+      setTimeout(() => location.href = 'cart.html', 1500);
+      return;
+    }
+  }
+
+  submitting = true;
+  const btn = document.getElementById('submitBtn');
+  if (btn) btn.disabled = true;
+  showOverlay('Siparişiniz oluşturuluyor…', 'Lütfen bekleyin.');
+
+  // state'i formdan tazele (kullanıcı yazdıktan sonra input'lar yazıldı)
+  formData.name = document.getElementById('fName').value.trim();
+  formData.email = document.getElementById('fEmail').value.trim();
+  formData.phone = document.getElementById('fPhone').value.trim();
+  formData.city = document.getElementById('fCity').value.trim();
+  formData.address = document.getElementById('fAddress').value.trim();
+  formData.tax_no = document.getElementById('fTaxNo').value.trim();
+  formData.tax_office = document.getElementById('fTaxOffice').value.trim();
+  formData.company_title = document.getElementById('fCompanyTitle').value.trim();
+  formData.note = document.getElementById('fNote').value.trim();
+
+  // Email'i sakla — order-success bunu kullanıyor
+  try { localStorage.setItem(EMAIL_KEY, formData.email); } catch (_) {}
+
+  // Checkout payload
+  const payload = {
+    items: cart.map(it => ({ product_id: it.id, qty: it.qty })),
+    customer_name: formData.name,
+    customer_email: formData.email,
+    customer_phone: formData.phone,
+    customer_city: formData.city || null,
+    customer_address: formData.address,
+    coupon_code: appliedCoupon ? appliedCoupon.code : null,
+    note: formData.note || null,
+    payment_method: formData.payment_method,
+    tax_no: formData.tax_no || null,
+    tax_office: formData.tax_office || null,
+    company_title: formData.company_title || null,
+  };
+
+  try {
+    const res = await api.orders.checkout(payload);
+    if (!res || !res.order_no) throw new Error('Sipariş oluşturulamadı.');
+    const orderNo = res.order_no;
+    const paytr = res.payment_url || res.iframe_url || res.redirect_url || res.payment_token;
+    // Backend PayTR iframe_token'i veya redirect URL'i döner
+    if (res.iframe_token && res.ok_url) {
+      // PayTR iframe akışı: ok_url'e order_no ekleyerek yönlendir, PayTR iframe orada açılır
+      const okUrl = new URL(res.ok_url, location.origin);
+      okUrl.searchParams.set('order_no', orderNo);
+      hideOverlay();
+      location.href = okUrl.toString();
+      return;
+    }
+    if (paytr && /^https?:\/\//.test(paytr)) {
+      hideOverlay();
+      // PayTR/Stripe yönlendirmesi — başarı sayfasına order_no ile geri dönecek
+      const sep = paytr.includes('?') ? '&' : '?';
+      const url = paytr + sep + 'order_no=' + encodeURIComponent(orderNo);
+      location.href = url;
+      return;
+    }
+    // Yönlendirme yoksa direkt success sayfasına git (havale / kapıda)
+    hideOverlay();
+    clearCouponSession();
+    location.href = 'order-success.html?order_no=' + encodeURIComponent(orderNo);
+  } catch (e) {
+    hideOverlay();
+    submitting = false;
+    if (btn) btn.disabled = false;
+    showToast(e.message || 'Sipariş oluşturulamadı.', 'danger');
+  }
+}
+
+/* ── INIT ── */
+async function loadSettings() {
+  if (!window.api || !api.settings || !api.settings.list) return;
+  try {
+    const s = await api.settings.list();
+    if (s && typeof s === 'object') {
+      if (s.shipping_free_threshold !== undefined) shippingSettings.shipping_free_threshold = Number(s.shipping_free_threshold);
+      if (s.shipping_fee_default !== undefined) shippingSettings.shipping_fee_default = Number(s.shipping_fee_default);
+      if (s.tax_rate !== undefined) shippingSettings.tax_rate = Number(s.tax_rate);
+    }
+  } catch (_) {}
+}
+
+async function loadProducts() {
+  if (!window.api) return;
+  try {
+    const all = await api.products.listPublic();
+    productMap = {};
+    (all || []).forEach(p => { productMap[p.id] = p; });
+  } catch (e) { productMap = {}; }
+}
+
+async function loadCustomerPrefill() {
+  // Üye girişi yapmışsa ad/email bilgilerini doldur
+  if (!window.api || !api.customerAuth) return;
+  try {
+    if (api.customerAuth.isLoggedIn && api.customerAuth.isLoggedIn()) {
+      const me = await api.customerAuth.me();
+      if (me) {
+        if (!formData.name && me.name) formData.name = me.name;
+        if (!formData.email && me.email) formData.email = me.email;
+        if (!formData.phone && me.phone) formData.phone = me.phone;
+        if (!formData.city && me.city) formData.city = me.city;
+        if (!formData.address && me.address) formData.address = me.address;
+      }
+    }
+  } catch (_) {}
+}
+
+async function init() {
+  applyTheme();
+  prefillFromStorage();
+  appliedCoupon = loadCouponFromSession();
+  cart = getCart();
+
+  if (!cart.length) {
+    renderEmpty();
+    return;
+  }
+
+  render(); // ilk render — totals hesabı için gerekli
+  await Promise.all([loadSettings(), loadProducts(), loadCustomerPrefill()]);
+  render(); // bilgilerle yeniden render
+}
+
+(async () => {
+  let tries = 0;
+  while (!window.api && tries++ < 30) await new Promise(r => setTimeout(r, 100));
+  init();
+})();
+</script>
+</body>
+</html>

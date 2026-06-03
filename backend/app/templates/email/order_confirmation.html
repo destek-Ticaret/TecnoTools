@@ -1,0 +1,42 @@
+{% extends "_base.html" %}
+{% block content %}
+<h2 style="margin:0 0 12px;font-size:20px;font-weight:800;">Siparişiniz alındı 🎉</h2>
+<p style="margin:0 0 18px;color:#475569;">Merhaba <strong>{{ order.customer_name }}</strong>, siparişinizi aldık ve ödemeniz onaylandı. Hazırlık aşamasına geçti.</p>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+  <tr>
+    <td style="font-size:12px;color:#64748b;letter-spacing:.05em;text-transform:uppercase;">Sipariş No</td>
+    <td align="right" style="font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;color:#2563eb;">{{ order.order_no }}</td>
+  </tr>
+  <tr>
+    <td style="font-size:12px;color:#64748b;letter-spacing:.05em;text-transform:uppercase;padding-top:6px;">Tutar</td>
+    <td align="right" style="font-weight:700;padding-top:6px;">₺{{ "%.2f"|format(order.total) }}</td>
+  </tr>
+</table>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:18px;">
+  <thead>
+    <tr>
+      <th align="left" style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#64748b;padding:8px 0;border-bottom:1px solid #e2e8f0;">Ürün</th>
+      <th align="center" style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#64748b;padding:8px 0;border-bottom:1px solid #e2e8f0;">Adet</th>
+      <th align="right" style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#64748b;padding:8px 0;border-bottom:1px solid #e2e8f0;">Tutar</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for it in order.items %}
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #f1f5f9;">{{ it.name }}</td>
+      <td align="center" style="padding:10px 0;border-bottom:1px solid #f1f5f9;">{{ it.qty }}</td>
+      <td align="right" style="padding:10px 0;border-bottom:1px solid #f1f5f9;">₺{{ "%.2f"|format(it.price * it.qty) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div style="background:#f1f5f9;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;">
+  <div style="margin-bottom:4px;"><strong>Teslimat:</strong> {{ order.customer_address }}{% if order.customer_city %}, {{ order.customer_city }}{% endif %}</div>
+  <div><strong>Telefon:</strong> {{ order.customer_phone }}</div>
+</div>
+
+<a href="{{ store_url }}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:11px 22px;border-radius:9px;font-weight:600;">Siparişimi Takip Et</a>
+{% endblock %}

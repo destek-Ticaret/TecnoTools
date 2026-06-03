@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="tt-api-base" content="http://localhost:8000" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Ödeme Tamamlanamadı — TecnoTools</title>
+  <link rel="icon" href="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="js/api.js?v=20260602" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #f6f7fb 0%, #eef0f7 100%);
+      min-height: 100vh; color: #0f172a; line-height: 1.5;
+    }
+    [data-theme="dark"] body {
+      background: linear-gradient(135deg, #0b1220 0%, #111a2e 100%);
+      color: #e6ecf7;
+    }
+    [data-theme="dark"] .card { background: #131d36; border-color: #233356; }
+    [data-theme="dark"] .head { border-color: #233356; }
+    [data-theme="dark"] .info-grid { background: #0b1220; border-color: #233356; }
+    [data-theme="dark"] .info-row + .info-row { border-color: #233356; }
+    [data-theme="dark"] .info-key { color: #94a3b8; }
+    [data-theme="dark"] .brand-sub { color: #94a3b8; }
+    [data-theme="dark"] .subtitle { color: #94a3b8; }
+    [data-theme="dark"] .help-list { color: #94a3b8; }
+    [data-theme="dark"] .help-list li { color: #c1cce0; }
+    [data-theme="dark"] .topbar a { color: #c1cce0; }
+    [data-theme="dark"] .topbar a:hover { color: #fff; }
+
+    .topbar {
+      background: #0f172a; color: #cdd5e3; padding: .65rem 0;
+      font-size: .82rem;
+    }
+    .topbar .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .topbar a { color: #cdd5e3; text-decoration: none; margin-left: 1.25rem; }
+    .topbar a:hover { color: #fff; }
+
+    .container { max-width: 480px; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; }
+    .card { background: #fff; border: 1px solid #e1e5ef; border-radius: 20px; box-shadow: 0 20px 60px rgba(15,23,42,.10); overflow: hidden; }
+    .head { padding: 28px 32px 22px; text-align: center; border-bottom: 1px solid #e1e5ef; }
+    .brand { font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
+    .brand-sub { color: #64748b; font-size: 13px; margin-top: 4px; }
+    .body { padding: 30px 32px 32px; text-align: center; }
+    .status-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+    .status-icon svg { width: 38px; height: 38px; stroke-width: 3; }
+    .status-icon.bad { background: #fee2e2; color: #dc2626; }
+    .status-icon.loading { background: #e0e7ff; color: #4338ca; animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .8; } }
+    h1 { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 8px; }
+    .subtitle { color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 22px; }
+    .info-grid { background: #f6f7fb; border: 1px solid #e1e5ef; border-radius: 12px; padding: 16px 18px; text-align: left; margin-top: 16px; }
+    .info-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; gap: 1rem; }
+    .info-row + .info-row { border-top: 1px dashed #d3d9e6; }
+    .info-key { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; flex-shrink: 0; }
+    .info-val { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; word-break: break-word; }
+    .info-val.mono { font-family: 'Inter', monospace; letter-spacing: .01em; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #fef2f2; color: #b91c1c; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 4px; }
+    .meta-foot { margin-top: 20px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+
+    .actions { display: flex; flex-direction: column; gap: .55rem; margin-top: 20px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .75rem 1.1rem; border-radius: 10px; font-weight: 600; font-size: .9rem;
+      text-decoration: none; cursor: pointer; border: 1px solid transparent;
+      font-family: inherit; transition: background .15s, border-color .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+    .btn-primary:hover { box-shadow: 0 6px 18px rgba(37,99,235,.32); }
+    .btn-secondary { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-ghost { background: transparent; color: #475569; border-color: transparent; }
+    .btn-ghost:hover { background: #f1f5f9; color: #0f172a; }
+    [data-theme="dark"] .btn-ghost { color: #94a3b8; }
+    [data-theme="dark"] .btn-ghost:hover { background: #1e293b; color: #e6ecf7; }
+    [data-theme="dark"] .btn-secondary { background: #1e293b; color: #e6ecf7; border-color: #334155; }
+    [data-theme="dark"] .btn-secondary:hover { background: #233356; }
+
+    .help-block { text-align: left; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 14px 16px; margin-top: 18px; }
+    [data-theme="dark"] .help-block { background: #2a1a0a; border-color: #7c2d12; }
+    .help-block h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #9a3412; margin-bottom: 6px; font-weight: 700; }
+    [data-theme="dark"] .help-block h3 { color: #fdba74; }
+    .help-list { font-size: 13px; color: #7c2d12; line-height: 1.65; padding-left: 18px; }
+    [data-theme="dark"] .help-list { color: #fdba74; }
+
+    @media (max-width: 520px) {
+      .topbar { display: none; }
+      .container { padding: 1rem 1rem 2rem; }
+      .head, .body { padding-left: 22px; padding-right: 22px; }
+      .skip-link { position: absolute; top: -100px; left: 1rem; z-index: 1000; background: var(--primary); color: #fff; padding: .65rem 1rem; border-radius: 8px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.4); transition: top .2s ease; }
+      .skip-link:focus { top: .75rem; outline: 3px solid #fbbf24; outline-offset: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">İçeriğe atla</a>
+  <div class="topbar">
+    <div class="container">
+      <a href="index.html" style="margin-left:0;">← Mağazaya dön</a>
+      <span>
+        <a href="legal/gizlilik.html">Gizlilik</a>
+        <a href="legal/mesafeli-satis.html">Mesafeli Satış</a>
+        <a href="legal/kvkk.html">KVKK</a>
+      </span>
+    </div>
+  </div>
+
+  <main class="container" id="main-content" tabindex="-1">
+    <div class="card">
+      <div class="head">
+        <div class="brand">TecnoTools</div>
+        <div class="brand-sub">Ödeme Tamamlanamadı</div>
+      </div>
+      <div class="body" id="body">
+        <!-- JS renderFail() / renderLoading() doldurur -->
+      </div>
+    </div>
+  </main>
+
+<script>
+/* ── TEMA ── */
+function applyTheme() {
+  const t = localStorage.getItem('tt_theme') || 'light';
+  document.documentElement.dataset.theme = t === 'dark' ? 'dark' : '';
+}
+applyTheme();
+
+/* ── URL yardımcıları ──
+   PayTR'ın döndürebildiği tüm parametreleri tek noktadan çekiyoruz.
+   - merchant_oid  : sipariş no
+   - failed_status_code / error_no : PayTR hata kodu (örn "6" = kart limit yetersiz)
+   - fail_message  : bazı entegratörlerde olur
+   - order_no      : manuel test için
+   - reason        : genel override
+*/
+function getParams() {
+  const u = new URLSearchParams(location.search);
+  return {
+    orderNo: (u.get('order_no') || u.get('merchant_oid') || u.get('order') || '').trim(),
+    failedStatusCode: (u.get('failed_status_code') || u.get('status') || '').trim(),
+    errorNo: (u.get('error_no') || '').trim(),
+    failMessage: (u.get('fail_message') || u.get('message') || u.get('reason') || '').trim(),
+  };
+}
+
+/* PayTR hata kodlarını insan-dostu metne çevir.
+   Kaynak: https://www.paytr.com/magaza/destek — sık karşılaşılan kodlar.
+   Bilinmeyen kod için generic mesaj döner. */
+function paytrErrorMessage(code) {
+  const map = {
+    '1':  'Kart bilgilerinde sorun var. Lütfen bilgileri kontrol edin.',
+    '2':  'Yetersiz bakiye veya kart limiti aşıldı.',
+    '3':  'Kart sahibi veya banka işlemi onaylamadı.',
+    '4':  'Güvenlik nedeniyle işlem reddedildi. Bankanızı arayın.',
+    '5':  'Kartınız online alışverişe kapalı. Bankanızdan açtırın.',
+    '6':  '3D Secure doğrulaması başarısız oldu.',
+    '7':  'İşlem süresi doldu. Lütfen tekrar deneyin.',
+    '8':  'Banka onayı alınamadı. Lütfen tekrar deneyin veya başka kart deneyin.',
+    '9':  'İşlem iptal edildi.',
+    '10': 'Geçersiz işlem.',
+    '11': 'Bu kart ile işlem yapılamaz.',
+    '12': 'Aynı sipariş için mükerrer işlem algılandı.',
+    '13': 'Sipariş tutarında hata tespit edildi.',
+  };
+  return map[code] || '';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── api.js yüklenmesini bekle ── */
+async function waitForApi() {
+  let tries = 0;
+  while (!window.api && tries++ < 30) await new Promise(r => setTimeout(r, 100));
+  return !!window.api;
+}
+
+/* ── Render fonksiyonları ── */
+function renderLoading() {
+  document.getElementById('body').innerHTML = `
+    <div class="status-icon loading" id="statusIcon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+    </div>
+    <h1>İşlem yükleniyor…</h1>
+    <p class="subtitle">Lütfen bekleyin.</p>
+  `;
+}
+
+function renderFail(p) {
+  // Sebep metnini öncelik sırasına göre belirle:
+  // 1) PayTR/override mesajı, 2) PayTR kod sözlüğü, 3) generic mesaj
+  let reasonHtml = '';
+  if (p.failMessage) {
+    reasonHtml = escapeHtml(p.failMessage);
+  } else if (p.failedStatusCode && paytrErrorMessage(p.failedStatusCode)) {
+    reasonHtml = escapeHtml(paytrErrorMessage(p.failedStatusCode));
+  } else if (p.errorNo && paytrErrorMessage(p.errorNo)) {
+    reasonHtml = escapeHtml(paytrErrorMessage(p.errorNo));
+  } else {
+    reasonHtml = 'Ödeme işlemi tamamlanamadı. Kart bilgilerinizi kontrol edip tekrar deneyebilirsiniz.';
+  }
+
+  const orderRow = p.orderNo ? `
+    <div class="info-row">
+      <span class="info-key">Sipariş No</span>
+      <span class="info-val mono">${escapeHtml(p.orderNo)}</span>
+    </div>
+  ` : '';
+  const codeRow = p.failedStatusCode || p.errorNo ? `
+    <div class="info-row">
+      <span class="info-key">Hata Kodu</span>
+      <span class="info-val">${escapeHtml(p.failedStatusCode || p.errorNo)}</span>
+    </div>
+  ` : '';
+
+  document.getElementById('body').innerHTML = `
+    <div class="status-icon bad" id="statusIcon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <h1>Ödeme tamamlanamadı</h1>
+    <p class="subtitle">${reasonHtml}</p>
+    ${(orderRow || codeRow) ? `
+      <div class="info-grid">
+        ${orderRow}${codeRow}
+      </div>
+    ` : ''}
+    <div class="help-block">
+      <h3>Sık karşılaşılan nedenler</h3>
+      <ul class="help-list">
+        <li>Kart bilgilerinde (numara, son kullanma, CVV) yazım hatası</li>
+        <li>Kart online alışverişe kapalı olabilir — bankanızı arayın</li>
+        <li>3D Secure şifrenizi yanlış girmiş olabilirsiniz</li>
+        <li>Kart limitiniz yetersiz olabilir</li>
+      </ul>
+    </div>
+    <div class="actions">
+      <a class="btn btn-primary" href="index.html#cart">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        Sepete Dön ve Tekrar Dene
+      </a>
+      <a class="btn btn-secondary" href="index.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Alışverişe Devam
+      </a>
+      <a class="btn btn-ghost" href="mailto:destek@tecnotools.org">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Destek: destek@tecnotools.org
+      </a>
+    </div>
+    <p class="meta-foot">Sepetinizdeki ürünler korundu — giriş yaparak veya misafir olarak tekrar ödeme yapabilirsiniz.</p>
+  `;
+}
+
+/* ── Init ── */
+async function init() {
+  const p = getParams();
+  // Çok kısa bir "yükleniyor" anı (flash) — sonra fail kartını göster
+  renderLoading();
+  await new Promise(r => setTimeout(r, 300));
+  renderFail(p);
+
+  // Sepet KORUNUR (kullanıcı tekrar deneyebilsin).
+  // Sadece sipariş no varsa cart'taki o siparişe ait kalemleri silmek mantıklı olurdu,
+  // ama cart checkout'tan sonra zaten temizlendiği için burada bir şey yapmıyoruz.
+}
+
+(async () => {
+  if (!(await waitForApi())) {
+    // api.js yüklenmediyse bile render çalışsın (bu sayfa backend'e bağımlı değil)
+  }
+  init();
+})();
+</script>
+</body>
+</html>

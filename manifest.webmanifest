@@ -1,0 +1,21 @@
+{
+  "name": "TecnoTools",
+  "short_name": "TecnoTools",
+  "description": "Profesyonel el aletleri ve teknolojik ekipmanlar",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "lang": "tr",
+  "categories": ["shopping", "business"],
+  "icons": [
+    { "src": "Gemini_Generated_Image_bfu5uabfu5uabfu5.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "Gemini_Generated_Image_bfu5uabfu5uabfu5.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Sepetim", "url": "/index.html#cart", "icons": [{ "src": "Gemini_Generated_Image_bfu5uabfu5uabfu5.png", "sizes": "96x96" }] },
+    { "name": "Sipariş Takibi", "url": "/track-order.html", "icons": [{ "src": "Gemini_Generated_Image_bfu5uabfu5uabfu5.png", "sizes": "96x96" }] }
+  ]
+}

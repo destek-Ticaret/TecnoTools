@@ -1,0 +1,31 @@
+{% extends "_base.html" %}
+{% block content %}
+<h2 style="margin:0 0 12px;font-size:20px;font-weight:800;">İade talebiniz alındı 📦</h2>
+<p style="margin:0 0 18px;color:#475569;">Merhaba <strong>{{ rr.customer_name }}</strong>, iade talebinizi aldık. Ekibimiz en kısa sürede inceleyip size dönecek.</p>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+  <tr>
+    <td style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Sipariş No</td>
+    <td align="right" style="font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;color:#2563eb;">{{ rr.order_no }}</td>
+  </tr>
+  <tr>
+    <td style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;padding-top:6px;">İade Talebi No</td>
+    <td align="right" style="font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;padding-top:6px;">#{{ rr.id }}</td>
+  </tr>
+  <tr>
+    <td style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;padding-top:6px;">Tahmini İade Tutarı</td>
+    <td align="right" style="font-weight:700;padding-top:6px;">₺{{ "%.2f"|format(rr.refund_amount) }}</td>
+  </tr>
+</table>
+
+<div style="font-size:13px;color:#475569;margin-bottom:10px;font-weight:600;">İade edilecek ürünler:</div>
+<ul style="margin:0 0 18px;padding-left:20px;color:#475569;">
+{% for it in rr.items %}
+  <li>{{ it.name }} — <strong>{{ it.qty }}</strong> adet</li>
+{% endfor %}
+</ul>
+
+<div style="background:#f1f5f9;border-radius:10px;padding:14px 16px;font-size:13px;color:#475569;line-height:1.55;">
+  <strong>Sonraki adım:</strong> Talebiniz onaylandığında size kargo bilgilerini içeren ayrı bir e-posta göndereceğiz. Ürünleri orijinal ambalajında ve eksiksiz olarak iade etmeniz önemlidir.
+</div>
+{% endblock %}

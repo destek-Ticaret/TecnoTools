@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="tt-api-base" content="http://localhost:8000" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Sipariş Doğrulama — TecnoTools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="js/api.js?v=20260517" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #f6f7fb 0%, #eef0f7 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; color: #0f172a; }
+    .card { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(15,23,42,.12); max-width: 480px; width: 100%; overflow: hidden; }
+    .head { padding: 28px 32px 22px; text-align: center; border-bottom: 1px solid #e1e5ef; }
+    .brand { font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
+    .brand-sub { color: #64748b; font-size: 13px; margin-top: 4px; }
+    .body { padding: 30px 32px 32px; text-align: center; }
+    .status-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+    .status-icon svg { width: 38px; height: 38px; stroke-width: 3; }
+    .status-icon.ok { background: #d1fae5; color: #059669; }
+    .status-icon.bad { background: #fee2e2; color: #dc2626; }
+    .status-icon.loading { background: #e0e7ff; color: #4338ca; animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .8; } }
+    h1 { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 8px; }
+    .subtitle { color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 22px; }
+    .info-grid { background: #f6f7fb; border: 1px solid #e1e5ef; border-radius: 12px; padding: 16px 18px; text-align: left; margin-top: 16px; }
+    .info-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; }
+    .info-row + .info-row { border-top: 1px dashed #d3d9e6; }
+    .info-key { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+    .info-val { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .info-val.mono { font-family: 'Inter', monospace; letter-spacing: .01em; }
+    .meta-foot { margin-top: 20px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #dbeafe; color: #1d4ed8; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="brand">TecnoTools</div>
+      <div class="brand-sub">Sipariş Doğrulama</div>
+    </div>
+    <div class="body">
+      <div class="status-icon loading" id="statusIcon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+      </div>
+      <h1 id="statusTitle">Doğrulanıyor...</h1>
+      <p class="subtitle" id="statusSub">İmza kontrol ediliyor. Bu birkaç saniye sürebilir.</p>
+      <div class="info-grid" id="infoGrid" style="display:none;">
+        <div class="info-row">
+          <span class="info-key">Sipariş No</span>
+          <span class="info-val mono" id="vOrderNo">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Toplam Tutar</span>
+          <span class="info-val" id="vTotal">—</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">İmza Zamanı</span>
+          <span class="info-val" id="vIssuedAt" style="font-size:12px;">—</span>
+        </div>
+      </div>
+      <div class="meta-foot" id="metaFoot"></div>
+    </div>
+  </div>
+
+<script>
+function setStatus(state, title, sub) {
+  const icon = document.getElementById('statusIcon');
+  icon.className = 'status-icon ' + state;
+  if (state === 'ok') {
+    icon.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+  } else if (state === 'bad') {
+    icon.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  }
+  document.getElementById('statusTitle').textContent = title;
+  document.getElementById('statusSub').textContent = sub;
+}
+
+function fmtIssuedAt(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('tr-TR'); } catch (_) { return iso; }
+}
+
+async function run() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('t');
+  if (!token) {
+    setStatus('bad', 'Token eksik', 'Doğrulama için QR kodu yeniden tarayın.');
+    return;
+  }
+  // api.js defer ile yüklenir; gelene kadar bekle
+  let tries = 0;
+  while (!window.api && tries++ < 30) await new Promise(r => setTimeout(r, 100));
+  if (!window.api) {
+    setStatus('bad', 'Bağlantı hatası', 'API istemcisi yüklenemedi.');
+    return;
+  }
+  try {
+    const res = await api.orders.verifyBarcode(token);
+    if (!res || !res.valid) {
+      setStatus('bad', 'Geçersiz imza', 'Bu QR kod TecnoTools tarafından üretilmemiş veya değiştirilmiş olabilir.');
+      document.getElementById('metaFoot').innerHTML = '<span class="badge" style="background:#fee2e2;color:#dc2626;">RSA imza doğrulanamadı</span>';
+      return;
+    }
+    setStatus('ok', 'Geçerli sipariş', 'RSA imzası doğrulandı. Bu sipariş TecnoTools tarafından üretilmiştir.');
+    document.getElementById('vOrderNo').textContent = res.order_no || '—';
+    document.getElementById('vTotal').textContent = '₺' + (res.total || '0');
+    document.getElementById('vIssuedAt').textContent = fmtIssuedAt(res.issued_at);
+    document.getElementById('infoGrid').style.display = 'block';
+    document.getElementById('metaFoot').innerHTML = '<span class="badge">RSA-2048 · SHA-256 · PKCS1v15</span><br/>İmza, TecnoTools özel anahtarı ile üretilmiş ve sunucudaki genel anahtarla doğrulanmıştır.';
+  } catch (e) {
+    setStatus('bad', 'Sunucuya ulaşılamadı', 'Lütfen daha sonra tekrar deneyin.');
+  }
+}
+run();
+</script>
+</body>
+</html>

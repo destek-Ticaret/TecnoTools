@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="tt-api-base" content="http://localhost:8000" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Sipariş Başarılı — TecnoTools</title>
+  <link rel="icon" href="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="js/api.js?v=20260602" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #f6f7fb 0%, #eef0f7 100%);
+      min-height: 100vh; color: #0f172a; line-height: 1.5;
+    }
+    [data-theme="dark"] body {
+      background: linear-gradient(135deg, #0b1220 0%, #111a2e 100%);
+      color: #e6ecf7;
+    }
+    [data-theme="dark"] .card { background: #131d36; border-color: #233356; }
+    [data-theme="dark"] .head { border-color: #233356; }
+    [data-theme="dark"] .info-grid { background: #0b1220; border-color: #233356; }
+    [data-theme="dark"] .info-row + .info-row { border-color: #233356; }
+    [data-theme="dark"] .info-key { color: #94a3b8; }
+    [data-theme="dark"] .brand-sub { color: #94a3b8; }
+    [data-theme="dark"] .subtitle { color: #94a3b8; }
+    [data-theme="dark"] .fail-link { color: #94a3b8; }
+    [data-theme="dark"] .email-form { background: #0b1220; border-color: #233356; }
+    [data-theme="dark"] .email-input { background: #131d36; color: #e6ecf7; border-color: #233356; }
+    [data-theme="dark"] .topbar a { color: #c1cce0; }
+    [data-theme="dark"] .topbar a:hover { color: #fff; }
+
+    .topbar {
+      background: #0f172a; color: #cdd5e3; padding: .65rem 0;
+      font-size: .82rem;
+    }
+    .topbar .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .topbar a { color: #cdd5e3; text-decoration: none; margin-left: 1.25rem; }
+    .topbar a:hover { color: #fff; }
+
+    .container { max-width: 480px; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; }
+    .card { background: #fff; border: 1px solid #e1e5ef; border-radius: 20px; box-shadow: 0 20px 60px rgba(15,23,42,.10); overflow: hidden; }
+    .head { padding: 28px 32px 22px; text-align: center; border-bottom: 1px solid #e1e5ef; }
+    .brand { font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
+    .brand-sub { color: #64748b; font-size: 13px; margin-top: 4px; }
+    .body { padding: 30px 32px 32px; text-align: center; }
+    .status-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+    .status-icon svg { width: 38px; height: 38px; stroke-width: 3; }
+    .status-icon.ok { background: #d1fae5; color: #059669; }
+    .status-icon.bad { background: #fee2e2; color: #dc2626; }
+    .status-icon.loading { background: #e0e7ff; color: #4338ca; animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: .8; } }
+    h1 { font-size: 20px; font-weight: 800; letter-spacing: -.01em; margin-bottom: 8px; }
+    .subtitle { color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 22px; }
+    .info-grid { background: #f6f7fb; border: 1px solid #e1e5ef; border-radius: 12px; padding: 16px 18px; text-align: left; margin-top: 16px; }
+    .info-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; gap: 1rem; }
+    .info-row + .info-row { border-top: 1px dashed #d3d9e6; }
+    .info-key { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; flex-shrink: 0; }
+    .info-val { font-weight: 700; font-size: 15px; font-variant-numeric: tabular-nums; text-align: right; word-break: break-word; }
+    .info-val.mono { font-family: 'Inter', monospace; letter-spacing: .01em; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #dbeafe; color: #1d4ed8; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 4px; }
+    .meta-foot { margin-top: 20px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+    .actions { display: flex; flex-direction: column; gap: .55rem; margin-top: 20px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      padding: .7rem 1.1rem; border-radius: 10px; font-weight: 600; font-size: .9rem;
+      text-decoration: none; cursor: pointer; border: 1px solid transparent;
+      font-family: inherit; transition: background .15s, border-color .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+    .btn-primary:hover { box-shadow: 0 6px 18px rgba(37,99,235,.32); }
+    .btn-secondary { background: #f1f5f9; color: #0f172a; border-color: #cbd5e1; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .fail-link { margin-top: 16px; font-size: 12px; color: #64748b; }
+    .fail-link a { color: #2563eb; text-decoration: none; font-weight: 600; }
+    .fail-link a:hover { text-decoration: underline; }
+
+    /* Email prompt form */
+    .email-form { background: #f6f7fb; border: 1px solid #e1e5ef; border-radius: 12px; padding: 18px; margin-top: 12px; text-align: left; }
+    .email-form label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+    .email-input { width: 100%; padding: .65rem .85rem; border: 1px solid #cbd5e1; border-radius: 9px; font: inherit; font-size: 14px; color: #0f172a; background: #fff; outline: none; transition: border-color .15s; }
+    .email-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+    .email-submit { margin-top: 10px; width: 100%; }
+
+    /* Items list (sipariş kalemleri) */
+    .items-list { text-align: left; margin-top: 16px; }
+    .items-list h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; margin-bottom: 8px; font-weight: 700; }
+    .item-row { display: flex; gap: 10px; padding: 8px 0; align-items: center; border-bottom: 1px dashed #e2e8f0; }
+    .item-row:last-child { border-bottom: none; }
+    .item-thumb { width: 36px; height: 36px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem; overflow: hidden; }
+    .item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .item-info { flex: 1; min-width: 0; }
+    .item-name { font-size: 13px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-qty { font-size: 11px; color: #64748b; }
+    .item-price { font-size: 13px; font-weight: 700; color: #0f172a; white-space: nowrap; }
+
+    @media (max-width: 520px) {
+      .topbar { display: none; }
+      .container { padding: 1rem 1rem 2rem; }
+      .head, .body { padding-left: 22px; padding-right: 22px; }
+      .skip-link { position: absolute; top: -100px; left: 1rem; z-index: 1000; background: var(--primary); color: #fff; padding: .65rem 1rem; border-radius: 8px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.4); transition: top .2s ease; }
+      .skip-link:focus { top: .75rem; outline: 3px solid #fbbf24; outline-offset: 2px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">İçeriğe atla</a>
+  <div class="topbar">
+    <div class="container">
+      <a href="index.html" style="margin-left:0;">← Mağazaya dön</a>
+      <span>
+        <a href="legal/gizlilik.html">Gizlilik</a>
+        <a href="legal/mesafeli-satis.html">Mesafeli Satış</a>
+        <a href="legal/kvkk.html">KVKK</a>
+      </span>
+    </div>
+  </div>
+
+  <main class="container" id="main-content" tabindex="-1">
+    <div class="card">
+      <div class="head">
+        <div class="brand">TecnoTools</div>
+        <div class="brand-sub">Sipariş Tamamlandı</div>
+      </div>
+      <div class="body" id="body">
+        <!-- JS renderLoading() / renderSuccess() / renderEmailPrompt() / renderError() doldurur -->
+      </div>
+    </div>
+  </main>
+
+<script>
+/* ── TEMA (verify-order.html ile aynı mantık) ── */
+function applyTheme() {
+  const t = localStorage.getItem('tt_theme') || 'light';
+  document.documentElement.dataset.theme = t === 'dark' ? 'dark' : '';
+}
+applyTheme();
+
+/* ── URL & localStorage yardımcıları ── */
+function getOrderNoFromUrl() {
+  const u = new URLSearchParams(location.search);
+  // PayTR 'merchant_oid' döner; bazı akışlarda 'order_no' da olur; Stripe 'session_id' kullanır
+  // ama o ayrı bir akış — success sayfasına order_no olarak düşer.
+  return (u.get('order_no') || u.get('merchant_oid') || u.get('order') || '').trim();
+}
+function getStoredEmail() {
+  // checkout.html (Adım 3) bunu yazacak
+  return (localStorage.getItem('tt_last_order_email') || '').trim();
+}
+function setStoredEmail(email) {
+  if (email) localStorage.setItem('tt_last_order_email', email);
+}
+function fmtPrice(n) {
+  return '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+  catch (_) { return iso; }
+}
+function statusText(s) {
+  return ({
+    pending: 'Beklemede', processing: 'Hazırlanıyor', shipped: 'Kargoda',
+    delivered: 'Teslim edildi', cancelled: 'İptal edildi',
+  }[s] || s || '—');
+}
+function setStatusIcon(state) {
+  const icon = document.getElementById('statusIcon');
+  if (!icon) return;
+  icon.className = 'status-icon ' + state;
+  if (state === 'ok') {
+    icon.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+  } else if (state === 'bad') {
+    icon.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+  } else if (state === 'loading') {
+    icon.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10"/></svg>';
+  }
+}
+
+/* ── api.js yüklenmesini bekle (defer ile) ── */
+async function waitForApi() {
+  let tries = 0;
+  while (!window.api && tries++ < 30) await new Promise(r => setTimeout(r, 100));
+  return !!window.api;
+}
+
+/* ── Render fonksiyonları ── */
+function renderLoading(title, sub) {
+  document.getElementById('body').innerHTML = `
+    <div class="status-icon loading" id="statusIcon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+    </div>
+    <h1>${title}</h1>
+    <p class="subtitle">${sub}</p>
+  `;
+}
+
+function renderEmailPrompt(orderNo) {
+  document.getElementById('body').innerHTML = `
+    <div class="status-icon ok" id="statusIcon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1>Ödemeniz alındı ✓</h1>
+    <p class="subtitle">Siparişinizin detaylarını görmek için sipariş verirken kullandığınız e-posta adresini girin.</p>
+    <form class="email-form" id="emailForm">
+      <label for="emailInput">E-posta</label>
+      <input id="emailInput" class="email-input" type="email" required placeholder="ornek@email.com" autocomplete="email" />
+      <button class="btn btn-primary email-submit" type="submit">Siparişi Gör</button>
+    </form>
+    <p class="meta-foot">Sipariş No: <strong style="font-family:monospace;">${orderNo}</strong></p>
+  `;
+  document.getElementById('emailForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('emailInput').value.trim();
+    if (!email) return;
+    setStoredEmail(email);
+    renderLoading('Sorgulanıyor…', 'Siparişiniz doğrulanıyor.');
+    const order = await fetchOrder(orderNo, email);
+    if (order) renderSuccess(order);
+    else renderError('Siparişiniz e-posta ile eşleşmedi. Lütfen sipariş verirken kullandığınız e-postayı girin.');
+  });
+}
+
+function renderSuccess(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsHtml = items.length ? `
+    <div class="items-list">
+      <h3>Sipariş Kalemleri (${items.length})</h3>
+      ${items.map(it => `
+        <div class="item-row">
+          <div class="item-thumb">${it.image ? `<img src="${escapeAttr(it.image)}" alt="" />` : (escapeHtml(it.icon || '📦'))}</div>
+          <div class="item-info">
+            <div class="item-name">${escapeHtml(it.name || '')}</div>
+            <div class="item-qty">${it.qty || 1} adet</div>
+          </div>
+          <div class="item-price">${fmtPrice((it.price || 0) * (it.qty || 1))}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '';
+
+  document.getElementById('body').innerHTML = `
+    <div class="status-icon ok" id="statusIcon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h1>Teşekkürler, siparişiniz alındı!</h1>
+    <p class="subtitle">Siparişinizi kısa süre içinde hazırlamaya başlayacağız. Durum değişikliklerinde e-posta ile bilgilendirileceksiniz.</p>
+    <div class="info-grid">
+      <div class="info-row">
+        <span class="info-key">Sipariş No</span>
+        <span class="info-val mono">${escapeHtml(order.order_no || '—')}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Tarih</span>
+        <span class="info-val">${fmtDate(order.created_at)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Toplam</span>
+        <span class="info-val">${fmtPrice(order.total)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Ödeme</span>
+        <span class="info-val">${escapeHtml(order.payment_method || '—')}${order.payment_brand ? ' · ' + escapeHtml(order.payment_brand) : ''}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Durum</span>
+        <span class="info-val">${statusText(order.status)}</span>
+      </div>
+    </div>
+    ${itemsHtml}
+    <div class="actions">
+      <a class="btn btn-primary" href="track-order.html?order_no=${encodeURIComponent(order.order_no || '')}&email=${encodeURIComponent(getStoredEmail() || '')}">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Siparişimi Takip Et
+      </a>
+      <a class="btn btn-secondary" href="index.html">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Alışverişe Devam
+      </a>
+    </div>
+    <p class="fail-link">Hesabınız yok mu? <a href="index.html#track">Sipariş takip</a> sayfasından sipariş no + e-posta ile de görebilirsiniz.</p>
+    <p class="meta-foot">Sorularınız için: <a href="mailto:destek@tecnotools.org" style="color:#2563eb;">destek@tecnotools.org</a></p>
+  `;
+
+  // Sepet temizle — başarıyla tamamlandı
+  try { localStorage.removeItem('tt_cart'); } catch (_) {}
+}
+
+function renderError(msg) {
+  document.getElementById('body').innerHTML = `
+    <div class="status-icon bad" id="statusIcon">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <h1>Bir sorun oluştu</h1>
+    <p class="subtitle">${escapeHtml(msg)}</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="index.html">Ana Sayfaya Dön</a>
+    </div>
+    <p class="fail-link">Yardım için: <a href="mailto:destek@tecnotools.org">destek@tecnotools.org</a></p>
+  `;
+}
+
+/* ── XSS-safe kaçış ── */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s);
+}
+
+/* ── API çağrısı ── */
+async function fetchOrder(orderNo, email) {
+  try {
+    const res = await api.orders.track(orderNo, email);
+    if (!res) return null;
+    // Bazı backend'ler {valid: true, order_no, total, status, items} döner;
+    // bazıları direkt order objesi. İkisini de destekle.
+    return res.order || res;
+  } catch (e) {
+    if (e && e.status === 404) return null;
+    throw e;
+  }
+}
+
+/* ── Init ── */
+async function init() {
+  const orderNo = getOrderNoFromUrl();
+  if (!orderNo) {
+    renderError('Sipariş numarası bulunamadı. Ödeme sonrası size yönlendirilen linki kullanın.');
+    return;
+  }
+  // URL'de email de gelebilir (?email=...) — PayTR'da bu yok ama manuel test için yararlı
+  const u = new URLSearchParams(location.search);
+  const urlEmail = (u.get('email') || '').trim();
+  const email = urlEmail || getStoredEmail();
+
+  if (!email) {
+    renderEmailPrompt(orderNo);
+    return;
+  }
+
+  renderLoading('Sipariş sorgulanıyor…', 'Birkaç saniye sürebilir.');
+  try {
+    const order = await fetchOrder(orderNo, email);
+    if (order) {
+      renderSuccess(order);
+    } else {
+      // 404 — localStorage'daki email yanlış, kullanıcıya tekrar sor
+      renderEmailPrompt(orderNo);
+    }
+  } catch (e) {
+    renderError('Sunucuya ulaşılamadı. Lütfen daha sonra tekrar deneyin. (' + escapeHtml(e.message || '') + ')');
+  }
+}
+
+(async () => {
+  if (!(await waitForApi())) {
+    renderError('API istemcisi yüklenemedi. Sayfayı yenileyin.');
+    return;
+  }
+  init();
+})();
+</script>
+</body>
+</html>

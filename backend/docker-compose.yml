@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tecnotools-db
+    environment:
+      POSTGRES_USER: tecnotools
+      POSTGRES_PASSWORD: tecnotools
+      POSTGRES_DB: tecnotools
+    ports:
+      - "5432:5432"
+    volumes:
+      - tecnotools_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tecnotools"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tecnotools_db:

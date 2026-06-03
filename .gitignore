@@ -1,0 +1,53 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ── Virtual environments ──
+.venv/
+venv/
+env/
+
+# ── Secrets / env ──
+.env
+.env.local
+.env.production
+backend/.env
+backend/.env.local
+backend/.env.production
+
+# ── Databases (yerel veri repoda tutulmaz) ──
+*.db
+*.db.bak
+*.sqlite
+*.sqlite3
+
+# ── Uploads / kullanıcı içeriği ──
+uploads/
+backend/uploads/
+backups/
+
+# ── Kriptografik anahtarlar (ilk çağrıda otomatik üretilir) ──
+backend/keys/
+*.pem
+
+# ── Node / frontend araçları (ileride) ──
+node_modules/
+dist/
+*.min.js.map
+
+# ── Editör / OS ──
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ── Nginx üretim parçaları ──
+backend/nginx/sites/*.full
+backend/nginx/sites/*.initial

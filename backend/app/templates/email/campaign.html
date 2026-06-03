@@ -1,0 +1,8 @@
+{% extends "_base.html" %}
+{% block content %}
+{{ body | safe }}
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;">
+  Bu e-postayı TecnoTools bültenine abone olduğunuz için aldınız.<br/>
+  Aboneliği iptal etmek için <a href="{{ store_url }}?unsubscribe=1" style="color:#64748b;">tıklayın</a>.
+</div>
+{% endblock %}

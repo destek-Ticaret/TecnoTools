@@ -1,0 +1,121 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tecnotools-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tecnotools}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-tecnotools}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tecnotools}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # Sadece backend tarafından erişilir, dış dünyaya port yok
+    networks:
+      - internal
+
+  api:
+    build: .
+    container_name: tecnotools-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tecnotools}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tecnotools}
+      APP_SECRET_KEY: ${APP_SECRET_KEY}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      PAYTR_MERCHANT_ID: ${PAYTR_MERCHANT_ID}
+      PAYTR_MERCHANT_KEY: ${PAYTR_MERCHANT_KEY}
+      PAYTR_MERCHANT_SALT: ${PAYTR_MERCHANT_SALT}
+      PAYTR_TEST_MODE: ${PAYTR_TEST_MODE:-0}
+      PAYTR_NOTIFICATION_URL: ${PAYTR_NOTIFICATION_URL}
+      PAYTR_OK_URL: ${PAYTR_OK_URL}
+      PAYTR_FAIL_URL: ${PAYTR_FAIL_URL}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      STORE_PUBLIC_URL: ${STORE_PUBLIC_URL}
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - internal
+      - web
+    # nginx aynı host'taysa port expose etmeye gerek yok (network ile erişir)
+    # uzaktan deploy yapıyorsan: ports: ["127.0.0.1:8000:8000"]
+
+  nginx:
+    image: nginx:alpine
+    container_name: tecnotools-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/sites/:/etc/nginx/conf.d/:ro
+      - ./static/:/usr/share/nginx/html/:ro        # index.html + admin.html + js/
+      - uploads_data:/var/www/uploads:ro           # ürün resimleri
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
+    networks:
+      - web
+
+  certbot:
+    image: certbot/certbot
+    container_name: tecnotools-certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  # Datadog APM Agent — opsiyonel, sadece DD_API_KEY set edilince çalışsın
+  # Aktifleştirmek için: docker compose --profile datadog up -d
+  datadog:
+    image: gcr.io/datadoghq/agent:7
+    container_name: tecnotools-datadog
+    profiles: ["datadog"]
+    environment:
+      DD_API_KEY: ${DD_API_KEY}
+      DD_SITE: ${DD_SITE:-datadoghq.com}
+      DD_HOSTNAME: tecnotools-host
+      DD_APM_ENABLED: "true"
+      DD_APM_NON_LOCAL_TRAFFIC: "true"
+      DD_LOGS_ENABLED: "true"
+      DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL: "true"
+      DD_CONTAINER_EXCLUDE: "name:tecnotools-datadog"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    networks:
+      - internal
+      - web
+
+volumes:
+  db_data:
+  uploads_data:
+  certbot_certs:
+  certbot_webroot:
+
+networks:
+  internal:
+    driver: bridge
+  web:
+    driver: bridge
