@@ -1,0 +1,63 @@
+/* TecnoTools — tasarım sistemi token'ları (tek kaynak)
+   Tüm storefront sayfaları bu dosyadan okur. Sayfaya özel sapmalar
+   ilgili sayfanın küçük <style> override bloğunda belgelenir. */
+:root {
+  --accent: #db2777;
+  --accent-dark: #be185d;
+  --accent-soft: #fce7f3;
+  --bg: #f6f7fb;
+  --bg2: #eef0f7;
+  --bg3: #e3e6f0;
+  --border: #e1e5ef;
+  --border-2: #d3d9e6;
+  --danger: #ef4444;
+  --danger-soft: #fee2e2;
+  --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --gold: #f59e0b;
+  --info: #3b82f6;
+  --info-soft: #dbeafe;
+  --muted: #64748b;
+  --neutral: #64748b;
+  --neutral-soft: #e2e8f0;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-soft: #dbeafe;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 4px 16px rgba(15,23,42,.06);
+  --shadow-lg: 0 16px 40px rgba(15,23,42,.10);
+  --shadow-md: 0 4px 14px rgba(15,23,42,.08);
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
+  --sidebar-w: 0px;
+  --star: #f5b301;
+  --success: #10b981;
+  --success-soft: #d1fae5;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --text-2: #334155;
+  --topbar-h: 68px;
+  --warning: #f59e0b;
+  --warning-soft: #fef3c7;
+}
+
+[data-theme="dark"] {
+  --accent-soft: #831843;
+  --bg: #0b1220;
+  --bg2: #111a2e;
+  --bg3: #182441;
+  --border: #233356;
+  --border-2: #2c4070;
+  --danger-soft: #7f1d1d;
+  --info-soft: #1e3a8a;
+  --muted: #8b97b3;
+  --neutral-soft: #1e293b;
+  --primary-soft: #1e3a8a;
+  --shadow: 0 4px 16px rgba(0,0,0,.30);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,.45);
+  --success-soft: #064e3b;
+  --surface: #131d36;
+  --text: #e6ecf7;
+  --text-2: #c1cce0;
+  --warning-soft: #78350f;
+}

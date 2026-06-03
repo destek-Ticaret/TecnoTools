@@ -10,26 +10,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/base.css?v=1" />
+  <style>/* product.html — tasarım sisteminden sapmalar (bilinçli) */
+  :root { --bg: #f8fafc; --bg2: #f1f5f9; --border: #e2e8f0; --border-2: #cbd5e1; --success: #16a34a; --success-soft: #dcfce7; --danger: #dc2626; --shadow-sm: 0 1px 2px rgba(15,23,42,.06); --shadow-lg: 0 14px 40px rgba(15,23,42,.12); }
+  [data-theme="dark"] { --surface: #111827; --bg2: #1e293b; --text: #f1f5f9; --muted: #94a3b8; --border: #1f2a44; --border-2: #334155; }
+  </style>
 <style>
-  :root {
-    --primary: #2563eb; --primary-dark: #1d4ed8; --primary-soft: #dbeafe;
-    --bg: #f8fafc; --surface: #ffffff; --bg2: #f1f5f9;
-    --text: #0f172a; --muted: #64748b; --border: #e2e8f0; --border-2: #cbd5e1;
-    --success: #16a34a; --success-soft: #dcfce7;
-    --warning: #f59e0b; --warning-soft: #fef3c7;
-    --danger: #dc2626; --danger-soft: #fee2e2;
-    --gold: #f59e0b;
-    --radius: 14px;
-    --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
-    --shadow-md: 0 4px 14px rgba(15,23,42,.08);
-    --shadow-lg: 0 14px 40px rgba(15,23,42,.12);
-  }
-  [data-theme="dark"] {
-    --bg: #0b1220; --surface: #111827; --bg2: #1e293b;
-    --text: #f1f5f9; --muted: #94a3b8; --border: #1f2a44; --border-2: #334155;
-    --primary-soft: #1e3a8a;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
