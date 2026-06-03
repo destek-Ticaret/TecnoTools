@@ -20,7 +20,8 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-_RATE_CACHE: dict[str, tuple[float, float]] = {}  # base→{ "USD": (rate, fetched_at), ... }
+# base → (rates_dict, fetched_at) — rates_dict: {"USD": 1.05, "EUR": 0.92, ...}
+_RATE_CACHE: dict[str, tuple[dict, float]] = {}
 _LOCK = asyncio.Lock()
 
 

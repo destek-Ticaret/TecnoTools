@@ -122,7 +122,7 @@ class ForibaProvider:
         if not (self.username and self.password and self.endpoint):
             return InvoiceResult(ok=False, error="Foriba credential'ları eksik")
         try:
-            import httpx  # type: ignore
+            import httpx
         except ImportError:
             return InvoiceResult(ok=False, error="httpx kurulu değil")
         auth = base64.b64encode(f"{self.username}:{self.password}".encode()).decode()

@@ -77,8 +77,4 @@ check_untyped_defs = true
 # Kademeli sertleştirme: yeni kod için strict, mevcut kod için makul taban
 disallow_untyped_defs = false
 exclude = ["alembic/", "tests/", "^test_.*\\.py$"]
-
-[[tool.mypy.overrides]]
-# 3. parti tipsiz kütüphaneler
-module = ["jose.*", "passlib.*", "slowapi.*", "openpyxl.*", "boto3.*"]
-ignore_missing_imports = true
+# Not: 3. parti tipsiz kütüphaneler global ignore_missing_imports ile kapsanır.

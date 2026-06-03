@@ -74,7 +74,7 @@ async def related_products(
 ) -> list[tuple[int, float]]:
     """`product_id` için (other_id, skor) listesi — skor azalan."""
     table = await _cooccurrence_table(db, days=days)
-    pop: Counter = table.get("__pop__", Counter())  # type: ignore[assignment]
+    pop: Counter = table.get("__pop__", Counter())
     co = table.get(product_id, Counter())
     pop_a = pop.get(product_id, 0)
     if not co or pop_a == 0:
@@ -95,7 +95,7 @@ async def frequently_bought_together(
     if not basket_pids:
         return []
     table = await _cooccurrence_table(db, days=days)
-    pop: Counter = table.get("__pop__", Counter())  # type: ignore[assignment]
+    pop: Counter = table.get("__pop__", Counter())
     in_basket = set(basket_pids)
     aggregate: Counter = Counter()
     for pid in basket_pids:

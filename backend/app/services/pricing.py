@@ -59,7 +59,7 @@ async def _matching_products(db: AsyncSession, rule: PricingRule) -> list[Produc
         stmt = stmt.where(Product.id == rule.scope_id)
     if rule.only_in_stock:
         stmt = stmt.where(Product.stock > 0)
-    return (await db.execute(stmt)).scalars().unique().all()
+    return list((await db.execute(stmt)).scalars().unique().all())
 
 
 async def preview_rule(db: AsyncSession, rule: PricingRule, limit: int = 200) -> dict:
