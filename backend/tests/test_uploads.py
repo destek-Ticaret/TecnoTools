@@ -41,6 +41,16 @@ async def test_upload_rejects_disallowed_mime_authed(auth_client):
     assert "Desteklenmeyen" in r.text or "dosya" in r.text.lower()
 
 
+async def test_upload_rejects_fake_image_content(auth_client):
+    """image/png olarak beyan edilse de içerik gerçek resim değilse → 400.
+
+    Declared Content-Type spoof'lanabilir; magic-byte doğrulaması bunu yakalar."""
+    files = {"file": ("fake.png", io.BytesIO(b"<html><script>alert(1)</script>"), "image/png")}
+    r = await auth_client.post("/api/uploads/images", files=files)
+    assert r.status_code == 400
+    assert "resim" in r.text.lower()
+
+
 async def test_upload_rejects_oversize(auth_client):
     """5 MB'dan büyük dosya → 413."""
     big = b"\x00" * (5 * 1024 * 1024 + 1024)  # 5 MB + 1 KB
