@@ -1,0 +1,26 @@
+# Satır sonlarını deterministik tut — depo içinde LF, checkout'ta OS'a bırakma yok.
+* text=auto eol=lf
+
+# Açıkça metin
+*.py    text eol=lf
+*.js    text eol=lf
+*.html  text eol=lf
+*.css   text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.sh    text eol=lf
+*.bat   text eol=crlf
+
+# İkili dosyalar — dokunma
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.xlsx  binary
+*.db    binary
+*.pem   binary
