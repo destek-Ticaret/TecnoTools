@@ -1,7 +1,6 @@
 """Canlı destek — REST endpoint'leri (WebSocket testleri integration testlerinde yapılır)."""
 
 
-
 async def test_list_sessions_requires_auth(client, auth_client):
     r1 = await client.get("/api/chat/admin/sessions")
     assert r1.status_code == 401

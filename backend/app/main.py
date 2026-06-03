@@ -145,12 +145,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Dev modunda LAN origin'lerini regex ile kabul et (telefondan/diğer cihazlardan test).
 # Production'da yalnız explicit `cors_origins` listesi çalışır.
-_cors_kwargs = dict(
-    allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_kwargs = {
+    "allow_origins": settings.cors_origin_list,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
 if settings.app_env == "development":
     _cors_kwargs["allow_origin_regex"] = (
         r"^https?://("

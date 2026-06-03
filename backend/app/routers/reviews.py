@@ -53,7 +53,7 @@ async def _recalc_product_rating(db: AsyncSession, product_id: int) -> None:
     stats = (
         await db.execute(
             select(func.avg(ProductReview.rating), func.count()).where(
-                (ProductReview.product_id == product_id) & (ProductReview.is_approved == True)
+                (ProductReview.product_id == product_id) & (ProductReview.is_approved.is_(True))
             )
         )
     ).one()
@@ -121,7 +121,7 @@ async def list_reviews_public(product_id: int, db: AsyncSession = Depends(get_db
             await db.execute(
                 select(ProductReview)
                 .where(
-                    (ProductReview.product_id == product_id) & (ProductReview.is_approved == True)
+                    (ProductReview.product_id == product_id) & (ProductReview.is_approved.is_(True))
                 )
                 .order_by(ProductReview.id.desc())
             )

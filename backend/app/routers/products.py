@@ -107,7 +107,6 @@ async def search_products_fuzzy(
         stmt = stmt.where(Product.category_id == category_id)
     products = (await db.execute(stmt)).scalars().unique().all()
 
-    nq = normalize(q)
     scored: list[tuple[float, Product]] = []
     for p in products:
         # Ad + alt başlık + (varsa) feature kelimeleri tek bir korpus

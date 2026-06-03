@@ -1,7 +1,6 @@
 """Checkout akışı + PayTR mock token + sipariş ID counter testi."""
 
 
-
 async def test_checkout_creates_order_and_returns_token(auth_client, db_session):
     pr = await auth_client.post(
         "/api/products",

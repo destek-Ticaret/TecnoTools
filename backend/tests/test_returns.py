@@ -138,7 +138,7 @@ async def test_return_item_not_in_order(client, db_session):
 
 async def test_lookup_returns_by_order_and_email(client, db_session):
     o, p = await _create_order_with_item(db_session)
-    for i in range(2):
+    for _i in range(2):
         await client.post(
             "/api/returns",
             json={

@@ -32,7 +32,9 @@ async def _low_stock_alert(db: AsyncSession) -> None:
         (
             await db.execute(
                 select(Product).where(
-                    (Product.is_active == True) & (Product.stock > 0) & (Product.stock <= threshold)
+                    (Product.is_active.is_(True))
+                    & (Product.stock > 0)
+                    & (Product.stock <= threshold)
                 )
             )
         )
@@ -44,7 +46,7 @@ async def _low_stock_alert(db: AsyncSession) -> None:
     out_of_stock = (
         (
             await db.execute(
-                select(Product).where((Product.is_active == True) & (Product.stock <= 0))
+                select(Product).where((Product.is_active.is_(True)) & (Product.stock <= 0))
             )
         )
         .scalars()
@@ -89,7 +91,6 @@ async def _abandoned_cart_alert(db: AsyncSession) -> None:
     görmesi için özet rapor mail'i gönderilir (gerçek müşteriye ulaşmak için
     "Cart" tablosu eklemek gerekir, şimdilik admin'e durum bildirilir).
     """
-    cutoff = datetime.now(UTC) - timedelta(minutes=CART_ABANDON_MIN_AGE_MIN)
     abandoned = (
         await db.execute(
             select(Reservation.session_id, func.sum(Reservation.qty).label("total_qty"))

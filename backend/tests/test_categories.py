@@ -32,7 +32,7 @@ async def test_category_rename(auth_client):
 
 
 async def test_category_rename_to_existing_name_conflict(auth_client):
-    a = (await auth_client.post("/api/categories", json={"name": "Alfa"})).json()
+    await auth_client.post("/api/categories", json={"name": "Alfa"})
     b = (await auth_client.post("/api/categories", json={"name": "Beta"})).json()
     # B'yi Alfa'ya değiştirmeye çalış → 409
     upd = await auth_client.put(

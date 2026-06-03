@@ -20,7 +20,7 @@ async def _parse_xlsx(content: bytes) -> tuple[list[str], list[list]]:
     if not rows:
         return [], []
     headers = [str(c) if c is not None else "" for c in rows[0]]
-    body = [[c for c in r] for r in rows[1:]]
+    body = [list(r) for r in rows[1:]]
     return headers, body
 
 

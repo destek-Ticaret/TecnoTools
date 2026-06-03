@@ -74,7 +74,9 @@ async def download_template(_: User = Depends(_can_import)):
             "evet",
         ]
     )
-    for col, width in zip("ABCDEFGHIJKLM", [6, 26, 20, 30, 6, 16, 10, 10, 10, 8, 28, 34, 8]):
+    for col, width in zip(
+        "ABCDEFGHIJKLM", [6, 26, 20, 30, 6, 16, 10, 10, 10, 8, 28, 34, 8], strict=False
+    ):
         ws.column_dimensions[col].width = width
     buf = io.BytesIO()
     wb.save(buf)
@@ -109,7 +111,7 @@ def _parse_rows(raw: bytes, filename: str) -> list[dict]:
     rows: list[list] = []
     if name.endswith(".csv"):
         text = raw.decode("utf-8-sig", errors="replace")
-        rows = [r for r in csv.reader(io.StringIO(text))]
+        rows = list(csv.reader(io.StringIO(text)))
     elif name.endswith(".xlsx"):
         wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
         ws = wb.active
@@ -179,22 +181,22 @@ async def import_products(
             # is_active: dosyada sütun varsa kullan, yoksa mevcut değeri koru (yeni ürün: True)
             is_active_raw = row.get("is_active")
             is_active_present = is_active_raw is not None and str(is_active_raw).strip() != ""
-            fields = dict(
-                name=name_val,
-                sub=(str(row.get("sub")).strip() if row.get("sub") else None),
-                description=(
+            fields = {
+                "name": name_val,
+                "sub": (str(row.get("sub")).strip() if row.get("sub") else None),
+                "description": (
                     str(row.get("description")).strip() if row.get("description") else None
                 ),
-                icon=(str(row.get("icon")).strip() if row.get("icon") else "📦"),
-                category_id=cat_id,
-                price=price,
-                old_price=_to_float(row.get("old_price")),
-                cost=_to_float(row.get("cost")),
-                stock=int(_to_float(row.get("stock")) or 0),
-                features=_to_list(row.get("features")),
-                images=_to_list(row.get("images")),
-                is_active=_to_bool(is_active_raw) if is_active_present else True,
-            )
+                "icon": (str(row.get("icon")).strip() if row.get("icon") else "📦"),
+                "category_id": cat_id,
+                "price": price,
+                "old_price": _to_float(row.get("old_price")),
+                "cost": _to_float(row.get("cost")),
+                "stock": int(_to_float(row.get("stock")) or 0),
+                "features": _to_list(row.get("features")),
+                "images": _to_list(row.get("images")),
+                "is_active": _to_bool(is_active_raw) if is_active_present else True,
+            }
             # Update sırasında is_active sütunu dosyada yoksa target'ın değerini koru
             is_active_in_file = is_active_present
 

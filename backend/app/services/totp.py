@@ -36,7 +36,4 @@ def verify_totp(code: str, secret_b32: str, window: int = 1, step: int = 30) -> 
     except Exception:
         return False
     now = int(time.time() // step)
-    for w in range(-window, window + 1):
-        if hmac.compare_digest(code, _hotp(key, now + w)):
-            return True
-    return False
+    return any(hmac.compare_digest(code, _hotp(key, now + w)) for w in range(-window, window + 1))

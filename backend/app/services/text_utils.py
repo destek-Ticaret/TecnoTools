@@ -152,8 +152,6 @@ def highlight_terms(text: str, query: str, mark: str = "mark") -> str:
     nq = normalize(query)
     if not nq or not text:
         return text or ""
-    parts = []
-    nt = normalize(text)
     # Karakter pozisyonu eşlemesi: normalize uzunluğunu koruyabilir mi?
     # Güvenli olmak için orijinal metinde basit case-insensitive arama.
     for token in {t for t in tokenize(query) if len(t) >= 2}:

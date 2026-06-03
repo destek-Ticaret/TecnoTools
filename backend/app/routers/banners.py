@@ -72,9 +72,7 @@ async def list_banners_public(
             else b.starts_at
         )
         b_ends = (
-            b.ends_at.replace(tzinfo=UTC)
-            if b.ends_at and b.ends_at.tzinfo is None
-            else b.ends_at
+            b.ends_at.replace(tzinfo=UTC) if b.ends_at and b.ends_at.tzinfo is None else b.ends_at
         )
         if b_starts and b_starts > now:
             continue

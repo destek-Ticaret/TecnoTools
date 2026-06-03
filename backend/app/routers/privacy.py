@@ -212,7 +212,7 @@ async def run_deletion_admin(
     except Exception as e:
         row.error_message = str(e)[:500]
         await db.commit()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
     await db.refresh(row)
     return row
 

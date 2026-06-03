@@ -57,9 +57,7 @@ async def collect_customer_stats(db: AsyncSession, since_days: int = 365) -> lis
     rows = (await db.execute(stmt)).all()
     out: list[CustomerStats] = []
     for cid, email, name, freq, monetary, first_o, last_o in rows:
-        last_dt = (
-            last_o.replace(tzinfo=UTC) if last_o and last_o.tzinfo is None else last_o
-        )
+        last_dt = last_o.replace(tzinfo=UTC) if last_o and last_o.tzinfo is None else last_o
         recency = int((now - last_dt).days) if last_dt else 9999
         out.append(
             CustomerStats(

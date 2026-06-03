@@ -1,7 +1,6 @@
 """Site ayarları endpoint'leri."""
 
 
-
 async def test_list_returns_defaults(client):
     r = await client.get("/api/settings")
     assert r.status_code == 200

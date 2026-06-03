@@ -1,7 +1,6 @@
 """Para birimi endpoint'leri — ağ gerektirmeyen senaryolar."""
 
 
-
 async def test_list_currencies(client):
     r = await client.get("/api/currency")
     assert r.status_code == 200

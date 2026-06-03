@@ -1,6 +1,5 @@
 """Ürün yorumları — public oluşturma + moderasyon + rating yeniden hesabı."""
 
-
 from app.models import Product
 
 

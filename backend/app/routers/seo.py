@@ -45,9 +45,7 @@ async def sitemap(db: AsyncSession = Depends(get_db)):
 
     for pid, name, updated_at in products:
         lastmod = (
-            (updated_at or datetime.now(UTC))
-            .isoformat(timespec="seconds")
-            .replace("+00:00", "Z")
+            (updated_at or datetime.now(UTC)).isoformat(timespec="seconds").replace("+00:00", "Z")
         )
         slug = slugify(name or f"urun-{pid}")
         urls.append(

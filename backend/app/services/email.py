@@ -17,6 +17,9 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# Fire-and-forget task'lara güçlü referans tut — yoksa GC task'ı yarıda toplayabilir.
+_bg_tasks: set[asyncio.Task] = set()
+
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "email"
 _env = Environment(
     loader=FileSystemLoader(str(TEMPLATE_DIR)),
@@ -78,14 +81,18 @@ def send_email_background(*, to: str, subject: str, html: str, text: str | None 
     """Fire-and-forget — endpoint'i bloklamadan email kuyruğuna at."""
     try:
         loop = asyncio.get_running_loop()
-        loop.create_task(send_email(to=to, subject=subject, html=html, text=text))
+        _task = loop.create_task(send_email(to=to, subject=subject, html=html, text=text))
+        _bg_tasks.add(_task)
+        _task.add_done_callback(_bg_tasks.discard)
     except RuntimeError:
         # Event loop yoksa (testler için) senkron çalıştır
         asyncio.run(send_email(to=to, subject=subject, html=html, text=text))
 
 
-def render_template(name: str, **context) -> str:
-    tpl = _env.get_template(name)
+def render_template(template_name: str, **context) -> str:
+    # NOT: parametre adı bilinçli olarak `template_name` — `name` olsaydı
+    # render_template("x.html", name=...) çağrısında "name" çakışırdı (TypeError).
+    tpl = _env.get_template(template_name)
     return tpl.render(**context, store_url=settings.store_public_url)
 
 

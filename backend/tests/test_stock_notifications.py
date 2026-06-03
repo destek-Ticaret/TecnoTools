@@ -1,6 +1,5 @@
 """Stok geldi bildirimi (back-in-stock)."""
 
-
 from app.models import Product
 
 

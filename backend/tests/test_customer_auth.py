@@ -1,7 +1,5 @@
 """Müşteri üyelik (customer-auth) akış testleri."""
 
-
-
 REGISTER_PAYLOAD = {
     "email": "alice@example.com",
     "password": "AliceStrong1!",

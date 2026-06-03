@@ -24,6 +24,9 @@ router = APIRouter(prefix="/api/newsletter/campaigns", tags=["newsletter-campaig
 
 THROTTLE_PER_SECOND = 5  # SMTP'yi boğmamak için saniyede 5 email
 
+# Arka plan task'larına güçlü referans tut — yoksa GC task'ı yarıda toplayabilir.
+_bg_tasks: set[asyncio.Task] = set()
+
 
 class CampaignIn(BaseModel):
     subject: str = Field(min_length=3, max_length=200)
@@ -150,7 +153,9 @@ async def send_campaign(
     c.sent_count = 0
     c.failed_count = 0
     await db.commit()
-    asyncio.create_task(_send_campaign_background(campaign_id))
+    _task = asyncio.create_task(_send_campaign_background(campaign_id))
+    _bg_tasks.add(_task)
+    _task.add_done_callback(_bg_tasks.discard)
     return _to_out(c)
 
 

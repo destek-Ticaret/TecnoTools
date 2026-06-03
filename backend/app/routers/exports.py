@@ -4,7 +4,7 @@ Admin için: siparişler, ürünler, müşteriler, iadeler. openpyxl ile in-memo
 """
 
 import io
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -94,10 +94,12 @@ async def export_orders(db: AsyncSession = Depends(get_db), _: User = Depends(re
             ]
         )
     for col_letter, width in zip(
-        "ABCDEFGHIJKLMNOP", [14, 18, 22, 26, 16, 14, 12, 12, 12, 12, 12, 14, 14, 14, 14, 16]
+        "ABCDEFGHIJKLMNOP",
+        [14, 18, 22, 26, 16, 14, 12, 12, 12, 12, 12, 14, 14, 14, 14, 16],
+        strict=False,
     ):
         ws.column_dimensions[col_letter].width = width
-    return _stream(wb, f"siparisler-{datetime.utcnow().strftime('%Y%m%d')}.xlsx")
+    return _stream(wb, f"siparisler-{datetime.now(UTC).strftime('%Y%m%d')}.xlsx")
 
 
 @router.get("/products.xlsx")
@@ -143,7 +145,7 @@ async def export_products(db: AsyncSession = Depends(get_db), _: User = Depends(
                 p.review_count or 0,
             ]
         )
-    return _stream(wb, f"urunler-{datetime.utcnow().strftime('%Y%m%d')}.xlsx")
+    return _stream(wb, f"urunler-{datetime.now(UTC).strftime('%Y%m%d')}.xlsx")
 
 
 @router.get("/customers.xlsx")
@@ -165,7 +167,7 @@ async def export_customers(db: AsyncSession = Depends(get_db), _: User = Depends
                 (c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else ""),
             ]
         )
-    return _stream(wb, f"musteriler-{datetime.utcnow().strftime('%Y%m%d')}.xlsx")
+    return _stream(wb, f"musteriler-{datetime.now(UTC).strftime('%Y%m%d')}.xlsx")
 
 
 @router.get("/returns.xlsx")
@@ -192,4 +194,4 @@ async def export_returns(db: AsyncSession = Depends(get_db), _: User = Depends(r
                 (r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else ""),
             ]
         )
-    return _stream(wb, f"iadeler-{datetime.utcnow().strftime('%Y%m%d')}.xlsx")
+    return _stream(wb, f"iadeler-{datetime.now(UTC).strftime('%Y%m%d')}.xlsx")

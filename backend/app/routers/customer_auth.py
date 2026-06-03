@@ -696,6 +696,6 @@ async def confirm_account_deletion(
         await db.commit()
         raise HTTPException(
             status_code=500, detail="Silme işlemi başarısız, destek ekibi bilgilendirildi"
-        )
+        ) from e
 
     return {"ok": True, "summary": summary}

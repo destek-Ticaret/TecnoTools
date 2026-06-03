@@ -221,7 +221,7 @@ def linear_forecast(series: list[float], horizon_days: int = 14) -> list[float]:
     xs = list(range(n))
     mean_x = sum(xs) / n
     mean_y = sum(series) / n
-    num = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, series))
+    num = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, series, strict=False))
     den = sum((x - mean_x) ** 2 for x in xs) or 1.0
     slope = num / den
     intercept = mean_y - slope * mean_x

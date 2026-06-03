@@ -44,7 +44,7 @@ async def test_permission_catalog_and_enforcement(auth_client):
 async def test_admin_cannot_get_override(auth_client):
     # Admin rolüne override reddedilir
     r = await auth_client.get("/api/admin/users")
-    admin_id = [u for u in r.json() if u["role"] == "admin"][0]["id"]
+    admin_id = next(u for u in r.json() if u["role"] == "admin")["id"]
     r = await auth_client.put(
         f"/api/admin/users/{admin_id}/permissions", json={"permissions": {"orders.view": False}}
     )
@@ -240,5 +240,5 @@ async def test_bulk_import_updates_by_name(auth_client):
     r = await auth_client.post("/api/imports/products", files=files)
     assert r.json()["updated"] == 1 and r.json()["created"] == 0
     prods = (await auth_client.get("/api/products/admin/all")).json()
-    mevcut = [p for p in prods if p["name"] == "Mevcut"][0]
+    mevcut = next(p for p in prods if p["name"] == "Mevcut")
     assert float(mevcut["price"]) == 75.0

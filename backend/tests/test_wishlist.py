@@ -1,6 +1,5 @@
 """Sunucu-taraflı favoriler (wishlist) testleri."""
 
-
 from app.models import Product
 
 REGISTER_PAYLOAD = {

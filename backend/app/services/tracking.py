@@ -244,9 +244,7 @@ def estimate_delivery(order: Order) -> dict | None:
 
     zone = zone_for_city(order.customer_city or "")
     zone_info = ZONE_RATES[zone]
-    base_dt = (
-        _ensure_utc(order.updated_at) or _ensure_utc(order.created_at) or datetime.now(UTC)
-    )
+    base_dt = _ensure_utc(order.updated_at) or _ensure_utc(order.created_at) or datetime.now(UTC)
 
     # Kargoya verilmemişse "baseDt + 1 gün processing + zone min/max"
     if order.status in (OrderStatus.PENDING.value, OrderStatus.PROCESSING.value):
@@ -313,9 +311,7 @@ async def build_tracking_response(db: AsyncSession, order: Order) -> dict:
             "status": return_row.status,
             "reason": return_row.reason,
             "refund_amount": float(return_row.refund_amount or 0),
-            "created_at": (
-                _ensure_utc(return_row.created_at) or datetime.now(UTC)
-            ).isoformat(),
+            "created_at": (_ensure_utc(return_row.created_at) or datetime.now(UTC)).isoformat(),
         }
 
     # İade hakkı (teslim edildiğinden bu yana 14 gün)

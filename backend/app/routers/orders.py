@@ -212,7 +212,6 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         order.payment_method = payload.payment_method
         order.payment_status = "pending"  # bankaya gelince admin manual onaylayacak
         await db.commit()
-        iban = await get_setting(db, "store_iban", "")
         return PaymentStartResponse(
             order_no=order.order_no,
             iframe_token="",

@@ -66,9 +66,7 @@ def validate_tckn(tckn: str) -> bool:
     even_sum = d[1] + d[3] + d[5] + d[7]
     if ((odd_sum * 7) - even_sum) % 10 != d[9]:
         return False
-    if sum(d[:10]) % 10 != d[10]:
-        return False
-    return True
+    return sum(d[:10]) % 10 == d[10]
 
 
 def validate_vkn(vkn: str) -> bool:

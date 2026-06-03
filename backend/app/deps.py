@@ -78,7 +78,9 @@ async def current_customer(
     try:
         customer_id = int(payload.get("sub") or 0)
     except (TypeError, ValueError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token geçersiz")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token geçersiz"
+        ) from None
     if not customer_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token geçersiz")
     customer = (

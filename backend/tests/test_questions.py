@@ -1,6 +1,5 @@
 """Ürün soru-cevap (Q&A) testleri."""
 
-
 from app.models import Product
 
 

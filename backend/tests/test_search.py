@@ -1,6 +1,5 @@
 """Ürün arama uçları — autocomplete + fuzzy (typo toleransı)."""
 
-
 from app.models import Product
 
 

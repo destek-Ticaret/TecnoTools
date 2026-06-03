@@ -26,7 +26,7 @@ async def _register_and_auth(client) -> dict:
 
 
 async def test_data_export_returns_profile(client):
-    reg = await _register_and_auth(client)
+    await _register_and_auth(client)
     r = await client.get("/api/customer-auth/me/data-export")
     assert r.status_code == 200
     body = r.json()

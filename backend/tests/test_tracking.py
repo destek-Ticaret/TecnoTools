@@ -7,7 +7,6 @@ Kapsam:
   - Başkasının siparişine erişememe
 """
 
-
 from app.services.tracking import carrier_for
 
 
