@@ -454,6 +454,7 @@
 
   <div class="toast-stack" id="toastStack"></div>
 
+  <script src="js/common.js?v=1"></script>
   <script src="js/api.js"></script>
   <script>
   /* ── State ── */
@@ -467,7 +468,7 @@
 
   /* ── Helpers ── */
   const $ = sel => document.querySelector(sel);
-  const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  // escapeHtml / escapeAttr → js/common.js (ortak)
   const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
   const getId = () => {
@@ -484,16 +485,7 @@
     setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 2800);
   }
 
-  /* Theme */
-  function applyTheme() {
-    const t = localStorage.getItem('tt_theme') || 'light';
-    document.documentElement.dataset.theme = t === 'dark' ? 'dark' : '';
-  }
-  function toggleTheme() {
-    const cur = localStorage.getItem('tt_theme') || 'light';
-    localStorage.setItem('tt_theme', cur === 'dark' ? 'light' : 'dark');
-    applyTheme();
-  }
+  /* Theme → js/common.js (ortak: applyTheme / toggleTheme) */
 
   /* Cart helpers (paylaşımlı localStorage 'tt_cart' index.html ile) */
   function getCart() { try { return JSON.parse(localStorage.getItem('tt_cart') || '[]'); } catch { return []; } }
