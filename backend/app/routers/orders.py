@@ -381,6 +381,12 @@ async def update_status(
         except Exception:
             pass
     await bus.publish("order_status_changed", {"order_no": order_no, "status": payload.status})
+    # Havale/Kapıda siparişlerde admin 'hazırlanıyor'a çekince = ödeme onayı →
+    # otomatik e-arşiv fatura (idempotent; kart siparişi zaten callback'te kesilir).
+    if old != OrderStatus.PROCESSING.value and payload.status == OrderStatus.PROCESSING.value:
+        from app.routers.invoices import maybe_auto_issue_invoice
+
+        await maybe_auto_issue_invoice(order_no, actor=user.username)
     return o
 
 

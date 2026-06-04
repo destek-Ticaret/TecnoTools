@@ -8,6 +8,7 @@ Tanımlı anahtarlar (env'den override edilebilir):
 - store_iban_holder:       str
 - cod_enabled:             "0"|"1"  (kapıda ödeme)
 - wire_enabled:            "0"|"1"  (havale)
+- auto_invoice_enabled:    "0"|"1"  (ödeme onaylanınca otomatik e-arşiv fatura)
 """
 
 from fastapi import APIRouter, Body, Depends
@@ -29,6 +30,7 @@ DEFAULTS = {
     "store_iban_holder": "TecnoTools Ltd. Şti.",
     "cod_enabled": "1",
     "wire_enabled": "1",
+    "auto_invoice_enabled": "1",
 }
 
 

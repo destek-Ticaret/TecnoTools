@@ -103,6 +103,11 @@ async def paytr_callback(
         )
 
     await db.commit()
+    if status == "success":
+        # Ödeme onaylandı → otomatik e-arşiv fatura (best-effort, kendi session'ında).
+        from app.routers.invoices import maybe_auto_issue_invoice
+
+        await maybe_auto_issue_invoice(order.order_no, actor="paytr")
     return Response(content="OK", media_type="text/plain")
 
 
@@ -167,6 +172,9 @@ async def stripe_webhook(
             if order:
                 await _mark_order_paid(db, order, "stripe")
                 await db.commit()
+                from app.routers.invoices import maybe_auto_issue_invoice
+
+                await maybe_auto_issue_invoice(order.order_no, actor="stripe")
     elif event["type"] in ("checkout.session.expired", "payment_intent.payment_failed"):
         session = event["data"]["object"]
         order_no = session.get("client_reference_id") or (session.get("metadata") or {}).get(

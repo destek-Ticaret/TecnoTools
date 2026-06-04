@@ -143,36 +143,22 @@ def _tr_money(n: float) -> str:
 # ──────────────────────────── Admin: issue ──────────────────────────────────
 
 
-@router.post("/orders/{order_no}/issue", response_model=None, status_code=201)
-async def issue_invoice(
-    order_no: str,
-    payload: IssueIn = Body(default=IssueIn()),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_editor),
-):
-    """Sipariş için e-arşiv fatura kes. Halihazırda kesilmiş 'sent' fatura varsa
-    409 döner; 'failed' veya iptal edilmiş varsa yeniden denenebilir."""
-    o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
-    if not o:
-        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
-
-    existing = (
-        await db.execute(
-            select(Invoice)
-            .where(Invoice.order_id == o.id)
-            .where(Invoice.status == InvoiceStatus.SENT.value)
-        )
-    ).scalar_one_or_none()
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Bu sipariş için zaten aktif fatura var: {existing.invoice_no}",
-        )
-
-    tax_rate = float(payload.tax_rate)
-    tax_no = (payload.tax_no or o.tax_no or "").strip() or None
-    tax_office = (payload.tax_office or o.tax_office or "").strip() or None
-    company_title = (payload.company_title or o.company_title or "").strip() or None
+async def _build_and_send_invoice(
+    db: AsyncSession,
+    o: Order,
+    *,
+    tax_rate: float = 20.0,
+    tax_no: str | None = None,
+    tax_office: str | None = None,
+    company_title: str | None = None,
+    actor: str = "system",
+) -> Invoice:
+    """Sipariş için fatura oluştur + entegratöre gönder. COMMIT ETMEZ — çağıran
+    commit'ler. Hem manuel endpoint hem otomatik kesim bu çekirdeği kullanır."""
+    tax_rate = float(tax_rate)
+    tax_no = (tax_no or o.tax_no or "").strip() or None
+    tax_office = (tax_office or o.tax_office or "").strip() or None
+    company_title = (company_title or o.company_title or "").strip() or None
 
     # Tutarlar — sipariş "total" KDV dahil. Subtotal'dan tax çıkar
     subtotal = float(o.subtotal)
@@ -180,17 +166,16 @@ async def issue_invoice(
     tax_amount = float(o.tax or 0)
     total = float(o.total)
 
-    items_snap: list[dict] = []
-    for it in o.items:
-        items_snap.append(
-            {
-                "name": it.name,
-                "qty": int(it.qty),
-                "unit_price": float(it.price),
-                "line_total": float(it.price) * int(it.qty),
-                "tax_rate": tax_rate,
-            }
-        )
+    items_snap: list[dict] = [
+        {
+            "name": it.name,
+            "qty": int(it.qty),
+            "unit_price": float(it.price),
+            "line_total": float(it.price) * int(it.qty),
+            "tax_rate": tax_rate,
+        }
+        for it in o.items
+    ]
 
     invoice_no = await next_invoice_no(db)
     inv = Invoice(
@@ -247,32 +232,114 @@ async def issue_invoice(
 
     db.add(
         AuditLog(
-            actor=user.username,
+            actor=actor,
             action="invoice-issue",
             message=f"Fatura {inv.invoice_no} ({inv.status}) — sipariş {o.order_no}",
         )
+    )
+    return inv
+
+
+async def _notify_invoice_issued(inv: Invoice, o: Order) -> None:
+    """Fatura 'sent' olunca müşteriye email + SSE event (best-effort)."""
+    try:
+        pdf_link = f"/api/invoices/public/{inv.ettn}?email={inv.customer_email}"
+        html = f"""
+        <h2>Faturanız hazır 🧾</h2>
+        <p>Sayın {_esc(inv.customer_name)}, <strong>{_esc(o.order_no)}</strong> numaralı siparişinize ait e-arşiv faturanız düzenlendi.</p>
+        <p><strong>Fatura No:</strong> {_esc(inv.invoice_no)}<br/>
+           <strong>Toplam:</strong> {_tr_money(float(inv.total))}<br/>
+           <strong>ETTN:</strong> <code>{_esc(inv.ettn)}</code></p>
+        <p><a href="{pdf_link}" style="display:inline-block;background:#2563eb;color:#fff;padding:11px 22px;border-radius:9px;text-decoration:none;font-weight:600;">Faturayı Görüntüle</a></p>
+        """
+        await send_email(
+            to=inv.customer_email, subject=f"🧾 Faturanız: {inv.invoice_no}", html=html
+        )
+    except Exception:
+        logger.exception("Fatura email gönderim hatası")
+    await bus.publish("invoice_issued", {"id": inv.id, "order_no": o.order_no})
+
+
+async def maybe_auto_issue_invoice(order_no: str, *, actor: str = "system") -> None:
+    """Ödeme onaylanınca otomatik e-arşiv kes.
+
+    Best-effort: hata sipariş/ödeme akışını ETKİLEMEZ (kendi session'ında, try ile).
+    İdempotent: zaten aktif (pending/sent) fatura varsa atlar.
+    `auto_invoice_enabled` ayarı "0" ise hiç çalışmaz."""
+    from app.database import SessionLocal
+    from app.routers.settings import get_setting
+
+    try:
+        async with SessionLocal() as db:
+            if (await get_setting(db, "auto_invoice_enabled", "1")) == "0":
+                return
+            o = (
+                await db.execute(select(Order).where(Order.order_no == order_no))
+            ).scalar_one_or_none()
+            if not o:
+                return
+            existing = (
+                await db.execute(
+                    select(Invoice)
+                    .where(Invoice.order_id == o.id)
+                    .where(
+                        Invoice.status.in_([InvoiceStatus.SENT.value, InvoiceStatus.PENDING.value])
+                    )
+                )
+            ).scalar_one_or_none()
+            if existing:
+                return
+            inv = await _build_and_send_invoice(db, o, actor=actor)
+            await db.commit()
+            await db.refresh(inv)
+            if inv.status == InvoiceStatus.SENT.value:
+                await _notify_invoice_issued(inv, o)
+            else:
+                logger.warning("Otomatik fatura başarısız (%s): %s", order_no, inv.error_message)
+    except Exception:
+        logger.exception("Otomatik fatura kesimi hata: %s", order_no)
+
+
+@router.post("/orders/{order_no}/issue", response_model=None, status_code=201)
+async def issue_invoice(
+    order_no: str,
+    payload: IssueIn = Body(default=IssueIn()),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_editor),
+):
+    """Sipariş için e-arşiv fatura kes. Halihazırda kesilmiş 'sent' fatura varsa
+    409 döner; 'failed' veya iptal edilmiş varsa yeniden denenebilir."""
+    o = (await db.execute(select(Order).where(Order.order_no == order_no))).scalar_one_or_none()
+    if not o:
+        raise HTTPException(status_code=404, detail="Sipariş bulunamadı")
+
+    existing = (
+        await db.execute(
+            select(Invoice)
+            .where(Invoice.order_id == o.id)
+            .where(Invoice.status == InvoiceStatus.SENT.value)
+        )
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Bu sipariş için zaten aktif fatura var: {existing.invoice_no}",
+        )
+
+    inv = await _build_and_send_invoice(
+        db,
+        o,
+        tax_rate=payload.tax_rate,
+        tax_no=payload.tax_no,
+        tax_office=payload.tax_office,
+        company_title=payload.company_title,
+        actor=user.username,
     )
     await db.commit()
     await db.refresh(inv)
 
     if inv.status == InvoiceStatus.SENT.value:
-        # Müşteriye fatura email'i — fire-and-forget
-        try:
-            pdf_link = f"/api/invoices/public/{inv.ettn}?email={inv.customer_email}"
-            html = f"""
-            <h2>Faturanız hazır 🧾</h2>
-            <p>Sayın {_esc(inv.customer_name)}, <strong>{_esc(o.order_no)}</strong> numaralı siparişinize ait e-arşiv faturanız düzenlendi.</p>
-            <p><strong>Fatura No:</strong> {_esc(inv.invoice_no)}<br/>
-               <strong>Toplam:</strong> {_tr_money(float(inv.total))}<br/>
-               <strong>ETTN:</strong> <code>{_esc(inv.ettn)}</code></p>
-            <p><a href="{pdf_link}" style="display:inline-block;background:#2563eb;color:#fff;padding:11px 22px;border-radius:9px;text-decoration:none;font-weight:600;">Faturayı Görüntüle</a></p>
-            """
-            await send_email(
-                to=inv.customer_email, subject=f"🧾 Faturanız: {inv.invoice_no}", html=html
-            )
-        except Exception:
-            logger.exception("Fatura email gönderim hatası")
-        await bus.publish("invoice_issued", {"id": inv.id, "order_no": o.order_no})
+        await _notify_invoice_issued(inv, o)
 
     return _serialize(inv)
 
