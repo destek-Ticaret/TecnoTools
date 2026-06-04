@@ -74,7 +74,7 @@ async def test_auto_issue_disabled_by_setting(db_session):
 
 
 async def test_status_to_processing_triggers_invoice(auth_client, db_session):
-    """PATCH status→processing (havale/kapıda ödeme onayı) otomatik fatura keser."""
+    """PATCH status→processing (havale ödeme onayı) otomatik fatura keser."""
     o = await _make_order(db_session, order_no="TT-AUTO-4", status="pending")
     r = await auth_client.patch(f"/api/orders/{o.order_no}/status", json={"status": "processing"})
     assert r.status_code == 200, r.text

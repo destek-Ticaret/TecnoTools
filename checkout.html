@@ -237,7 +237,7 @@ let formData = {
   invoice_type: 'individual',     // individual | corporate
   tax_no: '', tax_office: '', company_title: '',
   carrier: 'standard',            // standard, hızlı kargo vs. — şimdilik tek seçenek
-  payment_method: 'card',         // card | wire | cod
+  payment_method: 'card',         // card | wire (kart | havale)
   note: '',
   consent_kvkk: false,
   consent_distance_sales: false,
@@ -455,14 +455,6 @@ function renderForm() {
                     <div class="desc">Sipariş onayından sonra IBAN'a ödeme yapın</div>
                   </div>
                   <div class="meta">₺</div>
-                </label>
-                <label class="choice" data-method="cod">
-                  <input type="radio" name="payment_method" value="cod" />
-                  <div>
-                    <div class="lbl">Kapıda Ödeme</div>
-                    <div class="desc">Kargo geldiğinde nakit veya kart ile ödeyin</div>
-                  </div>
-                  <div class="meta">+₺</div>
                 </label>
               </div>
             </div>
@@ -722,7 +714,7 @@ async function submitOrder() {
       location.href = url;
       return;
     }
-    // Yönlendirme yoksa direkt success sayfasına git (havale / kapıda)
+    // Yönlendirme yoksa direkt success sayfasına git (havale)
     hideOverlay();
     clearCouponSession();
     location.href = 'order-success.html?order_no=' + encodeURIComponent(orderNo);

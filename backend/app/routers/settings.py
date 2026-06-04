@@ -6,7 +6,6 @@ Tanımlı anahtarlar (env'den override edilebilir):
 - low_stock_threshold:     int    (örn 5 — bu altı uyarı)
 - store_iban:              str
 - store_iban_holder:       str
-- cod_enabled:             "0"|"1"  (kapıda ödeme)
 - wire_enabled:            "0"|"1"  (havale)
 - auto_invoice_enabled:    "0"|"1"  (ödeme onaylanınca otomatik e-arşiv fatura)
 """
@@ -28,7 +27,6 @@ DEFAULTS = {
     "low_stock_threshold": "5",
     "store_iban": "",
     "store_iban_holder": "TecnoTools Ltd. Şti.",
-    "cod_enabled": "1",
     "wire_enabled": "1",
     "auto_invoice_enabled": "1",
 }

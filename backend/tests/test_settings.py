@@ -7,7 +7,7 @@ async def test_list_returns_defaults(client):
     body = r.json()
     # DEFAULTS anahtarları her zaman dolu döner
     assert body["shipping_free_threshold"] == "500"
-    assert body["cod_enabled"] == "1"
+    assert body["wire_enabled"] == "1"
 
 
 async def test_update_requires_admin(client):
