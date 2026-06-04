@@ -4758,6 +4758,7 @@ html, body { height: 100%; }
       <div class="drawer-section">
         <h4>Sipariş Barkodu</h4>
         <div class="barcode-card">
+          ${_barcodeItemsHtml(o)}
           <div id="orderBarcodeQR" style="display:flex;justify-content:center;align-items:center;min-height:180px;"></div>
           <div class="barcode-meta">
             <svg width="12" height="12" fill="none" stroke="#10b981" stroke-width="2.5" viewBox="0 0 24 24" style="vertical-align:-2px;margin-right:4px;"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
@@ -4965,6 +4966,23 @@ html, body { height: 100%; }
     }
   }
 
+  // Kargo etiketlerinde barkodun ÜSTÜNDE gösterilecek ürün + adet listesi.
+  // Inline stil: hem ekran kartında (beyaz zemin) hem de print popup'larında çalışır.
+  function _barcodeItemsHtml(o) {
+    const items = o.items || [];
+    const totalQty = items.reduce((s, it) => s + (it.qty || 0), 0);
+    const rows = items.map(it =>
+      `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;line-height:1.55;color:#000;">`
+      + `<span style="text-align:left;">${escapeHtml(it.name || '')}</span>`
+      + `<span style="font-weight:700;white-space:nowrap;">× ${it.qty}</span></div>`
+    ).join('');
+    return `
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:2px dashed #000;text-align:left;">
+        <div style="font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.1em;color:#555;margin-bottom:5px;">İçerik (${totalQty} adet)</div>
+        ${rows}
+      </div>`;
+  }
+
   async function printBarcode(orderId) {
     const o = orders.find(x => x.id === orderId); if (!o) return;
     let token;
@@ -5008,6 +5026,7 @@ html, body { height: 100%; }
             ${o.tracking || '—'}
           </div>
         </div>
+        ${_barcodeItemsHtml(o)}
         <div class="code-wrap">
           <div class="bc-col"><svg id="bc" class="bc-svg"></svg></div>
           <div class="qr-col">
@@ -5068,6 +5087,7 @@ html, body { height: 100%; }
             ${o.tracking || '—'}
           </div>
         </div>
+        ${_barcodeItemsHtml(o)}
         <div class="code-wrap">
           <div class="bc-col"><svg id="bc${i}" class="bc-svg"></svg></div>
           <div class="qr-col">
