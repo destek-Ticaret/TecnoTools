@@ -199,7 +199,7 @@ class CheckoutRequest(BaseModel):
     coupon_code: str | None = None
     note: str | None = None
     session_id: str | None = None  # rezervasyonu eşleştirmek için
-    payment_method: str = Field(default="card")  # card | wire (kart | havale)
+    payment_method: str = Field(default="card")  # card | wire | cod (havale | kapıda)
     # E-arşiv fatura için opsiyonel — bireysel müşteri TCKN, kurumsal VKN
     tax_no: str | None = Field(default=None, max_length=16)
     tax_office: str | None = Field(default=None, max_length=128)

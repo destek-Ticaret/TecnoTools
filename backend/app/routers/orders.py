@@ -201,25 +201,22 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
     await db.refresh(order)
     await bus.publish("order_created", {"order_no": order_no, "total": float(order.total)})
 
-    # Kapıda ödeme kaldırıldı — yine de gelirse (eski istemci/crafted istek) reddet.
-    if payload.payment_method == "cod":
-        raise HTTPException(status_code=400, detail="Kapıda ödeme kullanılamıyor")
-
-    # Havale: gateway iframe akışı yok, sipariş "pending" kalır (IBAN'a ödeme
-    # gelince admin manuel onaylar).
-    if payload.payment_method == "wire":
+    # Havale veya kapıda ödeme: gateway iframe akışı yok, sipariş "pending" kalır
+    if payload.payment_method in ("wire", "cod"):
         from app.routers.settings import get_setting
 
-        if (await get_setting(db, "wire_enabled", "1")) != "1":
+        if payload.payment_method == "wire" and (await get_setting(db, "wire_enabled", "1")) != "1":
             raise HTTPException(status_code=400, detail="Havale ödeme kapalı")
-        order.payment_method = "wire"
-        order.payment_status = "pending"
+        if payload.payment_method == "cod" and (await get_setting(db, "cod_enabled", "1")) != "1":
+            raise HTTPException(status_code=400, detail="Kapıda ödeme kapalı")
+        order.payment_method = payload.payment_method
+        order.payment_status = "pending"  # bankaya gelince admin manual onaylayacak
         await db.commit()
         return PaymentStartResponse(
             order_no=order.order_no,
             iframe_token="",
             iframe_url=f"#order/{order.order_no}",  # frontend bunu görünce başarı modal'ı açar
-            provider="wire",
+            provider=payload.payment_method,
         )
 
     # Ödeme sağlayıcısı .env'den seçilir

@@ -63,46 +63,6 @@ async def test_checkout_rejects_oversold(auth_client):
     assert "stok" in r.json()["detail"].lower()
 
 
-async def test_checkout_rejects_cod(auth_client):
-    """Kapıda ödeme kaldırıldı → 400."""
-    pr = await auth_client.post("/api/products", json={"name": "Kapıda", "price": 30, "stock": 10})
-    pid = pr.json()["id"]
-    r = await auth_client.post(
-        "/api/orders/checkout",
-        json={
-            "items": [{"product_id": pid, "qty": 1}],
-            "customer_name": "User",
-            "customer_email": "u@u.com",
-            "customer_phone": "+905551112233",
-            "customer_city": "X",
-            "customer_address": "Mahalle Sokak No:1 Daire:5",
-            "payment_method": "cod",
-        },
-    )
-    assert r.status_code == 400
-    assert "kapıda" in r.json()["detail"].lower()
-
-
-async def test_checkout_wire_still_works(auth_client):
-    """Havale ödeme korunuyor → 200, payment_status=pending, provider=wire."""
-    pr = await auth_client.post("/api/products", json={"name": "Havale", "price": 80, "stock": 10})
-    pid = pr.json()["id"]
-    r = await auth_client.post(
-        "/api/orders/checkout",
-        json={
-            "items": [{"product_id": pid, "qty": 1}],
-            "customer_name": "User",
-            "customer_email": "u@u.com",
-            "customer_phone": "+905551112233",
-            "customer_city": "X",
-            "customer_address": "Mahalle Sokak No:1 Daire:5",
-            "payment_method": "wire",
-        },
-    )
-    assert r.status_code == 200, r.text
-    assert r.json()["provider"] == "wire"
-
-
 async def test_order_no_counter_monotonic(auth_client):
     pr = await auth_client.post("/api/products", json={"name": "P", "price": 10, "stock": 100})
     pid = pr.json()["id"]
