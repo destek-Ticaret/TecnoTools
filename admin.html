@@ -1532,6 +1532,10 @@ html, body { height: 100%; }
                   <option value="amount-asc">Tutar: Düşük → Yüksek</option>
                 </select>
               </div>
+              <button class="btn btn-outline btn-sm" onclick="openProductBarcodeModal()" title="Aynı ürünü içeren tüm siparişlerin barkodlarını toplu yazdır">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg>
+                Ürüne göre barkod
+              </button>
               <button class="btn btn-primary btn-sm" onclick="exportCSV()">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Dışa Aktar
@@ -5096,8 +5100,76 @@ html, body { height: 100%; }
 
   async function bulkPrintBarcodes() {
     if (selectedOrderIds.size === 0) { showToast('Önce sipariş seçin'); return; }
-    const list = orders.filter(o => selectedOrderIds.has(o.id));
-    if (!list.length) { showToast('Seçili sipariş bulunamadı', 'danger'); return; }
+    await printBarcodesForOrders(orders.filter(o => selectedOrderIds.has(o.id)));
+  }
+
+  // ── Ürüne göre toplu barkod ──────────────────────────────────────────────
+  // Aynı ürünü içeren siparişleri gruplar; seçilen ürünün tüm siparişlerinin
+  // barkod etiketleri tek seferde yazdırılır (depoda ürüne göre hazırlık).
+  let _bcGroups = [];
+
+  function _orderBarcodeProductGroups() {
+    const map = new Map();  // key → { name, orderIds:Set }
+    for (const o of orders) {
+      if (o.status === 'cancelled') continue;  // iptal siparişe etiket basma
+      if (!o.items || !o.items.length) continue;
+      const seen = new Set();  // aynı ürün bir siparişte birden çok kalemse tek say
+      for (const it of o.items) {
+        const key = (it.id != null) ? ('p:' + it.id) : ('n:' + (it.name || ''));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!map.has(key)) map.set(key, { name: it.name || '(isimsiz ürün)', orderIds: new Set() });
+        map.get(key).orderIds.add(o.id);
+      }
+    }
+    return [...map.values()]
+      .map(g => ({ name: g.name, orderIds: [...g.orderIds] }))
+      .sort((a, b) => b.orderIds.length - a.orderIds.length || a.name.localeCompare(b.name, 'tr'));
+  }
+
+  function openProductBarcodeModal() {
+    _bcGroups = _orderBarcodeProductGroups();
+    const old = document.getElementById('prodBcModal');
+    if (old) old.remove();
+    const rows = _bcGroups.length
+      ? _bcGroups.map((g, i) => `
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:.92rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(g.name)}</div>
+              <div style="font-size:.78rem;color:var(--muted);">${g.orderIds.length} sipariş</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="printBarcodesForProduct(${i})">Barkodları Yazdır</button>
+          </div>`).join('')
+      : `<div style="color:var(--muted);font-size:.9rem;text-align:center;padding:1.25rem;">Siparişlerde ürün bulunamadı.</div>`;
+    const el = document.createElement('div');
+    el.id = 'prodBcModal';
+    el.style.cssText = 'position:fixed;inset:0;z-index:320;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;';
+    el.onclick = (e) => { if (e.target === el) el.remove(); };
+    el.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:520px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);">
+        <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
+          <div>
+            <h3 style="font-size:1.05rem;font-weight:800;">Ürüne göre barkod yazdır</h3>
+            <p style="font-size:.82rem;color:var(--muted);margin-top:.25rem;line-height:1.45;">Bir ürün seçin; o ürünü içeren tüm siparişlerin kargo barkod etiketleri tek seferde yazdırılır.</p>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('prodBcModal').remove()" aria-label="Kapat">✕</button>
+        </div>
+        <div style="padding:1rem 1.25rem;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;">${rows}</div>
+      </div>`;
+    document.body.appendChild(el);
+  }
+
+  async function printBarcodesForProduct(idx) {
+    const g = _bcGroups[idx];
+    if (!g || !g.orderIds.length) { showToast('Bu ürün için sipariş bulunamadı', 'danger'); return; }
+    const list = orders.filter(o => g.orderIds.includes(o.id));
+    const modal = document.getElementById('prodBcModal');
+    if (modal) modal.remove();
+    await printBarcodesForOrders(list, `"${g.name}" ürünü — ${list.length} sipariş barkodu yazdırıldı`);
+  }
+
+  async function printBarcodesForOrders(list, auditMsg) {
+    if (!list || !list.length) { showToast('Yazdırılacak sipariş bulunamadı', 'danger'); return; }
 
     showToast(`${list.length} imzalı QR oluşturuluyor...`, 'info');
     let tokens;
@@ -5188,7 +5260,7 @@ html, body { height: 100%; }
       </body></html>
     `);
     w.document.close();
-    logAudit('order-barcode-bulk', `${list.length} imzalı QR+barkod etiketi toplu yazdırıldı`);
+    logAudit('order-barcode-bulk', auditMsg || `${list.length} imzalı QR+barkod etiketi toplu yazdırıldı`);
     showToast(`${list.length} etiket yazdırılıyor`, 'success');
   }
 
