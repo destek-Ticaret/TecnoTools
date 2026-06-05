@@ -1532,9 +1532,9 @@ html, body { height: 100%; }
                   <option value="amount-asc">Tutar: Düşük → Yüksek</option>
                 </select>
               </div>
-              <button class="btn btn-outline btn-sm" onclick="openProductBarcodeModal()" title="Aynı ürünü içeren tüm siparişlerin barkodlarını toplu yazdır">
+              <button class="btn btn-outline btn-sm" onclick="openBatchBarcodeModal()" title="Aynı içerikli siparişleri veya aynı ürünü içeren siparişleri gruplayıp barkodları toplu yazdır">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg>
-                Ürüne göre barkod
+                Toplu barkod
               </button>
               <button class="btn btn-primary btn-sm" onclick="exportCSV()">
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -5106,8 +5106,10 @@ html, body { height: 100%; }
   // ── Ürüne göre toplu barkod ──────────────────────────────────────────────
   // Aynı ürünü içeren siparişleri gruplar; seçilen ürünün tüm siparişlerinin
   // barkod etiketleri tek seferde yazdırılır (depoda ürüne göre hazırlık).
-  let _bcGroups = [];
+  // İki gruplama modu: 'identical' (aynı içerikli siparişler) ve 'product' (ürüne göre).
+  let _bcState = { product: [], identical: [], mode: 'identical' };
 
+  // Ürüne göre: her ürün → onu içeren siparişler.
   function _orderBarcodeProductGroups() {
     const map = new Map();  // key → { name, orderIds:Set }
     for (const o of orders) {
@@ -5127,45 +5129,109 @@ html, body { height: 100%; }
       .sort((a, b) => b.orderIds.length - a.orderIds.length || a.name.localeCompare(b.name, 'tr'));
   }
 
-  function openProductBarcodeModal() {
-    _bcGroups = _orderBarcodeProductGroups();
+  // Sepet imzası: ürün+adet kombinasyonu (aynı içerikli siparişler aynı imzaya sahip).
+  function _basketSig(o) {
+    const m = new Map();
+    for (const it of (o.items || [])) {
+      const k = (it.id != null) ? ('p' + it.id) : ('n' + (it.name || ''));
+      m.set(k, (m.get(k) || 0) + (Number(it.qty) || 0));
+    }
+    return [...m.entries()].sort().map(([k, q]) => k + ':' + q).join('|');
+  }
+  function _basketLabel(o) {
+    const m = new Map();
+    for (const it of (o.items || [])) {
+      const nm = it.name || '(isimsiz ürün)';
+      m.set(nm, (m.get(nm) || 0) + (Number(it.qty) || 0));
+    }
+    return [...m.entries()].map(([nm, q]) => `${q}× ${nm}`).join(', ');
+  }
+
+  // Aynı siparişler: aynı ürün+adet içeren siparişleri tek grupta topla.
+  function _orderBarcodeIdenticalGroups() {
+    const map = new Map();  // sig → { label, orderIds:[] }
+    for (const o of orders) {
+      if (o.status === 'cancelled') continue;
+      if (!o.items || !o.items.length) continue;
+      const sig = _basketSig(o);
+      if (!map.has(sig)) map.set(sig, { label: _basketLabel(o), orderIds: [] });
+      map.get(sig).orderIds.push(o.id);
+    }
+    return [...map.values()]
+      .sort((a, b) => b.orderIds.length - a.orderIds.length || a.label.localeCompare(b.label, 'tr'));
+  }
+
+  function _renderBatchRows() {
+    const groups = _bcState.mode === 'product' ? _bcState.product : _bcState.identical;
+    const emptyMsg = _bcState.mode === 'product'
+      ? 'Siparişlerde ürün bulunamadı.' : 'Uygun sipariş bulunamadı.';
+    if (!groups.length) return `<div style="color:var(--muted);font-size:.9rem;text-align:center;padding:1.25rem;">${emptyMsg}</div>`;
+    return groups.map((g, i) => {
+      const title = _bcState.mode === 'product' ? g.name : g.label;
+      const n = g.orderIds.length;
+      const badge = (_bcState.mode === 'identical' && n > 1)
+        ? `<span style="background:var(--primary);color:#fff;font-size:.7rem;font-weight:800;padding:.1rem .45rem;border-radius:999px;flex-shrink:0;">${n}×</span>` : '';
+      return `
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              ${badge}
+              <div style="font-weight:700;font-size:.9rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(title)}</div>
+            </div>
+            <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">${n} sipariş</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="printBarcodesFromGroup(${i})">Barkodları Yazdır</button>
+        </div>`;
+    }).join('');
+  }
+
+  function _setBatchMode(mode) {
+    _bcState.mode = mode;
+    const body = document.getElementById('bcModalBody');
+    if (body) body.innerHTML = _renderBatchRows();
+    ['identical', 'product'].forEach(m => {
+      const b = document.getElementById('bcTab-' + m);
+      if (b) b.className = 'btn btn-sm ' + (m === mode ? 'btn-primary' : 'btn-ghost');
+    });
+  }
+
+  function openBatchBarcodeModal() {
+    _bcState.product = _orderBarcodeProductGroups();
+    _bcState.identical = _orderBarcodeIdenticalGroups();
+    _bcState.mode = 'identical';
     const old = document.getElementById('prodBcModal');
     if (old) old.remove();
-    const rows = _bcGroups.length
-      ? _bcGroups.map((g, i) => `
-          <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:700;font-size:.92rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(g.name)}</div>
-              <div style="font-size:.78rem;color:var(--muted);">${g.orderIds.length} sipariş</div>
-            </div>
-            <button class="btn btn-primary btn-sm" onclick="printBarcodesForProduct(${i})">Barkodları Yazdır</button>
-          </div>`).join('')
-      : `<div style="color:var(--muted);font-size:.9rem;text-align:center;padding:1.25rem;">Siparişlerde ürün bulunamadı.</div>`;
     const el = document.createElement('div');
     el.id = 'prodBcModal';
     el.style.cssText = 'position:fixed;inset:0;z-index:320;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1rem;';
     el.onclick = (e) => { if (e.target === el) el.remove(); };
     el.innerHTML = `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:520px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:560px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);">
         <div style="padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
           <div>
-            <h3 style="font-size:1.05rem;font-weight:800;">Ürüne göre barkod yazdır</h3>
-            <p style="font-size:.82rem;color:var(--muted);margin-top:.25rem;line-height:1.45;">Bir ürün seçin; o ürünü içeren tüm siparişlerin kargo barkod etiketleri tek seferde yazdırılır.</p>
+            <h3 style="font-size:1.05rem;font-weight:800;">Toplu barkod yazdır</h3>
+            <p style="font-size:.82rem;color:var(--muted);margin-top:.25rem;line-height:1.45;">Bir grup seçin; o gruptaki tüm siparişlerin kargo barkod etiketleri tek seferde yazdırılır. (İptal siparişler hariç.)</p>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('prodBcModal').remove()" aria-label="Kapat">✕</button>
         </div>
-        <div style="padding:1rem 1.25rem;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;">${rows}</div>
+        <div style="padding:.75rem 1.25rem;display:flex;gap:.5rem;border-bottom:1px solid var(--border);">
+          <button id="bcTab-identical" class="btn btn-sm btn-primary" onclick="_setBatchMode('identical')">Aynı siparişler</button>
+          <button id="bcTab-product" class="btn btn-sm btn-ghost" onclick="_setBatchMode('product')">Ürüne göre</button>
+        </div>
+        <div id="bcModalBody" style="padding:1rem 1.25rem;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;">${_renderBatchRows()}</div>
       </div>`;
     document.body.appendChild(el);
   }
 
-  async function printBarcodesForProduct(idx) {
-    const g = _bcGroups[idx];
-    if (!g || !g.orderIds.length) { showToast('Bu ürün için sipariş bulunamadı', 'danger'); return; }
+  async function printBarcodesFromGroup(idx) {
+    const groups = _bcState.mode === 'product' ? _bcState.product : _bcState.identical;
+    const g = groups[idx];
+    if (!g || !g.orderIds.length) { showToast('Bu grup için sipariş bulunamadı', 'danger'); return; }
     const list = orders.filter(o => g.orderIds.includes(o.id));
     const modal = document.getElementById('prodBcModal');
     if (modal) modal.remove();
-    await printBarcodesForOrders(list, `"${g.name}" ürünü — ${list.length} sipariş barkodu yazdırıldı`);
+    const desc = _bcState.mode === 'product' ? `"${g.name}" ürünü` : `"${g.label}"`;
+    await printBarcodesForOrders(list, `${desc} — ${list.length} sipariş barkodu yazdırıldı`);
   }
 
   async function printBarcodesForOrders(list, auditMsg) {
