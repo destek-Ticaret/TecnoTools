@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Form, Header, HTTPException, Query, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,12 +11,32 @@ from app.models import (
     Product,
     StockMovement,
 )
+from app.rate_limit import limiter
 from app.services.email import send_order_confirmation
 from app.services.events import bus
 from app.services.paytr import verify_callback_hash
 from app.services.stripe_gateway import verify_webhook_signature as verify_stripe_signature
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
+
+
+@router.get("/installments")
+@limiter.limit("60/minute")
+async def installments(
+    request: Request,
+    bin_no: str = Query(alias="bin", description="Kart numarasının ilk 6-8 hanesi"),
+    price: float = Query(gt=0, description="Sepet toplamı (TL)"),
+):
+    """Kart BIN + tutara göre taksit seçenekleri (public).
+
+    iyzico kimliği tanımlıysa gerçek banka taksit planları; yoksa gerçekçi mock.
+    Kart bilgisi SAKLANMAZ — sadece taksit önizlemesi için ilk haneler kullanılır."""
+    digits = "".join(ch for ch in bin_no if ch.isdigit())[:8]
+    if len(digits) < 6:
+        raise HTTPException(status_code=400, detail="BIN en az 6 hane olmalı")
+    from app.services.iyzico import get_installment_options
+
+    return get_installment_options(digits, price)
 
 
 @router.post("/paytr/callback")

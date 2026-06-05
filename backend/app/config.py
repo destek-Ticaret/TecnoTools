@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     )
     stripe_cancel_url: str = "http://localhost:5500/order-fail.html"
 
+    # iyzico — taksit gösterimi + (ileride) ödeme. Boşsa MOCK modu: gerçekçi
+    # sahte taksit planları döner (canlı API çağrısı yapılmaz).
+    iyzico_api_key: str = ""
+    iyzico_secret_key: str = ""
+    iyzico_base_url: str = "https://sandbox-api.iyzipay.com"  # canlı: https://api.iyzipay.com
+
     initial_admin_username: str = "TecnoTools"
     initial_admin_password: str = "ChangeMeOnFirstLogin!"
     initial_admin_email: str = "admin@tecnotools.local"

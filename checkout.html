@@ -465,6 +465,14 @@ function renderForm() {
                   <div class="meta">+₺</div>
                 </label>
               </div>
+              <div id="taksitBox" style="margin-top:1rem;display:none;">
+                <div class="field">
+                  <label class="label" for="taksitBin">Taksit seçeneklerini gör <span class="opt">(kart no ilk 6 hane)</span></label>
+                  <input class="input" id="taksitBin" inputmode="numeric" maxlength="8" placeholder="Örn. 454671" autocomplete="off" />
+                  <div class="field-hint">Kart bilginiz saklanmaz; yalnızca taksit önizlemesi içindir.</div>
+                </div>
+                <div id="taksitList" style="margin-top:.6rem;"></div>
+              </div>
             </div>
             <div class="field" style="margin-top:1rem;">
               <label class="label" for="fNote">Sipariş Notu <span class="opt">(opsiyonel)</span></label>
@@ -581,7 +589,7 @@ function attachFormHandlers() {
         if (input) {
           input.checked = true;
           if (input.name === 'carrier') formData.carrier = input.value;
-          if (input.name === 'payment_method') formData.payment_method = input.value;
+          if (input.name === 'payment_method') { formData.payment_method = input.value; updateTaksitVisibility(); }
         }
       });
     });
@@ -592,6 +600,62 @@ function attachFormHandlers() {
   if (cKvkk) cKvkk.addEventListener('change', () => { formData.consent_kvkk = cKvkk.checked; });
   const cMs = document.getElementById('cMs');
   if (cMs) cMs.addEventListener('change', () => { formData.consent_distance_sales = cMs.checked; });
+
+  // Taksit önizleme: kart seçiliyse kutuyu göster, BIN girişini dinle
+  const binEl = document.getElementById('taksitBin');
+  if (binEl) binEl.addEventListener('input', onTaksitBinInput);
+  updateTaksitVisibility();
+}
+
+/* ── Taksit önizleme ── */
+let _taksitTimer = null;
+
+function updateTaksitVisibility() {
+  const box = document.getElementById('taksitBox');
+  if (!box) return;
+  const show = formData.payment_method === 'card';
+  box.style.display = show ? 'block' : 'none';
+  if (show) onTaksitBinInput();           // kart no zaten girilmişse tabloyu tazele
+  else { const l = document.getElementById('taksitList'); if (l) l.innerHTML = ''; }
+}
+
+function onTaksitBinInput() {
+  clearTimeout(_taksitTimer);
+  _taksitTimer = setTimeout(loadTaksit, 400);  // debounce
+}
+
+async function loadTaksit() {
+  const binEl = document.getElementById('taksitBin');
+  const listEl = document.getElementById('taksitList');
+  if (!binEl || !listEl) return;
+  const bin = (binEl.value || '').replace(/\D/g, '').slice(0, 8);
+  if (bin.length < 6) { listEl.innerHTML = ''; return; }
+  const total = computeTotals().total;
+  if (!(total > 0) || !window.api || !api.payments || !api.payments.installments) return;
+  listEl.innerHTML = '<div style="font-size:.82rem;color:var(--muted);">Taksit seçenekleri yükleniyor…</div>';
+  try {
+    const data = await api.payments.installments(bin, total);
+    renderTaksit(data);
+  } catch (e) {
+    listEl.innerHTML = `<div class="field-hint err">Taksit bilgisi alınamadı.</div>`;
+  }
+}
+
+function renderTaksit(data) {
+  const el = document.getElementById('taksitList');
+  if (!el) return;
+  if (!data || !Array.isArray(data.options) || !data.options.length) { el.innerHTML = ''; return; }
+  const head = data.bank_name
+    ? `<div style="font-size:.8rem;color:var(--muted);margin-bottom:.45rem;">${escapeHtml(data.bank_name)}${data.card_family ? ' · ' + escapeHtml(data.card_family) : ''}</div>`
+    : '';
+  const rows = data.options.map(o => `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);">
+      <span style="font-weight:600;font-size:.9rem;">${escapeHtml(o.label)}</span>
+      <span style="font-size:.88rem;white-space:nowrap;">${o.count > 1 ? `<strong>${fmt(o.installment_price)}</strong><span style="color:var(--muted);"> × ${o.count} = </span>` : ''}<strong>${fmt(o.total_price)}</strong></span>
+    </div>`).join('');
+  el.innerHTML = head
+    + `<div style="display:flex;flex-direction:column;gap:.4rem;">${rows}</div>`
+    + (data.mock ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.45rem;">* Örnek taksit planı (demo). Gerçek oran/komisyonlar bankaya göre değişir.</div>` : '');
 }
 
 async function lookupTax(value, hintEl) {

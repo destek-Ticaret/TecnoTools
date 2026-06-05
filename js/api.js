@@ -392,6 +392,8 @@
 
     payments: {
       getOrderStatus(orderNo) { return request(`/api/payments/order-status/${orderNo}`); },
+      /** Kart BIN (ilk 6-8 hane) + tutara göre taksit seçenekleri. */
+      installments(bin, price) { return request('/api/payments/installments', { params: { bin, price } }); },
     },
 
     shipping: {
