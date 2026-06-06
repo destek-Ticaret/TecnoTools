@@ -104,6 +104,39 @@ class Product(Base):
     )
 
     category: Mapped["Category | None"] = relationship(lazy="joined")
+    variants: Mapped[list["ProductVariant"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="ProductVariant.sort_order",
+        lazy="selectin",
+    )
+
+
+class ProductVariant(Base):
+    """Ürün varyantı (basit liste modeli). Her varyantın kendi stoğu vardır;
+    `price` boşsa ürünün ana fiyatı kullanılır. `options` ileride Renk/Beden
+    gibi eksenlere göre dropdown gruplaması için yapısal veri tutar."""
+
+    __tablename__ = "product_variants"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(255))  # görünen ad, ör. "Kırmızı / 42"
+    options: Mapped[dict | None] = mapped_column(JSONType, nullable=True)  # {"Renk":"Kırmızı"}
+    sku: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    barcode: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)  # boşsa ürün fiyatı
+    stock: Mapped[int] = mapped_column(Integer, default=0)
+    image: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    product: Mapped["Product"] = relationship(back_populates="variants")
 
 
 class Customer(Base):
@@ -208,6 +241,10 @@ class OrderItem(Base):
     product_id: Mapped[int | None] = mapped_column(
         ForeignKey("products.id", ondelete="SET NULL"), nullable=True
     )
+    variant_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_variants.id", ondelete="SET NULL"), nullable=True
+    )
+    variant_name: Mapped[str | None] = mapped_column(String(255), nullable=True)  # snapshot
     # Snapshot
     name: Mapped[str] = mapped_column(String(255))
     icon: Mapped[str | None] = mapped_column(String(8), nullable=True)

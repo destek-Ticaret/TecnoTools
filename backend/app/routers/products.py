@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.deps import require_editor
-from app.models import AuditLog, Product, Reservation, StockMovement, User
-from app.schemas import ProductIn, ProductOut, ProductPublicOut
+from app.models import AuditLog, Product, ProductVariant, Reservation, StockMovement, User
+from app.schemas import ProductIn, ProductOut, ProductPublicOut, ProductVariantPublicOut
 from app.services.currency import convert, get_rate, is_supported
 from app.services.events import bus
 from app.services.text_utils import fuzzy_score, normalize, slugify
@@ -36,6 +36,60 @@ async def _effective_stock_map(
     return {pid: int(qty) for pid, qty in rows}
 
 
+# ── Varyant yardımcıları ───────────────────────────────────────────────
+def _variant_price(p: Product, v: ProductVariant) -> float:
+    """Varyant fiyatı boşsa ürünün ana fiyatına düşer."""
+    return float(v.price) if v.price is not None else float(p.price)
+
+
+def _variants_public(p: Product, rate: float) -> list[ProductVariantPublicOut]:
+    """Aktif varyantları public şekle çevir (fiyat çözülmüş + kur uygulanmış)."""
+    return [
+        ProductVariantPublicOut(
+            id=v.id,
+            name=v.name,
+            options=v.options,
+            price=convert(_variant_price(p, v), rate),
+            effective_stock=max(0, v.stock or 0),
+            image=v.image,
+        )
+        for v in p.variants
+        if v.is_active
+    ]
+
+
+def _effective_stock(p: Product, base_reserved: int) -> int:
+    """Varyantlı üründe effective stok = aktif varyant stoklarının toplamı;
+    varyantsızda = ürün stoğu - rezervasyon."""
+    active = [v for v in p.variants if v.is_active]
+    if active:
+        return sum(max(0, v.stock or 0) for v in active)
+    return max(0, (p.stock or 0) - base_reserved)
+
+
+def _sync_variants(p: Product, variants_data: list[dict]) -> None:
+    """Ürün varyantlarını upsert et: id eşleşeni güncelle, yenisini ekle,
+    payload'da olmayan mevcutları sil (id'ler korunur → sipariş referansları sağlam).
+
+    delete-orphan cascade ile uyumlu olması için koleksiyon TOPLU değiştirilir;
+    elle db.add/db.delete yüklü koleksiyonla çakışır."""
+    fields = ("name", "options", "sku", "barcode", "price", "stock", "image", "is_active", "sort_order")
+    existing = {v.id: v for v in p.variants}
+    keep: list[ProductVariant] = []
+    for vd in variants_data:
+        vid = vd.get("id")
+        vals = {k: vd[k] for k in fields}
+        if vid and vid in existing:
+            v = existing[vid]
+            for k, val in vals.items():
+                setattr(v, k, val)
+            keep.append(v)
+        else:
+            keep.append(ProductVariant(**vals))
+    # Koleksiyonu yeni listeyle değiştir → çıkarılan varyantlar delete-orphan ile silinir
+    p.variants[:] = keep
+
+
 @router.get("", response_model=list[ProductPublicOut])
 async def list_products_public(
     db: AsyncSession = Depends(get_db),
@@ -60,7 +114,7 @@ async def list_products_public(
 
     out = []
     for p in products:
-        eff = max(0, (p.stock or 0) - reserved.get(p.id, 0))
+        eff = _effective_stock(p, reserved.get(p.id, 0))
         price = convert(float(p.price), rate)
         old_price = convert(float(p.old_price), rate) if p.old_price is not None else None
         out.append(
@@ -80,6 +134,7 @@ async def list_products_public(
                 badge=p.badge,
                 features=p.features,
                 images=p.images,
+                variants=_variants_public(p, rate),
             )
         )
     return out
@@ -202,7 +257,7 @@ async def get_product_public(
     if not p or not p.is_active:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     reserved = await _effective_stock_map(db, [p.id], session_id)
-    eff = max(0, (p.stock or 0) - reserved.get(p.id, 0))
+    eff = _effective_stock(p, reserved.get(p.id, 0))
     return ProductPublicOut(
         id=p.id,
         name=p.name,
@@ -219,6 +274,7 @@ async def get_product_public(
         badge=p.badge,
         features=p.features,
         images=p.images,
+        variants=_variants_public(p, 1.0),
     )
 
 
@@ -237,18 +293,25 @@ async def list_products_admin(
 async def create_product(
     payload: ProductIn, db: AsyncSession = Depends(get_db), user: User = Depends(require_editor)
 ):
-    p = Product(**payload.model_dump())
+    data = payload.model_dump()
+    variants_data = data.pop("variants", None)
+    p = Product(**data)
     db.add(p)
     await db.flush()
     if p.stock > 0:
         db.add(StockMovement(product_id=p.id, product_name=p.name, delta=p.stock, reason="init"))
+    # Varyantları ekle (yeni üründe p.variants'a dokunmadan — async lazy-load tuzağı)
+    _vfields = ("name", "options", "sku", "barcode", "price", "stock", "image", "is_active", "sort_order")
+    for vd in variants_data or []:
+        db.add(ProductVariant(product_id=p.id, **{k: vd[k] for k in _vfields}))
     db.add(
         AuditLog(
             actor=user.username, action="product-add", message=f"Ürün eklendi: {p.name} (#{p.id})"
         )
     )
     await db.commit()
-    await db.refresh(p)
+    # Varyantları yüklü döndür (ProductOut serileştirmesi p.variants'a erişir)
+    p = (await db.execute(select(Product).where(Product.id == p.id))).scalar_one()
     await bus.publish("product_created", {"id": p.id, "name": p.name})
     return p
 
@@ -265,8 +328,12 @@ async def update_product(
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     old_stock = p.stock or 0
     old_price = float(p.price or 0)
-    for k, v in payload.model_dump().items():
+    data = payload.model_dump()
+    variants_data = data.pop("variants", None)
+    for k, v in data.items():
         setattr(p, k, v)
+    if variants_data is not None:  # None = dokunma; [] = tümünü sil
+        _sync_variants(p, variants_data)
     new_stock = p.stock or 0
     new_price = float(p.price or 0)
     if new_stock != old_stock:
@@ -283,7 +350,8 @@ async def update_product(
         )
     )
     await db.commit()
-    await db.refresh(p)
+    # Varyantları yüklü döndür (refresh selectin'i tazelemez)
+    p = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one()
     await bus.publish("product_updated", {"id": p.id, "name": p.name})
     # 0'dan > 0'a stoğa çıkış → bekleme listesine bildirim
     if old_stock <= 0 and new_stock > 0:

@@ -127,6 +127,43 @@ class CategoryOut(_ORMBase):
 
 
 # ── PRODUCT ──
+class ProductVariantIn(BaseModel):
+    id: int | None = None  # mevcut varyantı eşleştirmek için (update'te); yoksa yeni
+    name: str = Field(min_length=1, max_length=255)
+    options: dict | None = None  # {"Renk":"Kırmızı","Beden":"42"}
+    sku: str | None = Field(default=None, max_length=64)
+    barcode: str | None = Field(default=None, max_length=64)
+    price: float | None = Field(default=None, ge=0)  # boşsa ürün fiyatı
+    stock: int = Field(ge=0, default=0)
+    image: str | None = None
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class ProductVariantOut(_ORMBase):
+    id: int
+    name: str
+    options: dict | None
+    sku: str | None
+    barcode: str | None
+    price: float | None
+    stock: int
+    image: str | None
+    is_active: bool
+    sort_order: int
+
+
+class ProductVariantPublicOut(BaseModel):
+    """Public — fiyat çözülmüş (boşsa ürün fiyatı), stok effective."""
+
+    id: int
+    name: str
+    options: dict | None = None
+    price: float
+    effective_stock: int
+    image: str | None = None
+
+
 class ProductIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     sub: str | None = None
@@ -141,6 +178,7 @@ class ProductIn(BaseModel):
     features: list[str] | None = None
     images: list[str] | None = None
     is_active: bool = True
+    variants: list[ProductVariantIn] | None = None  # None = dokunma; [] = tümünü sil
 
 
 class ProductOut(_ORMBase):
@@ -161,6 +199,7 @@ class ProductOut(_ORMBase):
     features: list[str] | None
     images: list[str] | None
     is_active: bool
+    variants: list[ProductVariantOut] = []
 
 
 class ProductPublicOut(_ORMBase):
@@ -181,12 +220,14 @@ class ProductPublicOut(_ORMBase):
     badge: dict | None
     features: list[str] | None
     images: list[str] | None
+    variants: list[ProductVariantPublicOut] = []
 
 
 # ── ORDER ──
 class CartItemIn(BaseModel):
     product_id: int
     qty: int = Field(ge=1)
+    variant_id: int | None = None
 
 
 class CheckoutRequest(BaseModel):
@@ -209,6 +250,8 @@ class CheckoutRequest(BaseModel):
 class OrderItemOut(_ORMBase):
     id: int
     product_id: int | None
+    variant_id: int | None = None
+    variant_name: str | None = None
     name: str
     icon: str | None
     image: str | None
