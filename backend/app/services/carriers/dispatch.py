@@ -20,7 +20,7 @@ from app.services.events import bus
 
 log = logging.getLogger(__name__)
 
-CARRIER_CODES = ("ptt",)
+CARRIER_CODES = ("ptt", "aras", "yurtici", "mng", "surat", "hepsijet")
 
 # Hangi event kodu Order.status'ü hangi değere çıkarmalı.
 _EVENT_TO_STATUS: dict[str, str] = {
@@ -44,11 +44,25 @@ _STATUS_ORDER = {
 
 def get_adapter(carrier: str) -> CarrierAdapter:
     """Carrier kodundan adapter instance döndür."""
-    if carrier == "ptt":
-        from app.services.carriers.ptt import PttAdapter
+    from app.services.carriers.aras import ArasAdapter
+    from app.services.carriers.hepsijet import HepsijetAdapter
+    from app.services.carriers.mng import MngAdapter
+    from app.services.carriers.ptt import PttAdapter
+    from app.services.carriers.surat import SuratAdapter
+    from app.services.carriers.yurtici import YurticiAdapter
 
-        return PttAdapter()
-    raise ValueError(f"Unknown carrier: {carrier!r}")
+    registry: dict[str, type[CarrierAdapter]] = {
+        "ptt": PttAdapter,
+        "aras": ArasAdapter,
+        "yurtici": YurticiAdapter,
+        "mng": MngAdapter,
+        "surat": SuratAdapter,
+        "hepsijet": HepsijetAdapter,
+    }
+    cls = registry.get(carrier)
+    if cls is None:
+        raise ValueError(f"Unknown carrier: {carrier!r}")
+    return cls()
 
 
 async def apply_event(

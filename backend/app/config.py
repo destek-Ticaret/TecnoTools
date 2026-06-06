@@ -106,6 +106,14 @@ class Settings(BaseSettings):
     ptt_customer_code: str = ""
     ptt_wsdl_url: str = "https://kurumsalwebservis.ptt.gov.tr/gonderitakip.asmx?wsdl"
     ptt_webhook_secret: str = ""  # X-PTT-Signature: hex(hmac_sha256(secret, body))
+    # Diğer firmalar — şimdilik webhook (event push) + mock fetch. Gerçek API
+    # polling'i kimlik bilgileri geldiğinde her adapter'ın _fetch_real()'ine eklenir.
+    # Webhook secret boşsa imza doğrulaması atlanır (firma push'u açık kabul edilir).
+    aras_webhook_secret: str = ""  # X-Aras-Signature
+    yurtici_webhook_secret: str = ""  # X-Yurtici-Signature
+    mng_webhook_secret: str = ""  # X-MNG-Signature
+    surat_webhook_secret: str = ""  # X-Surat-Signature
+    hepsijet_webhook_secret: str = ""  # X-Hepsijet-Signature
     # Genel poll ayarları
     shipment_poll_interval_minutes: int = 60
     shipment_poll_max_age_days: int = 21

@@ -4710,12 +4710,12 @@ html, body { height: 100%; }
           <div>
             <div class="info-label" style="margin-bottom:.25rem;">Kargo Firması</div>
             <select id="shipCarrierSel" style="width:100%;padding:.55rem .7rem;background:var(--bg2);border:1px solid var(--border);border-radius:9px;font-size:.85rem;color:var(--text);outline:none;">
-              <option value="ptt" selected>${carrierLabel('ptt')}</option>
+              ${Object.entries(CARRIER_LABELS).map(([code, label]) => `<option value="${code}" ${(o.carrier || 'ptt') === code ? 'selected' : ''}>${label}</option>`).join('')}
             </select>
           </div>
           <div>
             <div class="info-label" style="margin-bottom:.25rem;">Takip No</div>
-            <input type="text" id="shipTrackingInput" value="${escapeHtml(o.tracking||'')}" placeholder="PTT takip numarası" style="width:100%;padding:.55rem .7rem;background:var(--bg2);border:1px solid var(--border);border-radius:9px;font-size:.85rem;color:var(--text);outline:none;" />
+            <input type="text" id="shipTrackingInput" value="${escapeHtml(o.tracking||'')}" placeholder="Takip numarası" style="width:100%;padding:.55rem .7rem;background:var(--bg2);border:1px solid var(--border);border-radius:9px;font-size:.85rem;color:var(--text);outline:none;" />
           </div>
           <button class="btn btn-primary btn-sm" onclick="assignShipping('${o.id}')" title="Carrier + tracking_no kaydet">
             Kargoya Ata
@@ -4837,7 +4837,7 @@ html, body { height: 100%; }
   }
 
   /* ── KARGO (carrier) yardımcıları ── */
-  const CARRIER_LABELS = { ptt: 'PTT Kargo' };
+  const CARRIER_LABELS = { ptt: 'PTT Kargo', aras: 'Aras Kargo', yurtici: 'Yurtiçi Kargo', mng: 'MNG Kargo', surat: 'Sürat Kargo', hepsijet: 'Hepsijet' };
   function carrierLabel(code) { return CARRIER_LABELS[code] || (code || 'Kargo'); }
 
   const SHIP_EVENT_LABELS = {

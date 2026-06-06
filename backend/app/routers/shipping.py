@@ -19,7 +19,7 @@ import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -135,8 +135,15 @@ async def sync_order(
 
 # ── Carrier + tracking atama (admin) ───────────────────────────────────
 class AssignIn(BaseModel):
-    carrier: str = Field(..., pattern=r"^ptt$")
+    carrier: str = Field(..., min_length=2, max_length=16)
     tracking_no: str = Field(..., min_length=4, max_length=64)
+
+    @field_validator("carrier")
+    @classmethod
+    def _known_carrier(cls, v: str) -> str:
+        if v not in CARRIER_CODES:
+            raise ValueError(f"Bilinmeyen kargo firması: {v!r}")
+        return v
 
 
 @router.post("/assign/{order_no}")
@@ -166,7 +173,18 @@ async def assign_carrier(
 
 
 def _guess_carrier(tracking_no: str) -> str | None:
+    """Takip numarası prefix'inden kargo firması kodunu tahmin et.
+    (tracking.py'deki görüntüleme kurallarıyla tutarlı.)"""
     tn = (tracking_no or "").upper()
-    if tn.startswith("PTT"):
-        return "ptt"
+    prefixes: tuple[tuple[tuple[str, ...], str], ...] = (
+        (("PTT",), "ptt"),
+        (("ARAS",), "aras"),
+        (("YK",), "yurtici"),
+        (("MNG",), "mng"),
+        (("HEPSI", "HX"), "hepsijet"),
+        (("TRX", "SUR"), "surat"),
+    )
+    for starts, code in prefixes:
+        if tn.startswith(starts):
+            return code
     return None

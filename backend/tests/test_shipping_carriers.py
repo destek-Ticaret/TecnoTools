@@ -217,7 +217,7 @@ async def test_ptt_webhook_endpoint_applies_event(auth_client, db_session):
 
 @pytest.mark.asyncio
 async def test_webhook_unknown_carrier_404(auth_client):
-    resp = await auth_client.post("/api/shipping/webhook/aras", content=b"{}")
+    resp = await auth_client.post("/api/shipping/webhook/fedex", content=b"{}")
     assert resp.status_code == 404
 
 
@@ -260,9 +260,127 @@ async def test_assign_then_sync_uses_mock_events(auth_client, db_session):
 
 
 @pytest.mark.asyncio
-async def test_assign_rejects_non_ptt_carrier(auth_client, db_session):
+async def test_assign_rejects_unknown_carrier(auth_client, db_session):
     await _make_order(db_session, tracking_no="OLD2", carrier=None, status="processing")
     r = await auth_client.post(
-        "/api/shipping/assign/TT-2026-0001", json={"carrier": "aras", "tracking_no": "X1234"}
+        "/api/shipping/assign/TT-2026-0001", json={"carrier": "fedex", "tracking_no": "X1234"}
     )
     assert r.status_code == 422
+
+
+# ── Çoklu firma (Aras/Yurtiçi/MNG/Sürat/Hepsijet) ─────────────────────
+from app.services.carriers import CARRIER_CODES, get_adapter
+from app.services.carriers.aras import ArasAdapter
+from app.services.carriers.common import classify
+from app.services.carriers.yurtici import YurticiAdapter
+
+
+def test_all_carrier_codes_resolve_to_adapter():
+    for code in CARRIER_CODES:
+        adapter = get_adapter(code)
+        assert adapter.code == code
+        assert adapter.display_name
+
+
+def test_generic_classify_text_fallback():
+    # status_map boş → Türkçe metinden çıkarım
+    assert classify(None, "Teslim Edildi", {}) == "delivered"
+    assert classify(None, "Dağıtıma çıktı", {}) == "out_for_delivery"
+    assert classify(None, "Aktarma merkezinde", {}) == "in_transit"
+    assert classify(None, "Gönderi iade edildi", {}) == "returned"
+    assert classify("X", "anlamsız", {}) == "in_transit"
+
+
+def test_generic_parse_webhook_alias_fields():
+    # Aras farklı alan adları (trackingNumber/status/eventDate/city) ile gelir
+    a = ArasAdapter()
+    payload = json.dumps(
+        [
+            {
+                "trackingNumber": "ARAS123",
+                "status": "Teslim Edildi",
+                "eventDate": "2026-05-28 10:00:00",
+                "city": "İzmir",
+            }
+        ]
+    ).encode()
+    events = a.parse_webhook({}, payload)
+    assert len(events) == 1
+    e = events[0]
+    assert e.carrier == "aras"
+    assert e.tracking_no == "ARAS123"
+    assert e.code == "delivered"
+    assert e.location == "İzmir"
+
+
+def test_generic_parse_webhook_wrapped_and_xml():
+    # {"events":[...]} sarmalı + XML <movements><movement>
+    y = YurticiAdapter()
+    wrapped = json.dumps({"events": [{"barkod": "YK9", "durum": "Dağıtımda"}]}).encode()
+    out = y.parse_webhook({}, wrapped)
+    assert len(out) == 1 and out[0].code == "out_for_delivery" and out[0].tracking_no == "YK9"
+
+    xml = (
+        b"<movements><movement><trackingNo>YK10</trackingNo>"
+        b"<status>Aktarma merkezinde</status>"
+        b"<date>2026-05-26 09:00:00</date></movement></movements>"
+    )
+    xout = y.parse_webhook({}, xml)
+    assert len(xout) == 1 and xout[0].code == "in_transit" and xout[0].tracking_no == "YK10"
+
+
+def test_generic_signature_verification():
+    s = get_settings()
+    s.aras_webhook_secret = "aras-secret"
+    try:
+        a = ArasAdapter()
+        body = b'[{"trackingNumber":"X"}]'
+        sig = hmac.new(b"aras-secret", body, hashlib.sha256).hexdigest()
+        assert a.verify_signature({"x-aras-signature": sig}, body) is True
+        assert a.verify_signature({"x-aras-signature": "deadbeef"}, body) is False
+        assert a.verify_signature({}, body) is False
+    finally:
+        s.aras_webhook_secret = ""
+
+
+@pytest.mark.asyncio
+async def test_aras_webhook_endpoint_applies_event(auth_client, db_session):
+    await _make_order(db_session, tracking_no="ARASE2E", carrier="aras", status="processing")
+    body = json.dumps(
+        [
+            {
+                "trackingNumber": "ARASE2E",
+                "status": "Teslim Edildi",
+                "eventDate": "2026-05-28 11:00:00",
+            }
+        ]
+    ).encode()
+    resp = await auth_client.post(
+        "/api/shipping/webhook/aras", content=body, headers={"content-type": "application/json"}
+    )
+    assert resp.status_code == 202, resp.text
+    assert resp.json()["applied"] == 1
+
+    await db_session.commit()
+    import sqlalchemy
+
+    o = (
+        await db_session.execute(sqlalchemy.select(Order).where(Order.order_no == "TT-2026-0001"))
+    ).scalar_one()
+    await db_session.refresh(o)
+    assert o.status == OrderStatus.DELIVERED.value
+
+
+@pytest.mark.asyncio
+async def test_assign_and_sync_new_carrier(auth_client, db_session):
+    await _make_order(db_session, tracking_no="OLD3", carrier=None, status="processing")
+    r = await auth_client.post(
+        "/api/shipping/assign/TT-2026-0001", json={"carrier": "yurtici", "tracking_no": "YK123456"}
+    )
+    assert r.status_code == 200
+    assert r.json()["carrier"] == "yurtici"
+
+    r2 = await auth_client.post("/api/shipping/sync/TT-2026-0001")
+    assert r2.status_code == 200
+    assert r2.json()["fetched"] == 3  # mock
+    assert r2.json()["carrier"] == "yurtici"
