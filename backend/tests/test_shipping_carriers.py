@@ -282,6 +282,21 @@ def test_all_carrier_codes_resolve_to_adapter():
         assert adapter.display_name
 
 
+def test_real_api_is_configured_toggles_with_credentials():
+    # Kimlik yokken adapter mock moddadır (is_configured False); set edilince True.
+    s = get_settings()
+    assert get_adapter("aras").is_configured() is False
+    assert get_adapter("yurtici").is_configured() is False
+    s.aras_username, s.aras_password = "u", "p"
+    s.yurtici_username, s.yurtici_password = "u", "p"
+    try:
+        assert get_adapter("aras").is_configured() is True
+        assert get_adapter("yurtici").is_configured() is True
+    finally:
+        s.aras_username = s.aras_password = ""
+        s.yurtici_username = s.yurtici_password = ""
+
+
 def test_generic_classify_text_fallback():
     # status_map boş → Türkçe metinden çıkarım
     assert classify(None, "Teslim Edildi", {}) == "delivered"

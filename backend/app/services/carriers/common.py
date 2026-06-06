@@ -247,3 +247,47 @@ class GenericCarrierAdapter(CarrierAdapter):
         """Kimlik bilgileri geldiğinde firmaya özgü API burada uygulanır
         (Aras/Yurtiçi: SOAP, MNG: REST). Şimdilik mock'a düşer."""
         return mock_events(self.code, tracking_no)
+
+    def soap_records_to_events(
+        self, xml_text: str, fallback_tracking_no: str
+    ) -> list[NormalizedEvent]:
+        """SOAP/XML yanıtından hareket kayıtlarını toleranslı çıkar.
+
+        Yanıt alan adları firmaya göre değiştiği için: en az bir statü/tarih
+        alanı içeren her node bir hareket kaydı sayılır ve `_row_to_event`'in
+        alias eşleyicisiyle normalize edilir. NOT: başarı-yanıtı alan adları
+        gerçek hesapla DOĞRULANMALI — bu defansif bir ilk eşleme.
+        """
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError as e:
+            log.warning("%s SOAP yanıtı parse edilemedi: %s", self.code, e)
+            return []
+        events: list[NormalizedEvent] = []
+        for el in root.iter():
+            row = {
+                c.tag.split("}")[-1]: (c.text or "").strip()
+                for c in el
+                if c.text and c.text.strip()
+            }
+            if not row:
+                continue
+            # Hareket kaydı mı? statü veya tarih alanı içermeli (aksi hâlde sarmalayıcı node).
+            if _first(row, _CODE_KEYS) is None and _first(row, _TEXT_KEYS) is None:
+                continue
+            if _first(row, _DATE_KEYS) is None and _first(row, _TEXT_KEYS) is None:
+                continue
+            ev = self._row_to_event(row)
+            if not ev.tracking_no:
+                ev = NormalizedEvent(
+                    carrier=ev.carrier,
+                    tracking_no=fallback_tracking_no,
+                    code=ev.code,
+                    occurred_at=ev.occurred_at,
+                    raw_status=ev.raw_status,
+                    description=ev.description,
+                    location=ev.location,
+                    raw_payload=ev.raw_payload,
+                )
+            events.append(ev)
+        return events

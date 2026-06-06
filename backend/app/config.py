@@ -114,6 +114,18 @@ class Settings(BaseSettings):
     mng_webhook_secret: str = ""  # X-MNG-Signature
     surat_webhook_secret: str = ""  # X-Surat-Signature
     hepsijet_webhook_secret: str = ""  # X-Hepsijet-Signature
+    # Gerçek API polling kimlikleri (boşsa ilgili adapter fetch()'i mock döner).
+    # Aras: arascargoservice.asmx GetCargoTransaction(userName, password, code, integrationCode)
+    aras_username: str = ""
+    aras_password: str = ""
+    aras_integration_code: str = ""  # opsiyonel müşteri entegrasyon referansı
+    aras_tracking_url: str = "https://customerws.araskargo.com.tr/arascargoservice.asmx"
+    # Yurtiçi: queryShipmentDetail(wsUserName, wsPassword, wsLanguage, keys, keyType, ...)
+    yurtici_username: str = ""
+    yurtici_password: str = ""
+    yurtici_tracking_url: str = (
+        "https://webservices.yurticikargo.com/KOPSWebServices/ShippingOrderDispatcherServices"
+    )
     # Genel poll ayarları
     shipment_poll_interval_minutes: int = 60
     shipment_poll_max_age_days: int = 21
