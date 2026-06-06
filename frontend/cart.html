@@ -247,8 +247,27 @@ function syncReservations() {
     .catch(() => { /* backend yoksa sessizce devam */ });
 }
 
-/* Stok = effective_stock. Eğer product yoksa (cart eski ürün), sıfır döner. */
+/* Sepet kalemindeki varyantı güncel ürün verisinden çöz (yoksa null). */
+function variantOf(item) {
+  if (!item.variant_id) return null;
+  const p = productMap[item.id];
+  if (p && Array.isArray(p.variants)) return p.variants.find(v => v.id === item.variant_id) || null;
+  return null;
+}
+
+/* Birim fiyat: varyantlıysa varyant fiyatı (güncel), değilse ürün fiyatı;
+   ürün yüklenememişse sepetteki kayıtlı fiyata düşer. */
+function unitPriceOf(item) {
+  const v = variantOf(item);
+  if (v) return Number(v.price || 0);
+  const p = productMap[item.id];
+  return p ? Number(p.price || 0) : Number(item.price || 0);
+}
+
+/* Stok = effective_stock (varyantlıysa varyantın). Ürün yoksa sıfır. */
 function effectiveStockOf(item) {
+  const v = variantOf(item);
+  if (v) return v.effective_stock || 0;
   const p = productMap[item.id];
   if (!p) return 0;
   if (typeof p.effective_stock === 'number') return p.effective_stock;
@@ -257,11 +276,7 @@ function effectiveStockOf(item) {
 
 /* ── TOTALS (backend _calc_totals mantığı) ── */
 function computeTotals() {
-  const subtotal = cart.reduce((s, it) => {
-    const p = productMap[it.id];
-    const price = p ? Number(p.price || 0) : Number(it.price || 0);
-    return s + price * (it.qty || 0);
-  }, 0);
+  const subtotal = cart.reduce((s, it) => s + unitPriceOf(it) * (it.qty || 0), 0);
   let discount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === 'percent') {
@@ -313,8 +328,8 @@ function renderCart() {
     const stock = effectiveStockOf(it);
     const stockState = stock <= 0 ? 'out' : (stock <= 5 ? 'low' : 'ok');
     const stockLabel = stock <= 0 ? 'Stokta yok' : (stock <= 5 ? `Son ${stock} adet` : 'Stokta');
-    const currentPrice = p ? Number(p.price || 0) : Number(it.price || 0);
-    const oldPrice = p && p.old_price && p.old_price > p.price ? p.old_price : null;
+    const currentPrice = unitPriceOf(it);
+    const oldPrice = (!it.variant_id && p && p.old_price && p.old_price > p.price) ? p.old_price : null;
     const lineTotal = currentPrice * (it.qty || 0);
     const maxQty = Math.max(0, stock);
     const stepperDisabled = stock <= 0;
@@ -327,6 +342,7 @@ function renderCart() {
         <div class="line-info">
           <div class="line-name">
             <a href="product.html?id=${it.id}">${escapeHtml(it.name || '')}</a>
+            ${it.variant_name ? `<span style="display:inline-block;margin-top:.2rem;font-size:.78rem;color:var(--muted);font-weight:600;">${escapeHtml(it.variant_name)}</span>` : ''}
           </div>
           <div class="line-meta">
             <span class="line-price">
@@ -337,12 +353,12 @@ function renderCart() {
         </div>
         <div class="line-side">
           <div class="qty-stepper">
-            <button type="button" onclick="changeQty(${it.id}, -1)" ${stepperDisabled || it.qty <= 1 ? '' : ''} aria-label="Azalt">−</button>
-            <input type="number" min="1" max="${Math.max(1, maxQty)}" value="${it.qty}" oninput="onQtyInput(${it.id}, this.value)" ${stepperDisabled ? 'disabled' : ''} aria-label="Adet" />
-            <button type="button" onclick="changeQty(${it.id}, 1)" ${stepperDisabled || it.qty >= maxQty ? 'disabled' : ''} aria-label="Arttır">+</button>
+            <button type="button" onclick="changeQty(${idx}, -1)" aria-label="Azalt">−</button>
+            <input type="number" min="1" max="${Math.max(1, maxQty)}" value="${it.qty}" oninput="onQtyInput(${idx}, this.value)" ${stepperDisabled ? 'disabled' : ''} aria-label="Adet" />
+            <button type="button" onclick="changeQty(${idx}, 1)" ${stepperDisabled || it.qty >= maxQty ? 'disabled' : ''} aria-label="Arttır">+</button>
           </div>
           <div class="line-total">${fmt(lineTotal)}</div>
-          <button class="line-remove" onclick="removeLine(${it.id})" title="Sil" aria-label="Sepetten sil">
+          <button class="line-remove" onclick="removeLine(${idx})" title="Sil" aria-label="Sepetten sil">
             <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
           </button>
         </div>
@@ -443,12 +459,12 @@ function renderCart() {
   }
 }
 
-function changeQty(productId, delta) {
-  const it = cart.find(x => x.id === productId);
+function changeQty(idx, delta) {
+  const it = cart[idx];
   if (!it) return;
   const stock = effectiveStockOf(it);
   const newQty = (it.qty || 0) + delta;
-  if (newQty < 1) { removeLine(productId); return; }
+  if (newQty < 1) { removeLine(idx); return; }
   if (newQty > stock) {
     if (stock <= 0) showToast('Stokta yok', 'danger');
     else showToast(`Stokta yalnızca ${stock} adet var`, 'danger');
@@ -459,10 +475,10 @@ function changeQty(productId, delta) {
   render();
 }
 
-function onQtyInput(productId, value) {
+function onQtyInput(idx, value) {
   const v = parseInt(value, 10);
   if (isNaN(v) || v < 1) return;
-  const it = cart.find(x => x.id === productId);
+  const it = cart[idx];
   if (!it) return;
   const stock = effectiveStockOf(it);
   if (v > stock) {
@@ -477,10 +493,10 @@ function onQtyInput(productId, value) {
   renderHeaderCount();
 }
 
-function removeLine(productId) {
-  const it = cart.find(x => x.id === productId);
+function removeLine(idx) {
+  const it = cart[idx];
   if (!it) return;
-  saveCart(cart.filter(x => x.id !== productId));
+  saveCart(cart.filter((_, i) => i !== idx));
   render();
   showToast(`${it.name || 'Ürün'} sepetten çıkarıldı`, 'info');
 }

@@ -451,7 +451,42 @@
   let QUESTIONS = [];
   let activeImageIdx = 0;
   let qty = 1;
+  let selectedVariant = null;   // seçili ürün varyantı (varsa)
   let activeTab = 'desc';
+
+  /* ── Varyant yardımcıları ── */
+  function activeVariants() { return (PRODUCT && Array.isArray(PRODUCT.variants)) ? PRODUCT.variants : []; }
+  function currentStock() {
+    if (selectedVariant) return selectedVariant.effective_stock || 0;
+    return typeof PRODUCT.effective_stock === 'number' ? PRODUCT.effective_stock : (PRODUCT.stock || 0);
+  }
+  function currentPrice() { return selectedVariant ? selectedVariant.price : (PRODUCT ? PRODUCT.price : 0); }
+  function stockMeta(st) {
+    if (st <= 0) return ['out', 'Stoklar tükendi — yakında yenilenecek'];
+    if (st <= 5) return ['low', `Son ${st} adet — acele edin!`];
+    return ['in', `Stokta · ${st} adet hazır`];
+  }
+  function variantChipsHtml() {
+    const vs = activeVariants();
+    if (!vs.length) return '';
+    const chips = vs.map(v => {
+      const oos = (v.effective_stock || 0) <= 0;
+      const sel = selectedVariant && selectedVariant.id === v.id;
+      return `<button type="button" onclick="selectVariant(${v.id})" ${oos ? 'disabled' : ''} style="padding:.5rem .85rem;border-radius:9px;border:${sel ? '2px solid var(--primary)' : '1.5px solid var(--border)'};background:${sel ? 'var(--bg2)' : 'transparent'};color:${oos ? 'var(--muted)' : 'var(--text)'};font-size:.85rem;font-weight:600;cursor:${oos ? 'not-allowed' : 'pointer'};opacity:${oos ? '.55' : '1'};${oos ? 'text-decoration:line-through;' : ''}">${escapeHtml(v.name)}</button>`;
+    }).join('');
+    return `<div style="margin:.85rem 0;"><div style="font-size:.8rem;color:var(--muted);margin-bottom:.45rem;font-weight:700;">Seçenek</div><div style="display:flex;flex-wrap:wrap;gap:.5rem;">${chips}</div></div>`;
+  }
+  function selectVariant(id) {
+    const v = activeVariants().find(x => x.id === id);
+    if (!v) return;
+    selectedVariant = v;
+    qty = 1;
+    const pr = document.getElementById('price'); if (pr) pr.textContent = fmt(currentPrice());
+    const vb = document.getElementById('variantBox'); if (vb) vb.innerHTML = variantChipsHtml();
+    const sl = document.getElementById('stockLine');
+    if (sl) { const [st, lb] = stockMeta(currentStock()); sl.className = 'stock-line stock-' + st; sl.innerHTML = `<span class="dot"></span><span>${escapeHtml(lb)}</span>`; }
+    renderActions();
+  }
 
   /* ── Helpers ── */
   const $ = sel => document.querySelector(sel);
@@ -484,14 +519,21 @@
     b.textContent = total;
     b.style.display = total > 0 ? 'grid' : 'none';
   }
-  function addToCart(p, n) {
+  function addToCart(p, n, variant) {
     const c = getCart();
-    const idx = c.findIndex(x => x.id === p.id);
+    const vid = variant ? variant.id : null;
+    const idx = c.findIndex(x => x.id === p.id && (x.variant_id || null) === vid);
     if (idx >= 0) c[idx].qty += n; else c.push({
-      id: p.id, name: p.name, price: p.price, icon: p.icon, image: (p.images && p.images[0]) || '', qty: n,
+      id: p.id, name: p.name,
+      price: variant ? variant.price : p.price,
+      icon: p.icon,
+      image: (variant && variant.image) || (p.images && p.images[0]) || '',
+      qty: n,
+      variant_id: vid,
+      variant_name: variant ? variant.name : null,
     });
     saveCart(c);
-    showToast(`${p.name} sepete eklendi (${n} adet)`, 'success');
+    showToast(`${p.name}${variant ? ' · ' + variant.name : ''} sepete eklendi (${n} adet)`, 'success');
   }
 
   /* Wishlist */
@@ -545,9 +587,11 @@
     const images = Array.isArray(p.images) && p.images.length ? p.images : [];
     const hasImg = images.length > 0;
     const discount = p.old_price && p.old_price > p.price ? Math.round((1 - p.price / p.old_price) * 100) : 0;
-    const stock = typeof p.effective_stock === 'number' ? p.effective_stock : p.stock || 0;
-    const stockState = stock <= 0 ? 'out' : stock <= 5 ? 'low' : 'in';
-    const stockLabel = stock <= 0 ? 'Stoklar tükendi — yakında yenilenecek' : stock <= 5 ? `Son ${stock} adet — acele edin!` : `Stokta · ${stock} adet hazır`;
+    if (activeVariants().length && !selectedVariant) {
+      selectedVariant = activeVariants().find(v => (v.effective_stock || 0) > 0) || activeVariants()[0];
+    }
+    const stock = currentStock();
+    const [stockState, stockLabel] = stockMeta(stock);
     const fav = isFav(p.id);
 
     // Loader'ı kaldır (yoksa hata vermez)
@@ -598,12 +642,13 @@
             ${(p.review_count || 0) > 0 ? `<a href="#reviews" onclick="setTab('reviews')">Yorumları gör</a>` : ''}
           </div>
           <div class="price-row">
-            <span class="price">${fmt(p.price)}</span>
+            <span class="price" id="price">${fmt(currentPrice())}</span>
             ${p.old_price && p.old_price > p.price ? `<span class="price-old">${fmt(p.old_price)}</span><span class="discount-chip">-%${discount}</span>` : ''}
           </div>
-          <div class="stock-line stock-${stockState}">
+          <div class="stock-line stock-${stockState}" id="stockLine">
             <span class="dot"></span><span>${escapeHtml(stockLabel)}</span>
           </div>
+          <div id="variantBox">${variantChipsHtml()}</div>
 
           ${(p.features && p.features.length) ? `
             <ul class="quick-features">
@@ -669,7 +714,7 @@
 
   function renderActions() {
     const p = PRODUCT;
-    const stock = typeof p.effective_stock === 'number' ? p.effective_stock : p.stock || 0;
+    const stock = currentStock();
     const fav = isFav(p.id);
     $('#actionsBox').innerHTML = `
       <div class="actions">
@@ -985,11 +1030,14 @@
 
   /* ── Qty + sepete ekle ── */
   function setQty(n) {
-    const stock = typeof PRODUCT.effective_stock === 'number' ? PRODUCT.effective_stock : PRODUCT.stock || 0;
+    const stock = currentStock();
     qty = Math.max(1, Math.min(stock || 999, n || 1));
     const el = $('#qtyInput'); if (el) el.value = qty;
   }
-  function onAdd() { addToCart(PRODUCT, qty); }
+  function onAdd() {
+    if (activeVariants().length && !selectedVariant) { showToast('Lütfen bir seçenek seçin', 'warning'); return; }
+    addToCart(PRODUCT, qty, selectedVariant);
+  }
   function shareProduct() {
     const url = location.href;
     if (navigator.share) navigator.share({ title: PRODUCT.name, url }).catch(() => {});

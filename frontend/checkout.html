@@ -273,18 +273,28 @@ function hideOverlay() { $('#overlay').classList.remove('show'); }
 // applyTheme / toggleTheme → js/common.js (ortak)
 
 function getCart() { try { return JSON.parse(localStorage.getItem('tt_cart') || '[]'); } catch { return []; } }
+function variantOf(item) {
+  if (!item.variant_id) return null;
+  const p = productMap[item.id];
+  if (p && Array.isArray(p.variants)) return p.variants.find(v => v.id === item.variant_id) || null;
+  return null;
+}
+function unitPriceOf(item) {
+  const v = variantOf(item);
+  if (v) return Number(v.price || 0);
+  const p = productMap[item.id];
+  return p ? Number(p.price || 0) : Number(item.price || 0);
+}
 function effectiveStockOf(item) {
+  const v = variantOf(item);
+  if (v) return v.effective_stock || 0;
   const p = productMap[item.id];
   if (!p) return 0;
   return typeof p.effective_stock === 'number' ? p.effective_stock : (p.stock || 0);
 }
 
 function computeTotals() {
-  const subtotal = cart.reduce((s, it) => {
-    const p = productMap[it.id];
-    const price = p ? Number(p.price || 0) : Number(it.price || 0);
-    return s + price * (it.qty || 0);
-  }, 0);
+  const subtotal = cart.reduce((s, it) => s + unitPriceOf(it) * (it.qty || 0), 0);
   let discount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.type === 'percent') discount = subtotal * (Number(appliedCoupon.value) / 100);
@@ -350,13 +360,12 @@ function renderEmpty() {
 function renderForm() {
   const totals = computeTotals();
   const items = cart.map(it => {
-    const p = productMap[it.id];
-    const currentPrice = p ? Number(p.price || 0) : Number(it.price || 0);
+    const currentPrice = unitPriceOf(it);
     return `
       <div class="item">
         <div class="item-thumb">${it.image ? `<img src="${escapeAttr(it.image)}" alt="" />` : escapeHtml(it.icon || '📦')}</div>
         <div>
-          <div class="item-name">${escapeHtml(it.name || '')}</div>
+          <div class="item-name">${escapeHtml(it.name || '')}${it.variant_name ? ` · <span style="color:var(--muted);font-weight:600;">${escapeHtml(it.variant_name)}</span>` : ''}</div>
           <div class="item-qty">${it.qty || 1} adet · ${fmt(currentPrice)}</div>
         </div>
         <div class="item-price">${fmt(currentPrice * (it.qty || 0))}</div>
@@ -750,7 +759,7 @@ async function submitOrder() {
 
   // Checkout payload
   const payload = {
-    items: cart.map(it => ({ product_id: it.id, qty: it.qty })),
+    items: cart.map(it => ({ product_id: it.id, qty: it.qty, variant_id: it.variant_id || null })),
     customer_name: formData.name,
     customer_email: formData.email,
     customer_phone: formData.phone,
