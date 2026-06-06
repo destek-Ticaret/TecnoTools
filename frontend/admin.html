@@ -2746,6 +2746,14 @@ html, body { height: 100%; }
             <textarea id="prodDesc" placeholder="Ürün hakkında detaylı bilgi..."></textarea>
           </div>
         </div>
+        <div class="form-row single">
+          <div class="form-field">
+            <label>Varyantlar <span style="color:var(--muted);font-weight:500;font-size:.78rem;">(opsiyonel — beden/renk vb.; her varyantın kendi stoğu)</span></label>
+            <div id="variantRows"></div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="addVariantRow()" style="margin-top:.4rem;">+ Varyant ekle</button>
+            <small style="display:block;color:var(--muted);font-size:.72rem;margin-top:.35rem;">Varyant eklerseniz müşteri sipariş ederken birini seçer. Fiyat boşsa ürün fiyatı kullanılır. Stok her varyantta ayrı tutulur.</small>
+          </div>
+        </div>
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-ghost" onclick="closeProductModal()">İptal</button>
@@ -3091,6 +3099,7 @@ html, body { height: 100%; }
       images: imgs,
       image: imgs[0] || '',
       is_active: p.is_active !== false,
+      variants: Array.isArray(p.variants) ? p.variants : [],
     };
   }
 
@@ -3109,6 +3118,9 @@ html, body { height: 100%; }
       features: Array.isArray(local.features) && local.features.length ? local.features : null,
       images: Array.isArray(local.images) && local.images.length ? local.images : null,
       is_active: local.is_active !== false,
+      // Form'dan gelirse varyantları gönder (boş dizi = hepsini sil); başka
+      // çağrılarda (ör. içe aktarma) yoksa null = dokunma
+      variants: Array.isArray(local.variants) ? cleanVariants(local.variants) : null,
     };
   }
 
@@ -4549,6 +4561,46 @@ html, body { height: 100%; }
     }
   }
 
+  /* ── Ürün varyant editörü ── */
+  let editVariants = [];
+  function renderVariantRows() {
+    const box = document.getElementById('variantRows');
+    if (!box) return;
+    box.innerHTML = editVariants.map((v, i) => `
+      <div style="display:grid;grid-template-columns:1fr 92px 78px 30px;gap:.4rem;align-items:center;margin-bottom:.4rem;">
+        <input type="text" placeholder="Ad (örn. Kırmızı / M)" value="${escapeHtml(v.name || '')}" oninput="updateVariant(${i},'name',this.value)" style="padding:.5rem .6rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.84rem;" />
+        <input type="number" min="0" step="0.01" placeholder="Fiyat" value="${v.price != null ? v.price : ''}" oninput="updateVariant(${i},'price',this.value)" title="Boş = ürün fiyatı" style="padding:.5rem .5rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.84rem;" />
+        <input type="number" min="0" step="1" placeholder="Stok" value="${v.stock != null ? v.stock : 0}" oninput="updateVariant(${i},'stock',this.value)" style="padding:.5rem .5rem;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.84rem;" />
+        <button type="button" onclick="removeVariantRow(${i})" title="Sil" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:1.1rem;line-height:1;">✕</button>
+      </div>`).join('');
+  }
+  function addVariantRow() {
+    editVariants.push({ name: '', price: null, stock: 0, is_active: true, sort_order: editVariants.length });
+    renderVariantRows();
+  }
+  function removeVariantRow(i) { editVariants.splice(i, 1); renderVariantRows(); }
+  function updateVariant(i, field, val) {
+    if (!editVariants[i]) return;
+    if (field === 'price') editVariants[i].price = (val === '' ? null : Number(val));
+    else if (field === 'stock') editVariants[i].stock = parseInt(val || '0', 10) || 0;
+    else editVariants[i][field] = val;
+  }
+  function cleanVariants(list) {
+    return (list || [])
+      .filter(v => (v.name || '').trim())
+      .map((v, i) => ({
+        id: v.id || undefined,
+        name: v.name.trim(),
+        options: v.options || null,
+        sku: v.sku || null,
+        barcode: v.barcode || null,
+        price: (v.price === '' || v.price == null) ? null : Number(v.price),
+        stock: parseInt(v.stock || 0, 10) || 0,
+        is_active: v.is_active !== false,
+        sort_order: v.sort_order != null ? v.sort_order : i,
+      }));
+  }
+
   function openProductModal(id) {
     editingProductId = id || null;
     const form = document.getElementById('productForm');
@@ -4573,6 +4625,7 @@ html, body { height: 100%; }
       document.getElementById('prodStock').value = p.stock || 0;
       document.getElementById('prodSub').value   = p.sub  || '';
       document.getElementById('prodDesc').value  = p.desc || '';
+      editVariants = Array.isArray(p.variants) ? p.variants.map(v => ({ ...v })) : [];
       // Load images: prefer images[] array, fallback to single image
       if (Array.isArray(p.images) && p.images.length) {
         workingImages = p.images.slice();
@@ -4588,8 +4641,10 @@ html, body { height: 100%; }
       document.getElementById('prodIcon').value = '📦';
       workingImages = [];
       primaryImageIdx = 0;
+      editVariants = [];
     }
     renderGallery();
+    renderVariantRows();
 
     const modal = document.getElementById('productModal');
     modal.classList.add('open');
@@ -4624,6 +4679,7 @@ html, body { height: 100%; }
       stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
       sub:   document.getElementById('prodSub').value.trim(),
       desc:  document.getElementById('prodDesc').value.trim(),
+      variants: editVariants,
     };
     if (!local.name) { showToast('Ürün adı zorunlu', 'danger'); return; }
 
