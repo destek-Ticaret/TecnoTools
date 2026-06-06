@@ -8,13 +8,12 @@ from app.models import (
     Order,
     OrderStatus,
     PaymentStatus,
-    Product,
-    StockMovement,
 )
 from app.rate_limit import limiter
 from app.services.email import send_order_confirmation
 from app.services.events import bus
 from app.services.paytr import verify_callback_hash
+from app.services.stock import deduct_stock_once
 from app.services.stripe_gateway import verify_webhook_signature as verify_stripe_signature
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
@@ -79,28 +78,9 @@ async def paytr_callback(
         order.payment_status = PaymentStatus.SUCCESS.value
         order.status = OrderStatus.PROCESSING.value
         order.payment_method = payment_type or "card"
-        # Stoğu kalıcı düş
-        item_ids = [it.product_id for it in order.items if it.product_id]
-        products = (
-            (await db.execute(select(Product).where(Product.id.in_(item_ids))))
-            .scalars()
-            .unique()
-            .all()
-        )
-        pmap = {p.id: p for p in products}
-        for it in order.items:
-            p = pmap.get(it.product_id) if it.product_id else None
-            if p:
-                p.stock = max(0, (p.stock or 0) - it.qty)
-                db.add(
-                    StockMovement(
-                        product_id=p.id,
-                        product_name=p.name,
-                        delta=-it.qty,
-                        reason="sale",
-                        order_no=order.order_no,
-                    )
-                )
+        # Stoğu kalıcı düş (idempotent — admin önce 'Hazırlanıyor'a çekmiş olsa
+        # bile ikinci kez düşmez)
+        await deduct_stock_once(db, order)
         db.add(
             AuditLog(
                 actor="paytr", action="payment-success", message=f"Ödeme başarılı: {order.order_no}"
@@ -138,24 +118,7 @@ async def _mark_order_paid(db: AsyncSession, order: Order, method: str) -> None:
     order.payment_status = PaymentStatus.SUCCESS.value
     order.status = OrderStatus.PROCESSING.value
     order.payment_method = method
-    item_ids = [it.product_id for it in order.items if it.product_id]
-    products = (
-        (await db.execute(select(Product).where(Product.id.in_(item_ids)))).scalars().unique().all()
-    )
-    pmap = {p.id: p for p in products}
-    for it in order.items:
-        p = pmap.get(it.product_id) if it.product_id else None
-        if p:
-            p.stock = max(0, (p.stock or 0) - it.qty)
-            db.add(
-                StockMovement(
-                    product_id=p.id,
-                    product_name=p.name,
-                    delta=-it.qty,
-                    reason="sale",
-                    order_no=order.order_no,
-                )
-            )
+    await deduct_stock_once(db, order)
     db.add(
         AuditLog(
             actor=method, action="payment-success", message=f"Ödeme başarılı: {order.order_no}"

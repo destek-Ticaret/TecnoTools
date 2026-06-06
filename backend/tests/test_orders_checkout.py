@@ -106,3 +106,65 @@ async def test_admin_status_update(auth_client):
     assert body["status"] == "shipped"
     # Tracking otomatik atandı
     assert body["tracking_no"] and body["tracking_no"].startswith("YK")
+
+
+# ── Stok otomatik düşme (sipariş onaylanınca) ─────────────────────────
+async def _wire_order(auth_client, *, stock, qty):
+    pr = await auth_client.post(
+        "/api/products", json={"name": "Stoklu Ürün", "price": 100, "stock": stock}
+    )
+    pid = pr.json()["id"]
+    co = await auth_client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": qty}],
+            "customer_name": "User",
+            "customer_email": "u@u.com",
+            "customer_phone": "+905551112233",
+            "customer_city": "X",
+            "customer_address": "Mahalle Sokak No:1 Daire:5",
+            "payment_method": "wire",
+        },
+    )
+    assert co.status_code == 200, co.text
+    return pid, co.json()["order_no"]
+
+
+async def _eff_stock(auth_client, pid):
+    return (await auth_client.get(f"/api/products/{pid}")).json()["effective_stock"]
+
+
+async def test_processing_deducts_stock_and_marks_paid(auth_client):
+    pid, order_no = await _wire_order(auth_client, stock=5, qty=2)
+    assert await _eff_stock(auth_client, pid) == 5  # havale: henüz düşmedi
+    r = await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "processing"})
+    assert r.status_code == 200
+    assert r.json()["payment_status"] == "success"  # havale onayı = ödeme onayı
+    assert await _eff_stock(auth_client, pid) == 3  # 2 düştü
+
+
+async def test_stock_deduction_idempotent_across_transitions(auth_client):
+    pid, order_no = await _wire_order(auth_client, stock=10, qty=3)
+    for st in ("processing", "shipped", "delivered"):
+        await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": st})
+    assert await _eff_stock(auth_client, pid) == 7  # yalnız 1 kez (3) düştü
+
+
+async def test_skip_to_shipped_also_deducts(auth_client):
+    pid, order_no = await _wire_order(auth_client, stock=5, qty=1)
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "shipped"})
+    assert await _eff_stock(auth_client, pid) == 4  # processing atlansa da düştü
+
+
+async def test_cancel_restores_deducted_stock(auth_client):
+    pid, order_no = await _wire_order(auth_client, stock=8, qty=2)
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "processing"})
+    assert await _eff_stock(auth_client, pid) == 6
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "cancelled"})
+    assert await _eff_stock(auth_client, pid) == 8  # geri eklendi
+
+
+async def test_cancel_before_fulfill_keeps_stock(auth_client):
+    pid, order_no = await _wire_order(auth_client, stock=4, qty=1)
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "cancelled"})
+    assert await _eff_stock(auth_client, pid) == 4  # hiç düşmedi → geri ekleme de yok

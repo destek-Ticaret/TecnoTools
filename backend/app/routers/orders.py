@@ -367,6 +367,24 @@ async def update_status(
             message=f"{order_no}: {old} → {payload.status}",
         )
     )
+    # Stok: sipariş ilk kez 'onaylı' bir duruma (hazırlanıyor/kargoda/teslim)
+    # girince stoğu düş (idempotent — kart zaten ödeme callback'inde düşmüştür,
+    # ikinci kez düşmez). Havale/Kapıda için ödeme onayını da işaretle.
+    # 'İptal'e geçişte düşülmüş stok geri eklenir.
+    _fulfill = (
+        OrderStatus.PROCESSING.value,
+        OrderStatus.SHIPPED.value,
+        OrderStatus.DELIVERED.value,
+    )
+    if payload.status in _fulfill and old not in _fulfill:
+        from app.services.stock import deduct_stock_once
+
+        if await deduct_stock_once(db, o) and o.payment_status != PaymentStatus.SUCCESS.value:
+            o.payment_status = PaymentStatus.SUCCESS.value
+    elif payload.status == OrderStatus.CANCELLED.value and old != OrderStatus.CANCELLED.value:
+        from app.services.stock import restore_stock_once
+
+        await restore_stock_once(db, o)
     await db.commit()
     await db.refresh(o)
     # Müşteriye durum bildirim maili (initiated/pending dışı bir değişiklikse)

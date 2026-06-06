@@ -94,7 +94,7 @@ pytest --cov=app            # coverage
 ## Önemli konvansiyonlar
 
 - **Para birimi**: fiyatlar `BASE_CURRENCY`'de saklanır, gösterimde çevrilir.
-- **Stok**: yalnız ödeme başarılı callback'inde düşülür; sepet rezervasyonu ayna olarak tutulur.
+- **Stok**: sipariş onaylanınca düşülür — kart: ödeme başarılı callback'inde; havale/kapıda: admin siparişi onaylı duruma (hazırlanıyor/kargoda/teslim) çekince. `deduct_stock_once` idempotenttir (çift düşme yok); iptalde `restore_stock_once` geri ekler. Sepet rezervasyonu görünür stoğu ayna olarak tutar.
 - **Auth**: admin ve müşteri JWT'leri `type` ile ayrılır; refresh token rotation aktif.
 - **Güvenlik**: production'da zayıf `APP_SECRET_KEY` ile başlatma engellenir (fail-fast);
   IP/rate-limit kararları nginx'in sabitlediği `X-Real-IP`'ye dayanır (XFF'e güvenilmez).
