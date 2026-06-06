@@ -30,7 +30,8 @@ _DEV_LAN_NETWORKS = [
 
 
 def _read_env() -> dict[str, str]:
-    env_file = Path(__file__).parent / "backend" / ".env"
+    # serve_frontend.py artık frontend/ içinde → backend/.env bir üst dizinde.
+    env_file = Path(__file__).parent.parent / "backend" / ".env"
     out: dict[str, str] = {}
     if not env_file.exists():
         return out
@@ -118,6 +119,11 @@ class IPFilteredHandler(http.server.SimpleHTTPRequestHandler):
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5500
+    # Hangi dizinden çalıştırılırsa çalıştırılsın daima frontend/ klasörünü serve et
+    # (SimpleHTTPRequestHandler CWD'yi web kökü alır).
+    import os
+
+    os.chdir(Path(__file__).parent)
     print(f"Serving on http://0.0.0.0:{port}")
     print(f"Admin whitelist: {sorted(WHITELIST)}")
     with socketserver.ThreadingTCPServer(("", port), IPFilteredHandler) as httpd:

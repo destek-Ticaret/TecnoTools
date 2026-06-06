@@ -10,21 +10,25 @@ Tam kapsamlı e-ticaret platformu — **FastAPI** backend (REST + WebSocket + SS
 
 ## Mimari
 
+Depo iki üst klasöre ayrılmıştır: **`frontend/`** (statik storefront + admin) ve
+**`backend/`** (FastAPI API). Kökte yalnız proje dosyaları kalır (README, başlatıcı).
+
 ```
-┌─────────────────────────┐         ┌──────────────────────────────┐
-│  Frontend (statik)       │  HTTP   │  Backend (FastAPI, :8000)     │
-│  serve_frontend.py :5500 │ ──────► │  REST + WS (/api/ws/*) + SSE  │
-│  index/product/cart/...  │  WS/SSE │  SQLAlchemy (async)           │
-│  js/common.js + api.js   │ ◄────── │  PostgreSQL (prod) / SQLite   │
-│  css/base.css            │         │  PayTR · Stripe · SMTP · S3   │
-└─────────────────────────┘         └──────────────────────────────┘
+TecnoTools/
+├─ frontend/     ┌─────────────────────────┐  HTTP   ┌──────────────────────────────┐
+│  serve_frontend│  Frontend (statik :5500) │ ──────► │  Backend (FastAPI, :8000)     │
+│  *.html        │  index/product/cart/...  │  WS/SSE │  REST + WS (/api/ws/*) + SSE  │
+│  js/ css/      │  js/common.js + api.js   │ ◄────── │  SQLAlchemy · PostgreSQL/SQLite│
+│  images/ legal/│  css/base.css            │         │  PayTR · Stripe · SMTP · S3   │
+├─ backend/      └─────────────────────────┘         └──────────────────────────────┘
+└─ start-admin.bat  (ikisini birden başlatır)
 ```
 
-- **Frontend**: Derleme yok. Her sayfa bağımsız HTML + inline CSS/JS. Ortak parçalar:
-  - `js/common.js` — tema sistemi, `escapeHtml`, `ttReady()` (her sayfada `<head>`'de bloklayıcı yüklenir).
-  - `js/api.js` — backend ile tüm iletişim (JWT access/refresh, otomatik 401 yenileme).
-  - `css/base.css` — tek tasarım sistemi (renk/gölge/spacing token'ları). Sayfa-özel sapmalar küçük `<style>` override'larında belgelenir.
-- **Backend**: `backend/app/` — router'lar (`routers/`), iş mantığı (`services/`), ORM (`models.py`), şemalar (`schemas.py`).
+- **Frontend** (`frontend/`): Derleme yok. Her sayfa bağımsız HTML + inline CSS/JS. Ortak parçalar:
+  - `frontend/js/common.js` — tema sistemi, `escapeHtml`, `ttReady()` (her sayfada `<head>`'de bloklayıcı yüklenir).
+  - `frontend/js/api.js` — backend ile tüm iletişim (JWT access/refresh, otomatik 401 yenileme).
+  - `frontend/css/base.css` — tek tasarım sistemi (renk/gölge/spacing token'ları). Sayfa-özel sapmalar küçük `<style>` override'larında belgelenir.
+- **Backend** (`backend/app/`): router'lar (`routers/`), iş mantığı (`services/`), ORM (`models.py`), şemalar (`schemas.py`).
 
 ---
 
@@ -49,9 +53,13 @@ PostgreSQL gerekmez. İlk admin `.env`'deki `INITIAL_ADMIN_*` ile seed edilir.
 ### 2) Frontend
 
 ```powershell
-# Proje kökünden (ayrı terminal)
+# Ayrı terminal
+cd frontend
 python serve_frontend.py 5500
 ```
+
+> Windows'ta tek tıkla: kökteki **`start-admin.bat`** backend + frontend'i ayrı
+> pencerelerde başlatıp admin panelini tarayıcıda açar.
 
 Aç: <http://localhost:5500/index.html> · Admin: <http://localhost:5500/admin.html>
 (admin yalnız `ADMIN_IP_WHITELIST` + localhost'tan erişilebilir).
