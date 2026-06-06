@@ -18,6 +18,7 @@ from app.models import (
     OrderStatus,
     PaymentStatus,
     Product,
+    ProductVariant,
     Reservation,
     User,
 )
@@ -59,11 +60,13 @@ async def _next_order_no(db: AsyncSession) -> str:
 
 
 async def _calc_totals(
-    db: AsyncSession, items_data: list[tuple[Product, int]], coupon: Coupon | None
+    db: AsyncSession,
+    items_data: list[tuple[Product, "ProductVariant | None", int, float]],
+    coupon: Coupon | None,
 ) -> dict:
     from app.routers.settings import get_setting
 
-    subtotal = sum(Decimal(str(p.price)) * Decimal(qty) for p, qty in items_data)
+    subtotal = sum(Decimal(str(unit_price)) * Decimal(qty) for _, _, qty, unit_price in items_data)
     discount = Decimal("0")
     if coupon and coupon.is_active:
         if coupon.type == "percent":
@@ -97,15 +100,42 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         .all()
     )
     pmap = {p.id: p for p in products}
+    # İstenen varyantları yükle
+    variant_ids = [it.variant_id for it in payload.items if it.variant_id]
+    vmap: dict[int, ProductVariant] = {}
+    if variant_ids:
+        vrows = (
+            (await db.execute(select(ProductVariant).where(ProductVariant.id.in_(variant_ids))))
+            .scalars()
+            .unique()
+            .all()
+        )
+        vmap = {v.id: v for v in vrows}
 
-    items_data: list[tuple[Product, int]] = []
+    # (ürün, varyant|None, adet, birim_fiyat) — varyant fiyatı boşsa ürün fiyatı
+    items_data: list[tuple[Product, ProductVariant | None, int, float]] = []
     for it in payload.items:
         p = pmap.get(it.product_id)
         if not p or not p.is_active:
             raise HTTPException(status_code=400, detail=f"Ürün bulunamadı: #{it.product_id}")
-        if (p.stock or 0) < it.qty:
-            raise HTTPException(status_code=409, detail=f"Stok yetersiz: {p.name}")
-        items_data.append((p, it.qty))
+        active_variants = [v for v in p.variants if v.is_active]
+        if active_variants:
+            # Varyantlı ürün → seçim zorunlu, ürüne ait + aktif olmalı
+            if not it.variant_id:
+                raise HTTPException(status_code=400, detail=f"Varyant seçilmeli: {p.name}")
+            v = vmap.get(it.variant_id)
+            if not v or v.product_id != p.id or not v.is_active:
+                raise HTTPException(status_code=400, detail=f"Geçersiz varyant: {p.name}")
+            if (v.stock or 0) < it.qty:
+                raise HTTPException(status_code=409, detail=f"Stok yetersiz: {p.name} ({v.name})")
+            unit_price = float(v.price) if v.price is not None else float(p.price)
+            items_data.append((p, v, it.qty, unit_price))
+        else:
+            if it.variant_id:
+                raise HTTPException(status_code=400, detail=f"Bu ürünün varyantı yok: {p.name}")
+            if (p.stock or 0) < it.qty:
+                raise HTTPException(status_code=409, detail=f"Stok yetersiz: {p.name}")
+            items_data.append((p, None, it.qty, float(p.price)))
 
     coupon = None
     if payload.coupon_code:
@@ -175,15 +205,17 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
     db.add(order)
     await db.flush()
 
-    for p, qty in items_data:
+    for p, v, qty, unit_price in items_data:
         db.add(
             OrderItem(
                 order_id=order.id,
                 product_id=p.id,
+                variant_id=v.id if v else None,
+                variant_name=v.name if v else None,
                 name=p.name,
                 icon=p.icon,
-                image=(p.images or [None])[0],
-                price=float(p.price),
+                image=(v.image if v and v.image else (p.images or [None])[0]),
+                price=unit_price,
                 qty=qty,
             )
         )
@@ -224,7 +256,10 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         sess = create_checkout_session(
             order_no=order.order_no,
             customer_email=order.customer_email,
-            line_items=[(p.name, float(p.price), qty) for p, qty in items_data],
+            line_items=[
+                (f"{p.name} ({v.name})" if v else p.name, unit_price, qty)
+                for p, v, qty, unit_price in items_data
+            ],
         )
         order.payment_method = "stripe"
         await db.commit()
@@ -241,7 +276,10 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         user_name=order.customer_name,
         user_phone=order.customer_phone,
         user_address=f"{order.customer_address}, {order.customer_city or ''}",
-        basket=[(p.name, float(p.price), qty) for p, qty in items_data],
+        basket=[
+            (f"{p.name} ({v.name})" if v else p.name, unit_price, qty)
+            for p, v, qty, unit_price in items_data
+        ],
     )
     return PaymentStartResponse(
         order_no=order.order_no,

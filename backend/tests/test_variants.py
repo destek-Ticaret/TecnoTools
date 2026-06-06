@@ -88,3 +88,86 @@ async def test_product_without_variants_unchanged(auth_client):
     j = (await auth_client.get(f"/api/products/{pid}")).json()
     assert j["variants"] == []
     assert j["effective_stock"] == 7  # ürün stoğu (varyant yok)
+
+
+# ── Faz 2: checkout + stok varyant bazlı ──────────────────────────────
+async def _checkout(auth_client, items):
+    return await auth_client.post(
+        "/api/orders/checkout",
+        json={
+            "items": items,
+            "customer_name": "Ali Veli",
+            "customer_email": "a@a.com",
+            "customer_phone": "+905551112233",
+            "customer_city": "X",
+            "customer_address": "Mahalle Sokak No:1 Daire:5",
+            "payment_method": "wire",
+        },
+    )
+
+
+def _vid(create_resp, name):
+    return next(v["id"] for v in create_resp.json()["variants"] if v["name"] == name)
+
+
+async def test_checkout_requires_variant_for_variant_product(auth_client):
+    r = await _create_with_variants(auth_client)
+    co = await _checkout(auth_client, [{"product_id": r.json()["id"], "qty": 1}])
+    assert co.status_code == 400
+    assert "varyant" in co.json()["detail"].lower()
+
+
+async def test_checkout_rejects_invalid_variant(auth_client):
+    r = await _create_with_variants(auth_client)
+    co = await _checkout(
+        auth_client, [{"product_id": r.json()["id"], "qty": 1, "variant_id": 999999}]
+    )
+    assert co.status_code == 400
+
+
+async def test_checkout_variant_stock_insufficient(auth_client):
+    r = await _create_with_variants(auth_client)
+    pid = r.json()["id"]
+    co = await _checkout(
+        auth_client, [{"product_id": pid, "qty": 5, "variant_id": _vid(r, "Kırmızı / S")}]
+    )  # S stoğu 3
+    assert co.status_code == 409
+
+
+async def test_checkout_variant_deducts_variant_stock_on_confirm(auth_client):
+    r = await _create_with_variants(auth_client)
+    pid = r.json()["id"]
+    co = await _checkout(
+        auth_client, [{"product_id": pid, "qty": 2, "variant_id": _vid(r, "Kırmızı / M")}]
+    )
+    assert co.status_code == 200, co.text
+    order_no = co.json()["order_no"]
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "processing"})
+    pv = {v["name"]: v for v in (await auth_client.get(f"/api/products/{pid}")).json()["variants"]}
+    assert pv["Kırmızı / M"]["effective_stock"] == 3  # 5 - 2 (varyanttan düştü)
+    assert pv["Kırmızı / S"]["effective_stock"] == 3  # dokunulmadı
+
+
+async def test_checkout_uses_variant_price(auth_client):
+    r = await _create_with_variants(auth_client)
+    pid = r.json()["id"]
+    co = await _checkout(
+        auth_client, [{"product_id": pid, "qty": 1, "variant_id": _vid(r, "Kırmızı / M")}]
+    )  # M fiyatı 120 (ürün fiyatı 100)
+    order_no = co.json()["order_no"]
+    orders = (await auth_client.get("/api/orders")).json()
+    o = next(x for x in orders if x["order_no"] == order_no)
+    assert o["subtotal"] == 120
+
+
+async def test_cancel_restores_variant_stock(auth_client):
+    r = await _create_with_variants(auth_client)
+    pid = r.json()["id"]
+    co = await _checkout(
+        auth_client, [{"product_id": pid, "qty": 2, "variant_id": _vid(r, "Kırmızı / M")}]
+    )
+    order_no = co.json()["order_no"]
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "processing"})
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "cancelled"})
+    pv = {v["name"]: v for v in (await auth_client.get(f"/api/products/{pid}")).json()["variants"]}
+    assert pv["Kırmızı / M"]["effective_stock"] == 5  # geri eklendi
