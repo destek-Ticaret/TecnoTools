@@ -1125,12 +1125,14 @@ html { scroll-behavior: smooth; }
     .toast-stack {
       position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 300;
       display: flex; flex-direction: column; gap: .6rem; pointer-events: none;
+      max-width: calc(100vw - 2rem); left: 1rem;
     }
+    @media (min-width: 400px) { .toast-stack { left: auto; max-width: 340px; } }
     .toast {
       background: var(--surface); border: 1px solid var(--border);
       border-left: 3px solid var(--primary);
       box-shadow: var(--shadow-lg); border-radius: 12px;
-      padding: .85rem 1.2rem; min-width: 260px; max-width: 340px;
+      padding: .85rem 1.2rem; min-width: 0; max-width: 100%;
       font-size: .88rem; font-weight: 600; color: var(--text);
       display: flex; align-items: center; gap: .7rem;
       transform: translateX(120%); transition: transform .35s cubic-bezier(.4,0,.2,1);
@@ -1190,6 +1192,40 @@ html { scroll-behavior: smooth; }
       border-radius: 6px; padding: .3rem .65rem; font-size: .72rem; font-weight: 700;
     }
 
+    /* ── HAMBURGER / MOBİL NAV ── */
+    .ham-btn {
+      display: none; background: none; border: none; cursor: pointer;
+      color: var(--text-2); padding: .5rem; border-radius: 8px;
+      transition: background .2s, color .2s; flex-shrink: 0;
+    }
+    .ham-btn:hover { background: var(--bg2); color: var(--primary); }
+    .ham-btn svg { display: block; }
+    .mob-nav {
+      display: none; position: fixed; inset: 0; top: 76px; z-index: 99;
+      background: var(--surface); border-top: 1px solid var(--border);
+      flex-direction: column; overflow-y: auto; padding: 1rem 1.25rem 2rem;
+      box-shadow: 0 8px 24px rgba(15,23,42,.15);
+    }
+    @media (max-width: 480px) { .mob-nav { top: 60px; } }
+    .mob-nav.open { display: flex; }
+    .mob-nav a {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .85rem .75rem; border-radius: 10px; color: var(--text); font-weight: 600;
+      font-size: 1rem; text-decoration: none; transition: background .15s, color .15s;
+      border-bottom: 1px solid var(--border);
+    }
+    .mob-nav a:last-child { border-bottom: none; }
+    .mob-nav a:hover { background: var(--bg2); color: var(--primary); }
+    .mob-nav-search {
+      display: flex; align-items: center; gap: .6rem; background: var(--bg2);
+      border: 1px solid var(--border); border-radius: 12px; padding: .6rem 1rem;
+      margin-bottom: .75rem; transition: border-color .2s;
+    }
+    .mob-nav-search:focus-within { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .mob-nav-search input { background: none; border: none; outline: none; color: var(--text); font-size: .9rem; width: 100%; font-family: inherit; }
+    .mob-nav-search input::placeholder { color: var(--muted); }
+    .mob-nav-search svg { color: var(--muted); flex-shrink: 0; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 1024px) {
       .hero-grid { grid-template-columns: 1fr; }
@@ -1205,7 +1241,8 @@ html { scroll-behavior: smooth; }
     }
     @media (max-width: 768px) {
       .nav-links { display: none; }
-      .nav-search { max-width: none; }
+      .nav-search { display: none; }
+      .ham-btn { display: flex; align-items: center; justify-content: center; }
       .topbar-left { display: none; }
       .features-grid { grid-template-columns: 1fr; }
       .feature::before { display: none; }
@@ -1218,7 +1255,11 @@ html { scroll-behavior: smooth; }
       .newsletter-form button { width: 100%; }
     }
     @media (max-width: 480px) {
-      .nav-inner { gap: .5rem; height: 64px; }
+      .nav-inner { gap: .35rem; height: 60px; }
+      .logo-clip { width: 130px; height: 38px; }
+      .logo-clip img { width: 188px; }
+      .icon-btn { padding: .45rem; }
+      .icon-btn svg { width: 20px; height: 20px; }
       .logo-text { display: none; }
       .section { padding: 3rem 0; }
       .product-grid { grid-template-columns: repeat(2, 1fr); gap: .8rem; }
@@ -1300,9 +1341,26 @@ html { scroll-behavior: smooth; }
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
         <span class="badge-count" id="cartCount">0</span>
       </button>
+      <button class="ham-btn" id="hamBtn" aria-label="Menüyü aç/kapat" aria-expanded="false" aria-controls="mobNav" onclick="toggleMobNav()">
+        <svg id="hamIcon" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
     </div>
   </div>
 </nav>
+
+<!-- MOBİL NAV PANELİ -->
+<div class="mob-nav" id="mobNav" role="navigation" aria-label="Mobil menü">
+  <div class="mob-nav-search">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="mobSearchInput" placeholder="Ürün ara..." autocomplete="off" />
+  </div>
+  <a href="#kategoriler" onclick="closeMobNav()">🗂 Kategoriler</a>
+  <a href="#urunler" onclick="closeMobNav()">📦 Ürünler</a>
+  <a href="#kampanyalar" onclick="closeMobNav()">🏷 Kampanyalar</a>
+  <a href="#" onclick="closeMobNav(); openTrackingModal(); return false;">🚚 Sipariş Takip</a>
+  <a href="#yorumlar" onclick="closeMobNav()">⭐ Yorumlar</a>
+  <a href="#iletisim" onclick="closeMobNav()">📞 İletişim</a>
+</div>
 
 <!-- HERO -->
 <main id="main-content" tabindex="-1">
@@ -4789,6 +4847,43 @@ html { scroll-behavior: smooth; }
       if (btn) { btn.disabled = false; btn.textContent = 'Yorumu Gönder'; }
     }
   }
+
+  /* ── MOBİL NAV ── */
+  function toggleMobNav() {
+    const nav = document.getElementById('mobNav');
+    const btn = document.getElementById('hamBtn');
+    const icon = document.getElementById('hamIcon');
+    const isOpen = nav.classList.toggle('open');
+    btn.setAttribute('aria-expanded', isOpen);
+    icon.innerHTML = isOpen
+      ? '<path d="M18 6 6 18M6 6l12 12"/>'
+      : '<path d="M3 12h18M3 6h18M3 18h18"/>';
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  }
+  function closeMobNav() {
+    const nav = document.getElementById('mobNav');
+    const btn = document.getElementById('hamBtn');
+    const icon = document.getElementById('hamIcon');
+    nav.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    icon.innerHTML = '<path d="M3 12h18M3 6h18M3 18h18"/>';
+    document.body.style.overflow = '';
+  }
+  // Mobil arama kutusunu masaüstü arama kutusuyla senkronize et
+  (function() {
+    const mobInput = document.getElementById('mobSearchInput');
+    const desktopInput = document.getElementById('searchInput');
+    if (mobInput && desktopInput) {
+      mobInput.addEventListener('input', () => {
+        desktopInput.value = mobInput.value;
+        desktopInput.dispatchEvent(new Event('input', { bubbles: true }));
+        closeMobNav();
+        desktopInput.focus();
+      });
+    }
+  })();
+  // Escape tuşuyla kapat
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMobNav(); });
 
   /* ── THEME ── */
   function toggleTheme() {

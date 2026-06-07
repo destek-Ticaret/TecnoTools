@@ -141,6 +141,56 @@
     .ftr { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--muted); }
     .ftr a { color: var(--muted); margin: 0 .5rem; }
     .ftr a:hover { color: var(--primary); }
+
+    /* ── MOBİL DÜZELTMELER ── */
+
+    /* 1) Mobil checkout sticky bar — "Ödemeye Geç" her zaman görünür */
+    .mob-bar {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: var(--surface); border-top: 1px solid var(--border);
+      padding: .9rem 1.25rem calc(.9rem + env(safe-area-inset-bottom));
+      box-shadow: 0 -4px 24px rgba(15,23,42,.12);
+      flex-direction: column; gap: .3rem;
+    }
+    @media (max-width: 900px) { .mob-bar { display: flex; } }
+    .mob-bar-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .mob-bar-label { font-size: .8rem; color: var(--muted); font-weight: 500; }
+    .mob-bar-total { font-size: 1.2rem; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .mob-bar .btn { flex: 1; padding: .85rem 1rem; font-size: .95rem; }
+
+    /* 2) Mobilde summary sticky kaldır, sayfanın sonuna koy */
+    @media (max-width: 900px) {
+      .summary { position: static; }
+      /* Sayfa altı: sticky bar gizlememesin */
+      .wrap { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+    }
+
+    /* 3) iOS zoom önleme */
+    @media (max-width: 860px) {
+      .coupon-input, .qty-stepper input { font-size: 16px !important; }
+    }
+
+    /* 4) Toast taşma */
+    @media (max-width: 400px) {
+      .toast-stack { left: .75rem; right: .75rem; }
+      .toast { max-width: 100%; }
+    }
+
+    /* 5) Dar ekranlarda line-side sıkışma */
+    @media (max-width: 400px) {
+      .line-side { gap: .55rem; }
+      .line-total { min-width: 70px; font-size: .95rem; }
+      .qty-stepper button { width: 30px; height: 34px; }
+      .qty-stepper input { width: 36px; height: 34px; }
+      .line-remove { width: 28px; height: 28px; }
+    }
+
+    /* 6) Çok dar ekranlarda wrap padding küçülsün */
+    @media (max-width: 400px) {
+      .wrap { padding-left: .75rem; padding-right: .75rem; }
+      .page-head h1 { font-size: 1.35rem; }
+    }
   </style>
 </head>
 <body>
@@ -186,6 +236,20 @@
     <a href="track-order.html">Sipariş Takibi</a>
     <div style="margin-top:.5rem;">© TecnoTools — Profesyonel El Aletleri</div>
   </footer>
+
+  <!-- Mobil sticky checkout bar -->
+  <div class="mob-bar" id="mobBar" aria-hidden="true">
+    <div class="mob-bar-row">
+      <div>
+        <div class="mob-bar-label">Toplam</div>
+        <div class="mob-bar-total" id="mobBarTotal">₺0,00</div>
+      </div>
+      <button class="btn btn-primary" id="mobBarBtn" onclick="proceedToCheckout()" disabled>
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        Ödemeye Geç
+      </button>
+    </div>
+  </div>
 
   <div class="toast-stack" id="toastStack"></div>
 
@@ -319,6 +383,7 @@ function renderEmpty() {
       </p>
     </div>
   `;
+  renderMobBar({ total: 0 });
 }
 
 function renderCart() {
@@ -457,6 +522,19 @@ function renderCart() {
     const hint = $('#couponHint');
     if (hint) hint.textContent = '';
   }
+
+  renderMobBar(totals);
+}
+
+function renderMobBar(totals) {
+  const totalEl = $('#mobBarTotal');
+  const btnEl = $('#mobBarBtn');
+  const barEl = $('#mobBar');
+  if (!totalEl || !btnEl || !barEl) return;
+  const hasItems = cart.length > 0 && totals.total > 0;
+  totalEl.textContent = fmt(totals.total);
+  btnEl.disabled = !hasItems;
+  barEl.setAttribute('aria-hidden', String(!hasItems));
 }
 
 function changeQty(idx, delta) {

@@ -159,6 +159,77 @@
     .ftr { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--muted); }
     .ftr a { color: var(--muted); margin: 0 .5rem; }
     .ftr a:hover { color: var(--primary); }
+
+    /* ── MOBİL DÜZELTMELER ── */
+
+    /* 1) Sipariş özeti mobilde formun üstüne taşınır */
+    @media (max-width: 980px) {
+      .summary { order: -1; position: static; }
+    }
+
+    /* 2) Submit buton — ₺ tutarı alt satıra iner, kırılmaz */
+    .submit-inner { display: flex; flex-direction: column; align-items: center; gap: .15rem; }
+    .submit-amount { font-size: .8rem; opacity: .85; font-weight: 600; }
+    @media (min-width: 480px) {
+      .submit-inner { flex-direction: row; gap: .5rem; }
+      .submit-amount { font-size: inherit; opacity: 1; }
+    }
+
+    /* 3) Kart logoları dar ekranda küçülür */
+    @media (max-width: 480px) {
+      .card-logos img { height: 18px !important; }
+      .choice { padding: .7rem .75rem; gap: .55rem; }
+      .choice .lbl { font-size: .88rem; }
+      .choice .desc { font-size: .74rem; }
+    }
+
+    /* 4) Section padding küçülür */
+    @media (max-width: 480px) {
+      .section { padding: 1rem; }
+      .section h2 { font-size: .98rem; }
+      .wrap { padding: 1rem .9rem 3rem; }
+      .page-head h1 { font-size: 1.35rem; }
+      .page-head p { font-size: .85rem; }
+    }
+
+    /* 5) iOS zoom önleme — input font-size ≥ 16px */
+    @media (max-width: 860px) {
+      .input, .select, .textarea { font-size: 16px !important; }
+    }
+
+    /* 6) Toast taşma düzeltmesi */
+    @media (max-width: 400px) {
+      .toast-stack { left: .75rem; right: .75rem; }
+      .toast { max-width: 100%; }
+    }
+
+    /* 7) Taksit satırları dar ekranda sarılır */
+    @media (max-width: 480px) {
+      #taksitList [style*="display:flex"] { flex-wrap: wrap; gap: .35rem; }
+    }
+
+    /* 8) Summary içindeki ürün listesi öğeleri dar ekranda kırılmaz */
+    @media (max-width: 400px) {
+      .item-list .item { grid-template-columns: 40px 1fr auto; gap: .45rem; }
+      .item-thumb { width: 40px; height: 40px; }
+      .item-name { font-size: .8rem; }
+      .item-price { font-size: .82rem; }
+    }
+
+    /* 9) Mobil'de summary katlanabilir — başlık tıklanabilir */
+    .summary-toggle { display: none; }
+    @media (max-width: 980px) {
+      .summary-toggle {
+        display: flex; align-items: center; justify-content: space-between;
+        width: 100%; background: none; border: none; cursor: pointer;
+        padding: 0; color: var(--text); font-family: inherit;
+      }
+      .summary-toggle svg { transition: transform .25s ease; flex-shrink: 0; }
+      .summary-toggle.collapsed svg { transform: rotate(-90deg); }
+      .summary-body { transition: opacity .2s ease; }
+      .summary-body.collapsed { display: none; }
+      .summary { padding: 1.1rem 1.25rem; }
+    }
   </style>
 </head>
 <body>
@@ -509,7 +580,10 @@ function renderForm() {
 
           <button class="btn btn-primary btn-block lg" type="submit" id="submitBtn">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-            <span id="submitLabel">Ödemeyi Tamamla</span> · ${fmt(totals.total)}
+            <span class="submit-inner">
+              <span id="submitLabel">Ödemeyi Tamamla</span>
+              <span class="submit-amount">${fmt(totals.total)}</span>
+            </span>
           </button>
           <div style="text-align:center;margin-top:.75rem;">
             <a href="cart.html" class="continue-link" style="color:var(--muted);font-size:.85rem;">← Sepete dön</a>
@@ -518,8 +592,12 @@ function renderForm() {
       </div>
 
       <aside class="summary">
-        <h2>Sipariş Özeti</h2>
-        <div class="item-list">${items}</div>
+        <button type="button" class="summary-toggle" id="summaryToggle" aria-expanded="true" onclick="toggleSummary()">
+          <h2 style="margin:0;font-size:1.1rem;">Sipariş Özeti <span style="font-weight:500;color:var(--muted);font-size:.85rem;">(${cart.length} ürün · ${fmt(totals.total)})</span></h2>
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="summary-body" id="summaryBody">
+        <div class="item-list" style="margin-top:.9rem;">${items}</div>
         <div class="sum-row">
           <span class="k">Ara Toplam</span>
           <span class="v">${fmt(totals.subtotal)}</span>
@@ -553,6 +631,7 @@ function renderForm() {
           <img src="images/mastercard.png" alt="Mastercard" style="height:24px;width:auto;display:block;" />
           <img src="images/troy.webp" alt="Troy" style="height:24px;width:auto;display:block;" />
         </div>
+        </div><!-- /summary-body -->
       </aside>
     </div>
   `;
@@ -700,6 +779,15 @@ function removeCoupon() {
   appliedCoupon = null;
   clearCouponSession();
   render();
+}
+
+function toggleSummary() {
+  const btn = document.getElementById('summaryToggle');
+  const body = document.getElementById('summaryBody');
+  if (!btn || !body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  btn.classList.toggle('collapsed', collapsed);
+  btn.setAttribute('aria-expanded', !collapsed);
 }
 
 /* ── VALIDATE ── */

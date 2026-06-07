@@ -126,6 +126,21 @@
     .ftr { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--muted); }
     .ftr a { color: var(--muted); margin: 0 .5rem; }
     .ftr a:hover { color: var(--primary); }
+
+    /* ── MOBİL ── */
+    @media (max-width: 860px) {
+      .input { font-size: 16px !important; }
+    }
+    @media (max-width: 480px) {
+      .card { padding: 1.25rem; }
+      .actions-row { flex-direction: column; }
+      .actions-row .btn { width: 100%; }
+    }
+    @media (max-width: 400px) {
+      .toast-stack { left: .75rem; right: .75rem; }
+      .toast { max-width: 100%; }
+      .wrap { padding-left: .75rem; padding-right: .75rem; }
+    }
   </style>
 </head>
 <body>

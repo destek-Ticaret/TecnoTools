@@ -157,6 +157,75 @@
     .ftr { border-top: 1px solid var(--border); background: var(--surface); padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--muted); }
     .ftr a { color: var(--muted); margin: 0 .5rem; }
     .ftr a:hover { color: var(--primary); }
+
+    /* ── MOBİL DÜZELTMELER ── */
+
+    /* 1) Sidebar: sticky kaldır, nav'ı yatay kaydırmalı tab bara dönüştür */
+    @media (max-width: 900px) {
+      .sidebar {
+        position: static;
+        padding: 0;
+        border-radius: var(--radius) var(--radius) 0 0;
+        border-bottom: none;
+      }
+      .sidebar-head {
+        padding: .75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+      }
+      .sidebar-email { font-size: .72rem; }
+      .nav-list {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        scrollbar-width: none;
+        gap: .2rem;
+        padding: .5rem .75rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+      }
+      .nav-list::-webkit-scrollbar { display: none; }
+      .nav-list li { flex-shrink: 0; }
+      .nav-list a, .nav-list button {
+        padding: .45rem .85rem;
+        font-size: .82rem;
+        border-radius: 999px;
+        white-space: nowrap;
+        gap: .35rem;
+        width: auto;
+      }
+      .nav-list svg { width: 15px; height: 15px; flex-shrink: 0; }
+      .nav-list a.active, .nav-list button.active {
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+      .nav-list .logout { margin-top: 0; }
+      /* Panel biraz nefes alsın */
+      .panel { border-radius: 0 0 var(--radius) var(--radius); border-top: none; }
+      .account-grid { gap: 0; }
+    }
+
+    /* 2) iOS zoom önleme */
+    @media (max-width: 860px) {
+      .input, .textarea, .select { font-size: 16px !important; }
+    }
+
+    /* 3) Toast taşma */
+    @media (max-width: 400px) {
+      .toast-stack { left: .75rem; right: .75rem; }
+      .toast { max-width: 100%; }
+    }
+
+    /* 4) Modal butonları dar ekranda alt alta */
+    @media (max-width: 400px) {
+      .modal-actions { flex-direction: column-reverse; }
+      .modal-actions .btn { width: 100%; }
+    }
+
+    /* 5) Çok dar ekranlarda wrap padding küçülsün */
+    @media (max-width: 400px) {
+      .wrap { padding-left: .75rem; padding-right: .75rem; }
+    }
   </style>
 </head>
 <body>
@@ -779,6 +848,10 @@ async function init() {
 }
 
 ttReady(init);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
 </script>
 </body>
 </html>

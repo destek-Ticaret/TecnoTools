@@ -954,7 +954,31 @@ html, body { height: 100%; }
       .topbar-title h1 { font-size: 1.05rem; }
       .topbar-title p { display: none; }
       .info-grid { grid-template-columns: 1fr; }
+      .mob-search-btn { display: flex !important; }
     }
+
+    /* Mobil arama overlay */
+    .mob-search-overlay {
+      display: none; position: fixed; inset: 0; top: 56px; z-index: 200;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: .85rem 1rem; align-items: center; gap: .65rem;
+      box-shadow: 0 8px 24px rgba(15,23,42,.15);
+      animation: fadeIn .18s ease;
+    }
+    .mob-search-overlay.open { display: flex; }
+    .mob-search-overlay input {
+      flex: 1; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: .65rem .9rem;
+      font: inherit; font-size: 16px; color: var(--text); outline: none;
+      transition: border-color .2s;
+    }
+    .mob-search-overlay input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .mob-search-overlay .close-search {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 9px;
+      width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+      color: var(--text-2); flex-shrink: 0;
+    }
+    .mob-search-overlay .close-search:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
 
     /* ─────────────────────────────────────────────────────────────
        MOBİL DENEYİM — telefon ve küçük tablet
@@ -1304,6 +1328,9 @@ html, body { height: 100%; }
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input type="text" id="globalSearch" placeholder="Sipariş, müşteri veya ürün ara..." />
       </div>
+      <button class="icon-btn mob-search-btn" id="mobSearchBtn" onclick="toggleMobSearch()" title="Ara" aria-label="Ara" style="display:none;">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
       <button class="icon-btn" onclick="toggleLang()" title="Dil / Language" style="font-weight:800;font-size:.78rem;">
         <span id="langLabel">TR</span>
       </button>
@@ -1315,7 +1342,7 @@ html, body { height: 100%; }
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span class="dot" id="notifDot" style="display:none;"></span>
         </button>
-        <div id="notifPanel" style="display:none;position:absolute;top:46px;right:0;width:340px;max-height:420px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);z-index:120;overflow:hidden;">
+        <div id="notifPanel" style="display:none;position:absolute;top:46px;right:0;width:min(340px,calc(100vw - 1rem));max-height:420px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);z-index:120;overflow:hidden;">
           <div style="padding:.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
             <strong style="font-size:.92rem;">Bildirimler</strong>
             <button onclick="markNotifsRead()" style="background:none;border:none;color:var(--primary);font-size:.78rem;font-weight:600;cursor:pointer;">Tümünü okundu işaretle</button>
@@ -2628,6 +2655,14 @@ html, body { height: 100%; }
 
     </main>
   </div>
+</div>
+
+<!-- MOBİL ARAMA OVERLAY (560px altında görünür) -->
+<div class="mob-search-overlay" id="mobSearchOverlay">
+  <input type="search" id="mobSearchInput" placeholder="Sipariş, ürün veya müşteri ara..." autocomplete="off" />
+  <button class="close-search" onclick="closeMobSearch()" aria-label="Aramayı kapat">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
 </div>
 
 <!-- MOBILE BOTTOM NAV (only visible <= 860px) -->
@@ -7826,6 +7861,45 @@ html, body { height: 100%; }
     sb.classList.toggle('open');
     document.body.classList.toggle('sidebar-open', sb.classList.contains('open'));
   }
+
+  /* ── MOBİL ARAMA ── */
+  function toggleMobSearch() {
+    const overlay = document.getElementById('mobSearchOverlay');
+    const input = document.getElementById('mobSearchInput');
+    overlay.classList.toggle('open');
+    if (overlay.classList.contains('open')) {
+      input.focus();
+    } else {
+      input.value = '';
+      document.getElementById('globalSearch').value = '';
+      searchQuery = ''; page = 1; renderOrders();
+    }
+  }
+  function closeMobSearch() {
+    const overlay = document.getElementById('mobSearchOverlay');
+    overlay.classList.remove('open');
+    document.getElementById('mobSearchInput').value = '';
+    document.getElementById('globalSearch').value = '';
+    searchQuery = ''; page = 1;
+  }
+  document.getElementById('mobSearchInput').addEventListener('input', function() {
+    const val = this.value;
+    document.getElementById('globalSearch').value = val;
+    searchQuery = val;
+    if (val && !document.getElementById('view-orders').classList.contains('active')) {
+      switchView('orders');
+    }
+    page = 1; renderOrders();
+  });
+
+  /* ── KEYBOARD SHORTCUTS ── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const sb = document.getElementById('sidebar');
+      if (sb.classList.contains('open')) toggleSidebar();
+      if (document.getElementById('mobSearchOverlay').classList.contains('open')) closeMobSearch();
+    }
+  });
 
   /* ── SEARCH ── */
   document.getElementById('orderSearch').addEventListener('input', function() {

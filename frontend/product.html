@@ -143,6 +143,12 @@
   .quick-features svg { color: var(--success); flex-shrink: 0; margin-top: 3px; }
 
   .actions { display: flex; gap: .65rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  @media (max-width: 480px) {
+    .actions { gap: .5rem; }
+    .btn-primary { flex: 1 1 180px; }
+    .qty-stepper button { width: 36px; height: 42px; }
+    .qty-stepper input { width: 40px; height: 42px; }
+  }
   .qty-stepper {
     display: flex; align-items: center; border: 1px solid var(--border-2); border-radius: 11px;
     overflow: hidden; background: var(--surface);

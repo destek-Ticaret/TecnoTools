@@ -9,12 +9,17 @@
     h1 { font-size: 1.7rem; margin-bottom: 1rem; }
     h2 { font-size: 1.05rem; margin-top: 1.8rem; margin-bottom: .5rem; color: #2563eb; }
     p, li { font-size: .92rem; color: #475569; }
-    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; min-width: 480px; }
     th, td { border: 1px solid #e2e8f0; padding: .55rem .8rem; text-align: left; font-size: .85rem; }
     th { background: #f8fafc; }
     a { color: #2563eb; }
     .actions { background:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;padding:1rem 1.2rem;margin:1rem 0; }
     .actions a { display:inline-block;margin:.2rem .6rem .2rem 0; }
+    @media (max-width: 560px) {
+      body { padding: .75rem 1rem; }
+      h1 { font-size: 1.35rem; }
+    }
   </style>
 </head>
 <body>
@@ -25,6 +30,7 @@
 
   <h2>Çerez kategorileri</h2>
   <p>Çerezler dört kategoride toplanır. Zorunlu çerezler dışındaki tüm kategoriler için açık rıza alırız; izninizi istediğiniz an aşağıdaki bağlantıdan değiştirebilirsiniz.</p>
+  <div class="table-wrap">
   <table>
     <thead><tr><th>Kategori</th><th>Çerezler</th><th>Amaç</th><th>İzin</th></tr></thead>
     <tbody>
@@ -34,6 +40,7 @@
       <tr><td>Pazarlama</td><td>(yalnız üye için)</td><td>Önerilen ürünler ve kişiselleştirilmiş kampanya e-postaları.</td><td>Opt-in</td></tr>
     </tbody>
   </table>
+  </div>
 
   <div class="actions">
     <strong>Tercihinizi değiştirin:</strong>
@@ -78,6 +85,7 @@
   </ul>
 
   <h2>Saklama süreleri</h2>
+  <div class="table-wrap">
   <table>
     <thead><tr><th>Veri</th><th>Süre</th><th>Dayanak</th></tr></thead>
     <tbody>
@@ -88,6 +96,7 @@
       <tr><td>Çerez izin logları</td><td>3 yıl</td><td>KVKK ispat</td></tr>
     </tbody>
   </table>
+  </div>
 
   <h2>İletişim</h2>
   <p>Veri sahibi başvuruları için: <a href="mailto:destek@tecnotools.org">destek@tecnotools.org</a> · Yazılı başvurularda kimlik teyidi ile sürec 30 gün içinde sonuçlandırılır.</p>
