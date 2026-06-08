@@ -434,6 +434,27 @@ html { scroll-behavior: smooth; }
       background: transparent; border: none; outline: none; color: var(--text);
       font-weight: 600; font-size: .85rem; padding: .25rem; cursor: pointer; font-family: inherit;
     }
+    .price-filter {
+      display: flex; align-items: center; gap: .4rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: .35rem .75rem; font-size: .85rem;
+    }
+    .price-filter label { color: var(--muted); font-weight: 500; white-space: nowrap; }
+    .price-filter input {
+      background: transparent; border: none; outline: none; color: var(--text);
+      font-weight: 600; font-size: .85rem; width: 72px; font-family: inherit;
+      border-bottom: 1.5px solid var(--border-2); padding: .1rem .25rem;
+    }
+    .price-filter input:focus { border-bottom-color: var(--primary); }
+    .price-filter input::placeholder { color: var(--muted); font-weight: 400; }
+    .price-filter .sep { color: var(--muted); }
+    .price-filter .pf-clear {
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      display: none; padding: 2px; border-radius: 4px; line-height: 1;
+    }
+    .price-filter .pf-clear.show { display: flex; }
+    .price-filter .pf-clear:hover { color: var(--danger); }
+    .toolbar-right { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 
     /* ── PRODUCTS ── */
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
@@ -1244,6 +1265,9 @@ html { scroll-behavior: smooth; }
       .modal-img { border-radius: 22px 22px 0 0; min-height: 240px; }
     }
     @media (max-width: 768px) {
+      .toolbar { flex-direction: column; align-items: flex-start; gap: .6rem; }
+      .toolbar-right { width: 100%; flex-wrap: wrap; gap: .5rem; }
+      .price-filter input { width: 60px; }
       .nav-links { display: none; }
       .nav-search { display: none; }
       .ham-btn { display: flex; align-items: center; justify-content: center; }
@@ -1458,15 +1482,26 @@ html { scroll-behavior: smooth; }
 
     <div class="toolbar">
       <div class="chips" id="chipsBar"></div>
-      <div class="sort-wrap">
-        <label for="sortSel">Sırala:</label>
-        <select id="sortSel" onchange="renderProducts()">
-          <option value="featured">Önerilen</option>
-          <option value="price-asc">Fiyat: Düşükten Yükseğe</option>
-          <option value="price-desc">Fiyat: Yüksekten Düşüğe</option>
-          <option value="rating">En Yüksek Puan</option>
-          <option value="newest">Yeni Gelenler</option>
-        </select>
+      <div class="toolbar-right">
+        <div class="price-filter" id="priceFilter">
+          <label>Fiyat:</label>
+          <input type="number" id="pfMin" placeholder="Min ₺" min="0" step="1" oninput="onPriceFilter()" />
+          <span class="sep">–</span>
+          <input type="number" id="pfMax" placeholder="Max ₺" min="0" step="1" oninput="onPriceFilter()" />
+          <button class="pf-clear" id="pfClear" onclick="clearPriceFilter()" title="Filtreyi temizle" aria-label="Fiyat filtresini temizle">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="sort-wrap">
+          <label for="sortSel">Sırala:</label>
+          <select id="sortSel" onchange="renderProducts()">
+            <option value="featured">Önerilen</option>
+            <option value="price-asc">Fiyat: Düşükten Yükseğe</option>
+            <option value="price-desc">Fiyat: Yüksekten Düşüğe</option>
+            <option value="rating">En Yüksek Puan</option>
+            <option value="newest">Yeni Gelenler</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -3071,6 +3106,21 @@ html { scroll-behavior: smooth; }
     `;
   }
 
+  function onPriceFilter() {
+    const min = parseFloat(document.getElementById('pfMin').value);
+    const max = parseFloat(document.getElementById('pfMax').value);
+    const hasFilter = !isNaN(min) || !isNaN(max);
+    document.getElementById('pfClear').classList.toggle('show', hasFilter);
+    renderProducts();
+  }
+
+  function clearPriceFilter() {
+    document.getElementById('pfMin').value = '';
+    document.getElementById('pfMax').value = '';
+    document.getElementById('pfClear').classList.remove('show');
+    renderProducts();
+  }
+
   function renderProducts() {
     const grid = document.getElementById('productGrid');
     let list = currentCat === 'Tümü' ? products : products.filter(p => p.cat === currentCat);
@@ -3078,6 +3128,10 @@ html { scroll-behavior: smooth; }
       const q = searchQuery.toLowerCase();
       list = list.filter(p => p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || p.cat.toLowerCase().includes(q));
     }
+    const pfMin = parseFloat(document.getElementById('pfMin')?.value);
+    const pfMax = parseFloat(document.getElementById('pfMax')?.value);
+    if (!isNaN(pfMin)) list = list.filter(p => p.price >= pfMin);
+    if (!isNaN(pfMax)) list = list.filter(p => p.price <= pfMax);
     list = sortList(list);
 
     if (list.length === 0) {
