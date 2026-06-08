@@ -120,6 +120,53 @@ async def send_order_status_update(order, old_status: str) -> None:
     )
 
 
+async def send_admin_new_order(order, admin_emails: list[str]) -> None:
+    """Admin'lere yeni sipariş bildirimi (fire-and-forget ile çağrılır)."""
+    if not admin_emails:
+        return
+    items_rows = "".join(
+        f"<tr><td style='padding:6px 0;border-bottom:1px solid #f1f5f9'>{it.name}"
+        f"{'(' + it.variant_name + ')' if it.variant_name else ''}</td>"
+        f"<td align='center' style='padding:6px 0;border-bottom:1px solid #f1f5f9'>{it.qty}</td>"
+        f"<td align='right' style='padding:6px 0;border-bottom:1px solid #f1f5f9'>₺{it.price * it.qty:.2f}</td></tr>"
+        for it in order.items
+    )
+    html = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1f2e;">
+      <h2 style="margin:0 0 12px;font-size:20px;">🛒 Yeni Sipariş: {order.order_no}</h2>
+      <p style="margin:0 0 16px;color:#475569;">
+        <strong>{order.customer_name}</strong> — {order.customer_email}<br/>
+        Tutar: <strong>₺{order.total:.2f}</strong> &nbsp;|&nbsp;
+        Ödeme: <strong>{order.payment_method or '—'}</strong>
+      </p>
+      <table width="100%" cellspacing="0" cellpadding="0" border="0"
+             style="margin-bottom:16px;font-size:13px;">
+        <thead>
+          <tr>
+            <th align="left" style="font-size:11px;color:#64748b;padding:6px 0;
+                border-bottom:1px solid #e2e8f0;">Ürün</th>
+            <th align="center" style="font-size:11px;color:#64748b;padding:6px 0;
+                border-bottom:1px solid #e2e8f0;">Adet</th>
+            <th align="right" style="font-size:11px;color:#64748b;padding:6px 0;
+                border-bottom:1px solid #e2e8f0;">Tutar</th>
+          </tr>
+        </thead>
+        <tbody>{items_rows}</tbody>
+      </table>
+      <a href="{settings.store_public_url.rstrip('/')}/admin.html"
+         style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;
+                padding:10px 20px;border-radius:8px;font-weight:600;font-size:13px;">
+        Admin Paneli →
+      </a>
+    </div>"""
+    for email in admin_emails:
+        await send_email(
+            to=email,
+            subject=f"[TecnoTools] Yeni sipariş: {order.order_no} · ₺{order.total:.2f}",
+            html=html,
+        )
+
+
 async def send_password_reset(
     *, email: str, username: str, reset_url: str, ttl_minutes: int = 30
 ) -> None:

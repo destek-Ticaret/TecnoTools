@@ -31,10 +31,11 @@ from app.schemas import (
     OrderStatusUpdate,
     PaymentStartResponse,
 )
-from app.services.email import send_order_status_update
+from app.services.email import send_admin_new_order, send_order_confirmation, send_order_status_update
 from app.services.events import bus
 from app.services.order_signing import sign_order, verify_token
 from app.services.paytr import build_paytr_token
+from app.services.stock import deduct_stock_once
 from app.services.stripe_gateway import create_checkout_session
 from app.services.tracking import build_tracking_response
 
@@ -243,7 +244,21 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             raise HTTPException(status_code=400, detail="Kapıda ödeme kapalı")
         order.payment_method = payload.payment_method
         order.payment_status = "pending"  # bankaya gelince admin manual onaylayacak
+        # COD/havale: ödeme gateway callback beklemeden stok hemen düş
+        await deduct_stock_once(db, order)
         await db.commit()
+        await db.refresh(order)
+        # Onay maili + admin bildirimi (fire-and-forget; SMTP yoksa konsola yazar)
+        try:
+            await send_order_confirmation(order)
+        except Exception:
+            pass
+        try:
+            admins = (await db.execute(select(User))).scalars().all()
+            admin_emails = [u.email for u in admins if u.email]
+            await send_admin_new_order(order, admin_emails)
+        except Exception:
+            pass
         return PaymentStartResponse(
             order_no=order.order_no,
             iframe_token="",
