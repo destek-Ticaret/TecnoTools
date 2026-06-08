@@ -564,6 +564,12 @@
         api.products.listPublic().catch(() => []),
       ]);
       PRODUCT = p;
+      // Son gezilen ürünleri localStorage'a kaydet (max 8, yeni önde, tekrarsız)
+      try {
+        const key = 'tt_recently_viewed';
+        const prev = JSON.parse(localStorage.getItem(key) || '[]').filter(x => x !== id);
+        localStorage.setItem(key, JSON.stringify([id, ...prev].slice(0, 8)));
+      } catch (_) {}
       // related = aynı kategori, kendisi dışında, ilk 4
       RELATED = (related || []).filter(x => x.id !== id && (x.category_id === p.category_id || (x.category && p.category && x.category.id === p.category.id))).slice(0, 4);
       try { REVIEWS = await api.products.reviews(id); } catch { REVIEWS = []; }

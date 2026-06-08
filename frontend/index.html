@@ -518,6 +518,10 @@ html { scroll-behavior: smooth; }
     }
     .add-btn:hover { background: var(--primary); transform: scale(1.04); }
     .add-btn svg { width: 16px; height: 16px; }
+    .qa-btn.qa-buy:hover { background: #16a34a; border-color: #16a34a; }
+    .btn-success { background: #16a34a; color: #fff; border: 1.5px solid #16a34a; }
+    .btn-success:hover:not(:disabled) { background: #15803d; border-color: #15803d; }
+    .recently-viewed { background: var(--bg2, #eef0f7); }
 
     .no-results {
       grid-column: 1/-1; text-align: center; padding: 3rem 1rem;
@@ -1467,6 +1471,19 @@ html { scroll-behavior: smooth; }
     </div>
 
     <div class="product-grid" id="productGrid"></div>
+  </div>
+</section>
+
+<!-- SON GEZİLEN ÜRÜNLER -->
+<section class="section recently-viewed" id="sonGezilen" style="display:none;">
+  <div class="container">
+    <div class="section-head">
+      <div class="h-left">
+        <div class="eyebrow">Geçmiş</div>
+        <h2>Son Gezilen Ürünler</h2>
+      </div>
+    </div>
+    <div class="product-grid" id="recentlyViewedGrid"></div>
   </div>
 </section>
 
@@ -3011,6 +3028,49 @@ html { scroll-behavior: smooth; }
     }
   }
 
+  function makeCard(p) {
+    const isFav = wishlist.includes(p.id);
+    const badgeHTML = p.badge ? `<span class="badge ${p.badge.type}">${p.badge.text}</span>` : '';
+    const avail = effectiveStock(p);
+    const soldOut = avail <= 0;
+    return `
+      <article class="product-card">
+        <div class="product-img-wrap">
+          <div class="product-badges">${badgeHTML}</div>
+          <div class="quick-actions">
+            <button class="qa-btn ${isFav ? 'faved' : ''}" title="Favorile" onclick="event.stopPropagation();toggleWish(${p.id})">
+              <svg fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
+            </button>
+            <button class="qa-btn" title="Hızlı bakış" onclick="event.stopPropagation();openQV(${p.id})">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            ${soldOut ? '' : `<button class="qa-btn qa-buy" title="Hemen satın al" onclick="event.stopPropagation();quickBuy(${p.id})">
+              <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </button>`}
+          </div>
+          <div class="product-img" style="cursor:pointer;" onclick="goProduct(${p.id})">${productImg(p)}</div>
+        </div>
+        <div class="product-info">
+          <div class="product-cat">${p.cat}</div>
+          <div class="product-name" style="cursor:pointer;" onclick="goProduct(${p.id})">${p.name}</div>
+          <div class="product-sub">${p.sub}</div>
+          <div class="stars">${starsHTML(p.rating)}<span class="stars-num">${p.rating} (${p.reviews})</span></div>
+          ${soldOut ? `<div class="stock-out-msg">Stoklar tükendi — yakında yenilenecek</div>` : ''}
+          <div class="product-foot">
+            <div class="price-wrap">
+              <span class="price">${fmt(p.price)}</span>
+              ${p.old ? `<span class="price-old">${fmt(p.old)}</span>` : ''}
+            </div>
+            <button class="add-btn" ${soldOut ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''} onclick="${soldOut ? '' : `addToCart(${p.id})`}">
+              <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              <span>${soldOut ? 'Yok' : 'Ekle'}</span>
+            </button>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
   function renderProducts() {
     const grid = document.getElementById('productGrid');
     let list = currentCat === 'Tümü' ? products : products.filter(p => p.cat === currentCat);
@@ -3025,49 +3085,12 @@ html { scroll-behavior: smooth; }
       grid.innerHTML = noProducts
         ? `<div class="no-results"><span class="emoji">📦</span><div style="font-size:1.05rem;color:var(--text);font-weight:700;margin-bottom:.3rem;">Henüz ürün eklenmedi</div><div>Yönetici, admin panelinden ürünleri eklediğinde burada görünecek.</div></div>`
         : `<div class="no-results"><span class="emoji">🔍</span><div style="font-size:1.05rem;color:var(--text);font-weight:700;margin-bottom:.3rem;">Sonuç bulunamadı</div><div>Arama kriterlerinizi değiştirin veya farklı bir kategori seçin.</div></div>`;
+      renderRecentlyViewed();
       return;
     }
 
-    grid.innerHTML = list.map(p => {
-      const discount = p.old ? Math.round((1 - p.price / p.old) * 100) : 0;
-      const isFav = wishlist.includes(p.id);
-      const badgeHTML = p.badge ? `<span class="badge ${p.badge.type}">${p.badge.text}</span>` : '';
-      const avail = effectiveStock(p);
-      const soldOut = avail <= 0;
-      return `
-        <article class="product-card">
-          <div class="product-img-wrap">
-            <div class="product-badges">${badgeHTML}</div>
-            <div class="quick-actions">
-              <button class="qa-btn ${isFav ? 'faved' : ''}" title="Favorile" onclick="event.stopPropagation();toggleWish(${p.id})">
-                <svg fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
-              </button>
-              <button class="qa-btn" title="Hızlı bakış" onclick="event.stopPropagation();openQV(${p.id})">
-                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
-            </div>
-            <div class="product-img" style="cursor:pointer;" onclick="goProduct(${p.id})">${productImg(p)}</div>
-          </div>
-          <div class="product-info">
-            <div class="product-cat">${p.cat}</div>
-            <div class="product-name" style="cursor:pointer;" onclick="goProduct(${p.id})">${p.name}</div>
-            <div class="product-sub">${p.sub}</div>
-            <div class="stars">${starsHTML(p.rating)}<span class="stars-num">${p.rating} (${p.reviews})</span></div>
-            ${soldOut ? `<div class="stock-out-msg">Stoklar tükendi — yakında yenilenecek</div>` : ''}
-            <div class="product-foot">
-              <div class="price-wrap">
-                <span class="price">${fmt(p.price)}</span>
-                ${p.old ? `<span class="price-old">${fmt(p.old)}</span>` : ''}
-              </div>
-              <button class="add-btn" ${soldOut ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''} onclick="${soldOut ? '' : `addToCart(${p.id})`}">
-                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                <span>${soldOut ? 'Yok' : 'Ekle'}</span>
-              </button>
-            </div>
-          </div>
-        </article>
-      `;
-    }).join('');
+    grid.innerHTML = list.map(makeCard).join('');
+    renderRecentlyViewed();
   }
 
   function filterCat(cat) {
@@ -3360,6 +3383,7 @@ html { scroll-behavior: smooth; }
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             ${qvSoldOut ? 'Stokta Yok' : 'Sepete Ekle'}
           </button>
+          ${qvSoldOut ? '' : `<button class="btn btn-success" onclick="quickBuy(${p.id})"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg> Hemen Al</button>`}
           <button class="btn btn-outline" onclick="toggleWish(${p.id});openQV(${p.id})">
             <svg width="16" height="16" fill="${isFav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z"/></svg>
             ${isFav ? 'Favorilerden Kaldır' : 'Favorile'}
@@ -3378,6 +3402,24 @@ html { scroll-behavior: smooth; }
     document.getElementById('qvModal').classList.remove('open');
     document.body.style.overflow = '';
     if (location.hash.startsWith('#product/')) history.pushState(null, '', location.pathname + location.search);
+  }
+
+  function quickBuy(id) {
+    addToCart(id);
+    closeQV();
+    openCheckout();
+  }
+
+  function renderRecentlyViewed() {
+    const section = document.getElementById('sonGezilen');
+    const grid = document.getElementById('recentlyViewedGrid');
+    if (!section || !grid) return;
+    const ids = JSON.parse(localStorage.getItem('tt_recently_viewed') || '[]');
+    if (!ids.length) { section.style.display = 'none'; return; }
+    const recentProds = ids.map(id => products.find(p => p.id === id)).filter(Boolean);
+    if (!recentProds.length) { section.style.display = 'none'; return; }
+    grid.innerHTML = recentProds.map(makeCard).join('');
+    section.style.display = '';
   }
 
   function shareProduct(id) {
