@@ -15,23 +15,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "site_settings",
-        sa.Column("key", sa.String(length=64), primary_key=True),
-        sa.Column("value", sa.Text(), nullable=True),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.func.now(),
-            nullable=False,
-        ),
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS site_settings (
+            key VARCHAR(64) NOT NULL PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
 
-    op.create_table(
-        "order_counters",
-        sa.Column("year", sa.BigInteger(), primary_key=True),
-        sa.Column("seq", sa.BigInteger(), nullable=False, server_default="0"),
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS order_counters (
+            year BIGINT NOT NULL PRIMARY KEY,
+            seq BIGINT NOT NULL DEFAULT 0
+        )
+    """)
 
 
 def downgrade() -> None:
