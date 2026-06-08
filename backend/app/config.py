@@ -139,6 +139,14 @@ class Settings(BaseSettings):
         return [ip.strip() for ip in self.admin_ip_whitelist.split(",") if ip.strip()]
 
     @model_validator(mode="after")
+    def _fix_database_url(self) -> "Settings":
+        # Railway'in DATABASE_URL'si postgresql:// ile gelir; asyncpg postgresql+asyncpg:// ister.
+        if self.database_url.startswith("postgresql://"):
+            object.__setattr__(self, "database_url",
+                               "postgresql+asyncpg://" + self.database_url[len("postgresql://"):])
+        return self
+
+    @model_validator(mode="after")
     def _guard_production_secrets(self) -> "Settings":
         """Production'da zayıf/varsayılan secret ile başlamayı engelle (fail-fast).
 
