@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.admin_ip_filter import AdminIPFilterMiddleware
 from app.config import get_settings
@@ -117,7 +118,10 @@ async def _seed_initial_admin():
             is_primary=True,
         )
         db.add(admin)
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
 
 
 @asynccontextmanager
