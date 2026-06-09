@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     s3_secret_key: str = ""
     s3_public_base_url: str = ""  # CDN/public URL prefix (örn https://cdn.tecnotools.com)
 
+    # Resend (HTTPS e-posta API) — SMTP portları bloklu ortamlar (Railway vb.)
+    # için. RESEND_API_KEY doluysa e-postalar Resend üzerinden gönderilir;
+    # SMTP yok sayılır. Boşsa SMTP'ye, o da boşsa konsola düşülür.
+    resend_api_key: str = ""
+
     # SMTP / Email — boş bırakılırsa email'ler konsola yazılır (dev mode)
     smtp_host: str = ""
     smtp_port: int = 587

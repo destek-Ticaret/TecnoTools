@@ -1,6 +1,11 @@
-"""Email gönderim servisi — async SMTP, HTML + plaintext fallback.
+"""Email gönderim servisi — Resend (HTTPS API) veya async SMTP.
 
-SMTP_HOST boşsa email'ler konsola yazılır (geliştirme modu).
+Transport seçimi:
+  1) RESEND_API_KEY doluysa → Resend HTTPS API (port 443; Railway gibi SMTP'yi
+     bloklayan ortamlar için).
+  2) Aksi halde SMTP_HOST doluysa → async SMTP.
+  3) İkisi de boşsa → konsola yaz (geliştirme modu).
+
 Gönderim fire-and-forget olarak çalışır — endpoint cevabını bloklamaz.
 """
 
@@ -10,6 +15,7 @@ from email.message import EmailMessage
 from pathlib import Path
 
 import aiosmtplib
+import httpx
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.config import get_settings
@@ -39,18 +45,38 @@ def _strip_html(html: str) -> str:
     return text.strip()
 
 
-async def _send_smtp(message: EmailMessage) -> None:
-    if not settings.smtp_host:
-        # Dev modu: konsola yaz
-        logger.info("📧 [DEV-EMAIL] To: %s | Subject: %s", message["To"], message["Subject"])
-        logger.info(
-            "Body:\n%s",
-            message.get_body(preferencelist=("plain",)).get_content() if message.get_body() else "",
-        )
-        return
+def _from_header() -> str:
+    return f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
 
+
+async def _send_resend(*, to: str, subject: str, html: str, text: str) -> None:
+    """Resend HTTPS API ile gönder (port 443)."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+            json={
+                "from": _from_header(),
+                "to": [to],
+                "subject": subject,
+                "html": html,
+                "text": text,
+            },
+        )
+        if resp.status_code >= 400:
+            # Resend hata gövdesini logla (yanlış domain/from, kota vb.)
+            raise RuntimeError(f"Resend {resp.status_code}: {resp.text}")
+
+
+async def _send_smtp(*, to: str, subject: str, html: str, text: str) -> None:
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = _from_header()
+    msg["To"] = to
+    msg.set_content(text)
+    msg.add_alternative(html, subtype="html")
     await aiosmtplib.send(
-        message,
+        msg,
         hostname=settings.smtp_host,
         port=settings.smtp_port,
         username=settings.smtp_user or None,
@@ -62,15 +88,20 @@ async def _send_smtp(message: EmailMessage) -> None:
 
 
 async def send_email(*, to: str, subject: str, html: str, text: str | None = None) -> bool:
-    """Tek email gönderir. Başarı/başarısızlık döner; istisna fırlatmaz."""
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.smtp_from_name} <{settings.smtp_from_email}>"
-    msg["To"] = to
-    msg.set_content(text or _strip_html(html))
-    msg.add_alternative(html, subtype="html")
+    """Tek email gönderir. Başarı/başarısızlık döner; istisna fırlatmaz.
+
+    Transport önceliği: Resend → SMTP → konsol (dev).
+    """
+    text_body = text or _strip_html(html)
     try:
-        await _send_smtp(msg)
+        if settings.resend_api_key:
+            await _send_resend(to=to, subject=subject, html=html, text=text_body)
+        elif settings.smtp_host:
+            await _send_smtp(to=to, subject=subject, html=html, text=text_body)
+        else:
+            # Dev modu: konsola yaz
+            logger.info("📧 [DEV-EMAIL] To: %s | Subject: %s", to, subject)
+            logger.info("Body:\n%s", text_body)
         return True
     except Exception as e:
         logger.error("Email gönderim hatası (%s): %s", to, e)
