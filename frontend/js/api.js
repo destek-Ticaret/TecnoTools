@@ -661,20 +661,41 @@
        * sunucu JWT'yi doğrulayıp her müşteriye `cust:<id>` kalıcı oturumu açar.
        */
       connectCustomer(onEvent) {
-        const token = getCustomerAccess();
-        if (!token) throw new ApiError('Canlı destek için üye girişi gerekli', 401);
-        const url = BASE_URL.replace(/^http/, 'ws') + '/api/ws/chat/customer?token=' + encodeURIComponent(token);
-        let ws, closed = false, retry = null;
-        const open = () => {
-          ws = new WebSocket(url);
+        if (!getCustomerAccess() && !getCustomerRefresh()) {
+          throw new ApiError('Canlı destek için üye girişi gerekli', 401);
+        }
+        const wsUrl = (t) => BASE_URL.replace(/^http/, 'ws') +
+          '/api/ws/chat/customer?token=' + encodeURIComponent(t);
+        let ws, closed = false, retry = null, attempts = 0, refreshedSinceOpen = false;
+        // Süresi dolmuş token reddi handshake'te 1006 olarak döner (4401 değil);
+        // bu yüzden reconnect'te token'ı taze oku, gerekirse yenile. Yenileme
+        // başarısızsa (oturum bitti) sonsuz denemeyi durdur. Bir başarısızlık
+        // dizisinde token yalnız bir kez yenilenir (başarılı bağlantıda sıfırlanır).
+        const open = async () => {
+          if (closed) return;
+          let token = getCustomerAccess();
+          if (!token) {
+            try { await refreshCustomerAccess(); token = getCustomerAccess(); refreshedSinceOpen = true; }
+            catch (_) { closed = true; return; }
+          }
+          if (!token || closed) return;
+          ws = new WebSocket(wsUrl(token));
+          ws.onopen = () => { attempts = 0; refreshedSinceOpen = false; };
           ws.onmessage = (e) => {
             if (e.data === 'pong') return;
             try { const m = JSON.parse(e.data); onEvent(m.event, m.data); } catch (_) {}
           };
-          ws.onclose = (ev) => {
-            // 4401: yetkisiz — yeniden deneme yapma
-            if (closed || ev.code === 4401) return;
-            retry = setTimeout(open, 3000);
+          ws.onclose = async () => {
+            if (closed) return;
+            attempts += 1;
+            // İlk başarısızlıkta token'ı bir kez yenile (muhtemelen süresi dolmuş);
+            // yenileme başarısızsa oturum gerçekten bitmiştir → dur.
+            if (!refreshedSinceOpen) {
+              refreshedSinceOpen = true;
+              try { await refreshCustomerAccess(); }
+              catch (_) { closed = true; return; }
+            }
+            retry = setTimeout(open, Math.min(3000 * attempts, 30000));
           };
           ws.onerror = () => {};
         };
@@ -692,17 +713,34 @@
        * sendMessage(session_id, body) ile seçer.
        */
       connectAdmin(onEvent) {
-        const token = getAccess();
-        if (!token) throw new ApiError('Önce login olun', 401);
-        const url = BASE_URL.replace(/^http/, 'ws') + '/api/ws/chat/admin?token=' + encodeURIComponent(token);
-        let ws, closed = false, retry = null;
-        const open = () => {
-          ws = new WebSocket(url);
+        if (!getAccess()) throw new ApiError('Önce login olun', 401);
+        const wsUrl = (t) => BASE_URL.replace(/^http/, 'ws') +
+          '/api/ws/chat/admin?token=' + encodeURIComponent(t);
+        let ws, closed = false, retry = null, attempts = 0, refreshedSinceOpen = false;
+        const open = async () => {
+          if (closed) return;
+          let token = getAccess();
+          if (!token) {
+            try { await refreshAccess(); token = getAccess(); refreshedSinceOpen = true; }
+            catch (_) { closed = true; return; }
+          }
+          if (!token || closed) return;
+          ws = new WebSocket(wsUrl(token));
+          ws.onopen = () => { attempts = 0; refreshedSinceOpen = false; };
           ws.onmessage = (e) => {
             if (e.data === 'pong') return;
             try { const m = JSON.parse(e.data); onEvent(m.event, m.data); } catch (_) {}
           };
-          ws.onclose = () => { if (!closed) retry = setTimeout(open, 3000); };
+          ws.onclose = async () => {
+            if (closed) return;
+            attempts += 1;
+            if (!refreshedSinceOpen) {
+              refreshedSinceOpen = true;
+              try { await refreshAccess(); }
+              catch (_) { closed = true; return; }
+            }
+            retry = setTimeout(open, Math.min(3000 * attempts, 30000));
+          };
           ws.onerror = () => {};
         };
         open();
