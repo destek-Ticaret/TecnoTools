@@ -109,6 +109,17 @@
     .status-pill.shipped { background: var(--primary-soft); color: var(--primary); }
     .status-pill.delivered { background: var(--success-soft); color: var(--success); }
     .status-pill.cancelled { background: var(--danger-soft); color: var(--danger); }
+    /* İade durum rozetleri */
+    .status-pill.requested { background: var(--warning-soft); color: var(--warning); }
+    .status-pill.approved { background: var(--info-soft); color: var(--primary-dark); }
+    .status-pill.rejected { background: var(--danger-soft); color: var(--danger); }
+    .status-pill.refunded { background: var(--success-soft); color: var(--success); }
+    /* İade modal kalem satırları */
+    .return-item { display: flex; align-items: center; gap: .6rem; padding: .55rem .65rem; border: 1px solid var(--border); border-radius: 10px; margin-bottom: .45rem; font-size: .85rem; }
+    .return-item input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--primary); }
+    .return-item .ri-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .return-item .ri-qty { width: 60px; padding: .3rem .4rem; border: 1px solid var(--border-2); border-radius: 8px; background: var(--surface); color: var(--text); font-size: .82rem; text-align: center; }
+    .return-item .ri-price { font-size: .78rem; color: var(--muted); white-space: nowrap; }
 
     /* Wishlist */
     .wish-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
@@ -280,6 +291,7 @@
 let me = null;
 let orders = [];
 let wishlist = [];
+let returnsByOrder = {}; // order_no → iade talepleri (lookup sonucu)
 let activeTab = 'profile';
 let authMode = 'login';
 let submitting = false;
@@ -291,6 +303,9 @@ const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractio
 const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const fmtDateTime = iso => iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const STATUS_LABEL = { pending: 'Beklemede', processing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim edildi', cancelled: 'İptal edildi' };
+const RETURN_STATUS_LABEL = { requested: 'İade talebi alındı', approved: 'İade onaylandı', rejected: 'İade reddedildi', refunded: 'İade tamamlandı', cancelled: 'İade iptal edildi' };
+const RETURN_REASONS = { damaged: 'Kargoda hasar gördü', defective: 'Arızalı / çalışmıyor', wrong_item: 'Yanlış ürün geldi', size_issue: 'Beden / boyut uymadı', not_needed: 'Vazgeçtim / ihtiyacım kalmadı', other: 'Diğer' };
+const RETURN_ELIGIBLE_STATUSES = ['processing', 'shipped', 'delivered'];
 const initials = name => (name || '?').trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase();
 
 function showToast(text, kind = 'info') {
@@ -573,6 +588,10 @@ function renderOrdersPanel() {
     <div class="orders-list">
       ${orders.map(o => {
         const status = o.status || 'pending';
+        const rets = returnsByOrder[o.order_no] || [];
+        const lastReturn = rets[0] || null; // lookup id desc sıralı döner
+        const activeReturn = rets.find(r => r.status === 'requested' || r.status === 'approved') || null;
+        const canRequest = RETURN_ELIGIBLE_STATUSES.includes(status) && !activeReturn;
         return `
           <div class="order-card">
             <div>
@@ -581,16 +600,111 @@ function renderOrdersPanel() {
             </div>
             <div class="order-right">
               <div class="order-total">${fmt(o.total)}</div>
-              <div style="margin-top:.35rem;"><span class="status-pill ${status}">${escapeHtml(STATUS_LABEL[status] || status)}</span></div>
+              <div style="margin-top:.35rem;display:flex;gap:.3rem;justify-content:flex-end;flex-wrap:wrap;">
+                <span class="status-pill ${status}">${escapeHtml(STATUS_LABEL[status] || status)}</span>
+                ${lastReturn && lastReturn.status !== 'cancelled' ? `<span class="status-pill ${lastReturn.status}">${escapeHtml(RETURN_STATUS_LABEL[lastReturn.status] || lastReturn.status)}</span>` : ''}
+              </div>
             </div>
             <div style="grid-column:1/-1;display:flex;gap:.4rem;flex-wrap:wrap;">
               <a class="btn btn-secondary" href="track-order.html?order_no=${encodeURIComponent(o.order_no || '')}&email=${encodeURIComponent(me.email || '')}">Takip Et</a>
+              ${canRequest ? `<button class="btn btn-secondary" onclick="openReturnModal('${escapeAttr(o.order_no || '')}')">İade Talebi</button>` : ''}
+              ${activeReturn && activeReturn.status === 'requested' ? `<button class="btn btn-secondary" onclick="cancelReturn(${activeReturn.id}, '${escapeAttr(o.order_no || '')}')">İadeden Vazgeç</button>` : ''}
             </div>
           </div>
         `;
       }).join('')}
     </div>
   `;
+}
+
+/* ── Returns (iade) ── */
+async function loadReturns() {
+  if (!me || !orders.length) { returnsByOrder = {}; return; }
+  const entries = await Promise.all(orders.map(async o => {
+    try { return [o.order_no, await api.returns.lookup(o.order_no, me.email) || []]; }
+    catch (_) { return [o.order_no, []]; }
+  }));
+  returnsByOrder = Object.fromEntries(entries);
+}
+
+function openReturnModal(orderNo) {
+  const o = orders.find(x => x.order_no === orderNo);
+  if (!o || !o.items || !o.items.length) { showToast('Sipariş kalemleri yüklenemedi.', 'danger'); return; }
+  openModal(`
+    <h3 style="margin:0 0 .35rem;font-size:1.05rem;">İade Talebi · ${escapeHtml(orderNo)}</h3>
+    <p style="margin:0 0 1rem;font-size:.82rem;color:var(--muted);">İade etmek istediğiniz ürünleri ve adetlerini seçin.</p>
+    <div id="returnItems">
+      ${o.items.map((it, i) => `
+        <label class="return-item">
+          <input type="checkbox" id="ri_chk_${i}" />
+          <span class="ri-name">${escapeHtml(it.name || '')}</span>
+          <input type="number" class="ri-qty" id="ri_qty_${i}" min="1" max="${it.qty}" value="${it.qty}" />
+          <span class="ri-price">× ${fmt(it.price)}</span>
+        </label>
+      `).join('')}
+    </div>
+    <div class="field" style="margin-top:.85rem;">
+      <label class="label" for="returnReason">İade sebebi</label>
+      <select class="input" id="returnReason">
+        ${Object.entries(RETURN_REASONS).map(([k, v]) => `<option value="${k}">${escapeHtml(v)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field" style="margin-top:.65rem;">
+      <label class="label" for="returnNote">Açıklama (isteğe bağlı)</label>
+      <textarea class="textarea" id="returnNote" maxlength="2000" rows="3" placeholder="İadenizle ilgili eklemek istedikleriniz..."></textarea>
+    </div>
+    <div id="returnMsg"></div>
+    <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" id="returnSubmitBtn" onclick="submitReturn('${escapeAttr(orderNo)}')">İade Talebi Gönder</button>
+    </div>
+  `);
+}
+
+async function submitReturn(orderNo) {
+  const o = orders.find(x => x.order_no === orderNo);
+  if (!o) return;
+  const items = [];
+  o.items.forEach((it, i) => {
+    const chk = $(`#ri_chk_${i}`);
+    if (!chk || !chk.checked) return;
+    const qtyEl = $(`#ri_qty_${i}`);
+    const qty = Math.min(Math.max(parseInt(qtyEl && qtyEl.value, 10) || 1, 1), it.qty);
+    items.push({ product_id: it.product_id || null, name: it.name, qty, price: it.price });
+  });
+  if (!items.length) {
+    $('#returnMsg').innerHTML = '<div class="alert danger">En az bir ürün seçin.</div>';
+    return;
+  }
+  const btn = $('#returnSubmitBtn'); btn.disabled = true;
+  try {
+    await api.returns.create({
+      order_no: orderNo,
+      customer_email: me.email,
+      reason: $('#returnReason').value,
+      note: ($('#returnNote').value || '').trim() || null,
+      items,
+    });
+    closeModal();
+    showToast('İade talebiniz alındı. Onay durumunu buradan takip edebilirsiniz. ✓', 'success');
+    await loadReturns();
+    renderAccount();
+  } catch (e) {
+    $('#returnMsg').innerHTML = `<div class="alert danger">${escapeHtml(e.message || 'İade talebi gönderilemedi.')}</div>`;
+    btn.disabled = false;
+  }
+}
+
+async function cancelReturn(returnId, orderNo) {
+  if (!confirm(`${orderNo} siparişi için açtığınız iade talebini geri çekmek istiyor musunuz?`)) return;
+  try {
+    await api.returns.cancel(returnId, me.email);
+    showToast('İade talebiniz iptal edildi.', 'success');
+    await loadReturns();
+    renderAccount();
+  } catch (e) {
+    showToast(e.message || 'İptal başarısız.', 'danger');
+  }
 }
 
 /* ── Wishlist ── */
@@ -836,7 +950,7 @@ async function init() {
   await loadMe();
   if (me) {
     await maybeMergeWishlist();
-    await Promise.all([loadOrders(), loadWishlist()]);
+    await Promise.all([loadOrders().then(loadReturns), loadWishlist()]);
   }
   render();
   // URL'de ?tab=... varsa aktif sekmeyi aç
