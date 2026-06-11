@@ -93,6 +93,7 @@ async def paytr_callback(
             pass
         try:
             from sqlalchemy import select as _select
+
             from app.models import User as _User
             admins = (await db.execute(_select(_User))).scalars().all()
             await send_admin_new_order(order, [u.email for u in admins if u.email])
@@ -138,6 +139,7 @@ async def _mark_order_paid(db: AsyncSession, order: Order, method: str) -> None:
         pass
     try:
         from sqlalchemy import select as _select
+
         from app.models import User as _User
         admins = (await db.execute(_select(_User))).scalars().all()
         admin_emails = [u.email for u in admins if u.email]

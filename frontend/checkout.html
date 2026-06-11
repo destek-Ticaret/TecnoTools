@@ -14,7 +14,7 @@
   <script src="js/common.js?v=1"></script>
   <script src="js/config.js"></script>
   <script src="js/tracking.js" defer></script>
-  <script src="js/api.js?v=20260609" defer></script>
+  <script src="js/api.js?v=20260611" defer></script>
   <link rel="stylesheet" href="css/base.css?v=1" />
   <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -303,6 +303,8 @@
 let cart = [];
 let productMap = {};
 let appliedCoupon = null;
+let loyalty = null;            // üye girişliyse /customer-auth/loyalty sonucu
+let useLoyaltyPoints = false;  // "puanlarımı kullan" anahtarı
 let shippingSettings = { shipping_free_threshold: 500, shipping_fee_default: 49.9, tax_rate: 20 };
 let shippingCarriers = [];     // backend'den dinamik (admin tarafından ayarlanabilir)
 let formData = {
@@ -373,13 +375,24 @@ function computeTotals() {
     if (appliedCoupon.type === 'percent') discount = subtotal * (Number(appliedCoupon.value) / 100);
     else if (appliedCoupon.type === 'fixed') discount = Math.min(Number(appliedCoupon.value), subtotal);
   }
-  const taxable = Math.max(0, subtotal - discount);
+  // Puan indirimi — sunucu formülünün aynası: min(puan×0.1, kupon sonrası ara toplamın %20'si)
+  let loyaltyDiscount = 0;
+  if (useLoyaltyPoints && loyalty && loyalty.points > 0) {
+    const afterCoupon = Math.max(0, subtotal - discount);
+    loyaltyDiscount = Math.round(Math.min(loyalty.points * 0.1, afterCoupon * 0.2) * 100) / 100;
+  }
+  const taxable = Math.max(0, subtotal - discount - loyaltyDiscount);
   const tax = taxable * (Number(shippingSettings.tax_rate) / 100);
   const fee = Number(shippingSettings.shipping_fee_default) || 0;
   const threshold = Number(shippingSettings.shipping_free_threshold) || 0;
   const shipping = (taxable > 0 && taxable < threshold) ? fee : 0;
   const total = taxable + tax + shipping;
-  return { subtotal, discount, tax, shipping, total, taxable };
+  return { subtotal, discount, loyaltyDiscount, tax, shipping, total, taxable };
+}
+
+function toggleLoyalty(checked) {
+  useLoyaltyPoints = !!checked;
+  render();
 }
 
 function loadCouponFromSession() {
@@ -610,6 +623,12 @@ function renderForm() {
             <span class="v discount">−${fmt(totals.discount)}</span>
           </div>
         ` : ''}
+        ${totals.loyaltyDiscount > 0 ? `
+          <div class="sum-row">
+            <span class="k">Puan İndirimi (${Math.round(totals.loyaltyDiscount / 0.1)} puan)</span>
+            <span class="v discount">−${fmt(totals.loyaltyDiscount)}</span>
+          </div>
+        ` : ''}
         <div class="sum-row">
           <span class="k">Kargo</span>
           <span class="v">${totals.shipping === 0 ? 'Ücretsiz' : fmt(totals.shipping)}</span>
@@ -624,6 +643,17 @@ function renderForm() {
           <span class="v">${fmt(totals.total)}</span>
         </div>
         ${couponChip}
+        ${loyalty && loyalty.points > 0 ? `
+          <label style="display:flex;align-items:flex-start;gap:.6rem;margin-top:1rem;padding:.75rem .85rem;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:.84rem;cursor:pointer;">
+            <input type="checkbox" ${useLoyaltyPoints ? 'checked' : ''} onchange="toggleLoyalty(this.checked)"
+                   style="width:16px;height:16px;margin-top:2px;flex-shrink:0;accent-color:var(--primary);" />
+            <span>
+              <strong>${loyalty.points} puanını kullan</strong>
+              (${fmt(Math.round(Math.min(loyalty.points * 0.1, Math.max(0, totals.subtotal - totals.discount) * 0.2) * 100) / 100)} indirim)
+              <br/><span style="color:var(--muted);font-size:.75rem;">Sepet tutarının en fazla %20'si puanla ödenebilir.</span>
+            </span>
+          </label>
+        ` : ''}
         <div style="display:flex;align-items:center;gap:.5rem;margin-top:1.25rem;font-size:.78rem;color:var(--muted);">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           256-bit SSL · Güvenli ödeme
@@ -858,6 +888,8 @@ async function submitOrder() {
     coupon_code: appliedCoupon ? appliedCoupon.code : null,
     note: formData.note || null,
     payment_method: formData.payment_method,
+    // Puan kullanımı: tüm bakiye gönderilir, sunucu %20 sınırına göre kırpar
+    use_loyalty_points: (useLoyaltyPoints && loyalty && loyalty.points > 0) ? loyalty.points : 0,
     tax_no: formData.tax_no || null,
     tax_office: formData.tax_office || null,
     company_title: formData.company_title || null,
@@ -932,6 +964,8 @@ async function loadCustomerPrefill() {
         if (!formData.city && me.city) formData.city = me.city;
         if (!formData.address && me.address) formData.address = me.address;
       }
+      // Sadakat puanı bakiyesi — varsa özet kutusunda "puan kullan" seçeneği çıkar
+      try { loyalty = await api.customerAuth.myLoyalty(); } catch (_) { loyalty = null; }
     }
   } catch (_) {}
 }

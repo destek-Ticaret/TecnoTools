@@ -10,7 +10,7 @@
    Deploy sırasında dosyalar değiştiyse CACHE_NAME'i bump'la (vN → vN+1).
 */
 
-const CACHE_NAME = 'tt-static-v9';
+const CACHE_NAME = 'tt-static-v10';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

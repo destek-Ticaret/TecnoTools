@@ -241,6 +241,9 @@ class CheckoutRequest(BaseModel):
     note: str | None = None
     session_id: str | None = None  # rezervasyonu eşleştirmek için
     payment_method: str = Field(default="card")  # card | wire | cod (havale | kapıda)
+    # Sadakat puanı harcama — üye girişi (customer_access token) zorunlu;
+    # sunucu bakiye + %20 sepet sınırına göre kırpar.
+    use_loyalty_points: int = Field(default=0, ge=0)
     # E-arşiv fatura için opsiyonel — bireysel müşteri TCKN, kurumsal VKN
     tax_no: str | None = Field(default=None, max_length=16)
     tax_office: str | None = Field(default=None, max_length=128)
@@ -270,6 +273,8 @@ class OrderOut(_ORMBase):
     subtotal: float
     discount: float
     coupon_code: str | None
+    loyalty_points_used: int = 0
+    loyalty_discount: float = 0
     tax: float
     shipping: float
     total: float

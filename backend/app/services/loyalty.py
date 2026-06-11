@@ -20,10 +20,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Order, PaymentStatus
+from app.models import Order, OrderStatus, PaymentStatus
 
 POINT_PER_TRY = 1.0
 POINT_VALIDITY_DAYS = 365
@@ -69,7 +69,7 @@ async def loyalty_for_email(db: AsyncSession, email: str) -> LoyaltyAccount | No
     """Email bazlı puan + tier özeti. Sipariş yoksa None döner."""
     rows = (
         await db.execute(
-            select(Order.subtotal, Order.discount, Order.created_at).where(
+            select(Order.subtotal, Order.discount, Order.loyalty_discount, Order.created_at).where(
                 and_(
                     Order.customer_email == email,
                     Order.payment_status == PaymentStatus.SUCCESS.value,
@@ -85,15 +85,30 @@ async def loyalty_for_email(db: AsyncSession, email: str) -> LoyaltyAccount | No
     points = 0
     lifetime = 0.0
     annual = 0.0
-    for sub, disc, created_at in rows:
+    for sub, disc, loy_disc, created_at in rows:
         if created_at and created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
-        net = max(0.0, float(sub or 0) - float(disc or 0))
+        # Puanla ödenen kısımdan puan kazanılmaz (loy_disc da düşülür)
+        net = max(0.0, float(sub or 0) - float(disc or 0) - float(loy_disc or 0))
         lifetime += net
         if created_at and created_at >= annual_cutoff:
             annual += net
         if created_at and created_at >= validity_cutoff:
             points += int(round(net * POINT_PER_TRY))
+    # Harcanan puanları düş — iptal edilmemiş tüm siparişler sayılır (ödeme
+    # beklemedeyken bile puan rezerve kalır; iptal edilirse iade olur).
+    used = (
+        await db.execute(
+            select(func.coalesce(func.sum(Order.loyalty_points_used), 0)).where(
+                and_(
+                    Order.customer_email == email,
+                    Order.loyalty_points_used > 0,
+                    Order.status != OrderStatus.CANCELLED.value,
+                )
+            )
+        )
+    ).scalar_one()
+    points = max(0, points - int(used or 0))
     tier, next_tier, remaining = _tier_for(annual)
     return LoyaltyAccount(
         email=email,

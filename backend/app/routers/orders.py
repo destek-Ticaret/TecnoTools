@@ -31,8 +31,18 @@ from app.schemas import (
     OrderStatusUpdate,
     PaymentStartResponse,
 )
-from app.services.email import send_admin_new_order, send_order_confirmation, send_order_status_update
+from app.security import decode_customer_token
+from app.services.email import (
+    send_admin_new_order,
+    send_order_confirmation,
+    send_order_status_update,
+)
 from app.services.events import bus
+from app.services.loyalty import (
+    POINT_TO_CURRENCY_RATIO,
+    loyalty_for_email,
+    redeem_points_to_discount,
+)
 from app.services.order_signing import sign_order, verify_token
 from app.services.paytr import build_paytr_token
 from app.services.stock import deduct_stock_once
@@ -64,6 +74,7 @@ async def _calc_totals(
     db: AsyncSession,
     items_data: list[tuple[Product, "ProductVariant | None", int, float]],
     coupon: Coupon | None,
+    loyalty_discount: Decimal = Decimal("0"),
 ) -> dict:
     from app.routers.settings import get_setting
 
@@ -74,7 +85,7 @@ async def _calc_totals(
             discount = subtotal * (Decimal(str(coupon.value)) / Decimal("100"))
         else:
             discount = min(Decimal(str(coupon.value)), subtotal)
-    taxable = max(Decimal("0"), subtotal - discount)
+    taxable = max(Decimal("0"), subtotal - discount - loyalty_discount)
     tax = taxable * TAX_RATE
     threshold = Decimal(str(await get_setting(db, "shipping_free_threshold", "500")))
     fee = Decimal(str(await get_setting(db, "shipping_fee_default", "49.9")))
@@ -158,6 +169,32 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
     if coupon and totals["subtotal"] < float(coupon.min_order or 0):
         raise HTTPException(status_code=400, detail="Kupon için minimum sepet tutarı sağlanmadı")
 
+    # ── Sadakat puanı harcama ──
+    # Üye girişi zorunlu; puanlar yalnız token'daki e-postayla verilen siparişte
+    # kullanılabilir. Sunucu bakiye + %20 sepet sınırına göre kırpar.
+    loyalty_points_used = 0
+    loyalty_discount = Decimal("0")
+    if payload.use_loyalty_points > 0:
+        auth_header = request.headers.get("authorization") or ""
+        token = auth_header[7:].strip() if auth_header.lower().startswith("bearer ") else ""
+        tok = decode_customer_token(token) if token else None
+        if not tok:
+            raise HTTPException(status_code=401, detail="Puan kullanmak için üye girişi gerekli")
+        if (tok.get("email") or "").lower() != payload.customer_email.lower():
+            raise HTTPException(
+                status_code=403,
+                detail="Puanlar yalnızca kendi e-postanızla verilen siparişlerde kullanılabilir",
+            )
+        acct = await loyalty_for_email(db, payload.customer_email)
+        available = acct.points if acct else 0
+        pts_requested = min(payload.use_loyalty_points, available)
+        taxable_before = max(0.0, totals["subtotal"] - totals["discount"])
+        try_amount = redeem_points_to_discount(pts_requested, subtotal=taxable_before)
+        if try_amount > 0:
+            loyalty_points_used = int(round(try_amount / POINT_TO_CURRENCY_RATIO))
+            loyalty_discount = Decimal(str(try_amount))
+            totals = await _calc_totals(db, items_data, coupon, loyalty_discount)
+
     # Müşteri kaydı (upsert)
     cust = (
         await db.execute(select(Customer).where(Customer.email == payload.customer_email))
@@ -192,6 +229,8 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         subtotal=totals["subtotal"],
         discount=totals["discount"],
         coupon_code=coupon.code if coupon else None,
+        loyalty_points_used=loyalty_points_used,
+        loyalty_discount=float(loyalty_discount),
         tax=totals["tax"],
         shipping=totals["shipping"],
         total=totals["total"],

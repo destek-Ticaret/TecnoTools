@@ -361,6 +361,8 @@
         return request('/api/orders/checkout', {
           method: 'POST',
           body: { ...payload, session_id: getSessionId() },
+          // Puan kullanılıyorsa müşteri token'ı şart (backend doğrular)
+          customerAuth: !!(payload && payload.use_loyalty_points),
         });
       },
       /** Public sipariş takibi — order_no + email ile, üyelik gerekmez. */
