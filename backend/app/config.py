@@ -70,6 +70,11 @@ class Settings(BaseSettings):
     # SMTP yok sayılır. Boşsa SMTP'ye, o da boşsa konsola düşülür.
     resend_api_key: str = ""
 
+    # Veritabanı yedeği — günde 1 kez pg_dump → R2 (yalnız storage_backend=s3 iken).
+    # Gün-bazlı dosya adı idempotent: aynı gün ikinci çalıştırma (2. worker/redeploy) atlanır.
+    db_backup_enabled: bool = True
+    db_backup_keep: int = 14  # tutulacak günlük yedek sayısı, eskiler silinir
+
     # SMTP / Email — boş bırakılırsa email'ler konsola yazılır (dev mode)
     smtp_host: str = ""
     smtp_port: int = 587

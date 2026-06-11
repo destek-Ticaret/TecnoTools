@@ -18,8 +18,17 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# postgresql-client-17: gece DB yedeği (pg_dump → R2). Debian'ın kendi paketi
+# PG15 — sunucu daha yeni olduğundan PGDG deposundan 17 kuruluyor.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq5 curl && rm -rf /var/lib/apt/lists/* \
+    libpq5 curl ca-certificates \
+ && install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update && apt-get install -y --no-install-recommends postgresql-client-17 \
+ && rm -rf /var/lib/apt/lists/* \
  && groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app
 
 WORKDIR /app

@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 LOW_STOCK_INTERVAL_SEC = 6 * 3600
 CART_ABANDON_INTERVAL_SEC = 30 * 60
 CART_ABANDON_MIN_AGE_MIN = 60
+# Yedek kontrol sıklığı — gün-bazlı dosya adı gerçek sıklığı günde 1'e indirir
+DB_BACKUP_INTERVAL_SEC = 6 * 3600
 
 
 async def _low_stock_alert(db: AsyncSession) -> None:
@@ -169,7 +171,9 @@ async def _scheduler_loop() -> None:
 
     low_stock_counter = 0
     ship_counter = 0
+    backup_counter = 0
     ship_period = max(1, ship_interval // CART_ABANDON_INTERVAL_SEC)
+    backup_period = DB_BACKUP_INTERVAL_SEC // CART_ABANDON_INTERVAL_SEC
     while True:
         try:
             async with SessionLocal() as db:
@@ -178,12 +182,17 @@ async def _scheduler_loop() -> None:
                 await _abandoned_cart_alert(db)
                 if ship_counter == 0:
                     await _shipment_poll(db)
+            if backup_counter == 0:
+                from app.services.backup import run_db_backup
+
+                await run_db_backup()
         except Exception as e:
             logger.error("Scheduler error: %s", e)
         low_stock_counter = (low_stock_counter + 1) % (
             LOW_STOCK_INTERVAL_SEC // CART_ABANDON_INTERVAL_SEC
         )
         ship_counter = (ship_counter + 1) % ship_period
+        backup_counter = (backup_counter + 1) % backup_period
         await asyncio.sleep(CART_ABANDON_INTERVAL_SEC)
 
 
