@@ -9,6 +9,7 @@ S3:    S3-compatible bucket'a yükler, public URL döner.
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
 
@@ -69,10 +70,30 @@ class S3Storage:
         )
         if self._public_base:
             return f"{self._public_base}/{key}"
-        return f"https://{self._bucket}.s3.{settings.s3_region}.amazonaws.com/{key}"
+        # Proxy modu: r2.dev bazı ülkelerde (TR/BTK) engelli — dosyayı kendi
+        # API domain'imizden servis ederiz (serve_image R2'den çekip iletir).
+        api_base = settings.api_public_url.rstrip("/")
+        return f"{api_base}/api/uploads/files/{digest}{ext}"
+
+    async def fetch(self, filename: str) -> bytes | None:
+        """R2'den dosyayı oku (proxy servis için). Yoksa None."""
+        import asyncio
+
+        from botocore.exceptions import ClientError
+
+        def _get() -> bytes | None:
+            try:
+                obj = self._client.get_object(Bucket=self._bucket, Key=f"uploads/{filename}")
+                return obj["Body"].read()
+            except ClientError:
+                return None
+
+        return await asyncio.to_thread(_get)
 
 
+@lru_cache
 def get_storage() -> StorageBackend:
+    # lru_cache: boto3 client'ı her istekte yeniden kurmamak için tek instance.
     if settings.storage_backend == "s3":
         return S3Storage()
     return LocalStorage()

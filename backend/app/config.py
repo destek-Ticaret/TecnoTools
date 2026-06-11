@@ -52,6 +52,10 @@ class Settings(BaseSettings):
 
     # Storage backend: "local" veya "s3"
     storage_backend: str = "local"
+    # Backend'in dışarıdan erişilen kökü (örn https://api.tecnotools.org).
+    # S3 proxy modunda (S3_PUBLIC_BASE_URL boşken) upload URL'leri bununla üretilir —
+    # r2.dev bazı ülkelerde (TR/BTK) engelli olduğundan görseller kendi domain'imizden servis edilir.
+    api_public_url: str = ""
     s3_bucket: str = ""
     s3_region: str = "auto"
     s3_endpoint_url: str = (
