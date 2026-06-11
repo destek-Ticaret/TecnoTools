@@ -6,5 +6,5 @@
 })();
 
 /* ── Ölçüm ID'leri (js/tracking.js okur; boşken hiçbir dış script yüklenmez) ── */
-window.TT_META_PIXEL_ID = ''; // Meta Pixel ID — örn '1234567890123456'
+window.TT_META_PIXEL_ID = '1589131622149868'; // Meta Pixel (Events Manager → TecnoTools)
 window.TT_GA4_ID = '';        // GA4 Measurement ID — örn 'G-XXXXXXXXXX'
