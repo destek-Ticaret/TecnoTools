@@ -58,6 +58,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
 
   <script src="js/config.js"></script>
+  <script src="js/tracking.js" defer></script>
   <script src="js/api.js?v=20260609" defer></script>
   <script src="https://www.paytr.com/js/iframeResizer.min.js" defer></script>
 
@@ -3278,6 +3279,7 @@ html { scroll-behavior: smooth; }
     else cart.push({ id: p.id, name: p.name, price: p.price, icon: p.icon, image: p.image || '', qty: 1 });
     persistCart(); updateCart();
     showToast(`${p.name} sepete eklendi`, 'success');
+    if (window.ttTrack) ttTrack('AddToCart', { id: p.id, name: p.name, price: p.price, qty: 1, value: p.price });
   }
 
   function removeFromCart(id) { cart = cart.filter(x => x.id !== id); persistCart(); updateCart(); }

@@ -28,6 +28,7 @@ from app.routers import (
     customer_auth,
     events,
     exports,
+    feeds,
     homepage,
     imports,
     invoices,
@@ -191,6 +192,7 @@ app.include_router(seo.router)
 app.include_router(reviews.router)
 app.include_router(stock_notifications.router)
 app.include_router(exports.router)
+app.include_router(feeds.router)
 app.include_router(algorithms.router)
 app.include_router(misc.router)
 app.include_router(chat.router)
