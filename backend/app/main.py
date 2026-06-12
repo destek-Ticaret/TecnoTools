@@ -146,7 +146,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="TecnoTools API", version="1.0.0", lifespan=lifespan)
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 # Dev modunda LAN origin'lerini regex ile kabul et (telefondan/diğer cihazlardan test).
 # Production'da yalnız explicit `cors_origins` listesi çalışır.

@@ -62,6 +62,7 @@ async def _apply(db: AsyncSession, order: Order, *, delta_sign: int, reason: str
     pmap, vmap = await _load_targets(db, order)
     changed = False
     for it in order.items:
+        tgt: Product | ProductVariant | None
         if it.variant_id:
             tgt = vmap.get(it.variant_id)
             name = f"{it.name} ({it.variant_name})" if it.variant_name else it.name

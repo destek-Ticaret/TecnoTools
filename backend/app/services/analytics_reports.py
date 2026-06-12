@@ -125,9 +125,9 @@ async def revenue_by_category(db: AsyncSession, days: int = 30) -> list[dict]:
                 "qty": int(qty or 0),
             }
         )
-    total = sum(r["revenue"] for r in out) or 1.0
+    total = sum((float(r["revenue"]) for r in out), 0.0) or 1.0  # type: ignore[arg-type]
     for r in out:
-        r["share_pct"] = round(100 * r["revenue"] / total, 2)
+        r["share_pct"] = round(100 * float(r["revenue"]) / total, 2)  # type: ignore[arg-type]
     return out
 
 

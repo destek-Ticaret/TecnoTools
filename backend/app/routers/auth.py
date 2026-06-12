@@ -3,7 +3,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -210,7 +210,7 @@ async def reset_password_with_token(
     row.used_at = now
     # Aynı kullanıcı için diğer açık token'ları da iptal et
     await db.execute(
-        PasswordResetToken.__table__.update()
+        update(PasswordResetToken)
         .where((PasswordResetToken.user_id == user.id) & (PasswordResetToken.used_at.is_(None)))
         .values(used_at=now)
     )

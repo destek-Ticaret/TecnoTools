@@ -47,7 +47,7 @@ def create_checkout_session(
     ]
     session = stripe.checkout.Session.create(
         mode="payment",
-        line_items=line_data,
+        line_items=line_data,  # type: ignore[arg-type]
         customer_email=customer_email,
         success_url=settings.stripe_success_url,
         cancel_url=settings.stripe_cancel_url,

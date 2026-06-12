@@ -14,7 +14,7 @@ import logging
 from app.config import get_settings
 
 try:  # SDK opsiyonel — yoksa mock modu çalışır
-    import iyzipay  # type: ignore
+    import iyzipay
 except ImportError:  # pragma: no cover
     iyzipay = None
 
@@ -67,7 +67,7 @@ def _real_installments(bin_number: str, price: float) -> dict:
         "base_url": settings.iyzico_base_url,
     }
     req = {"locale": "tr", "price": f"{price:.2f}", "binNumber": bin_number}
-    raw = iyzipay.InstallmentInfo().retrieve(req, opts)  # type: ignore[union-attr]
+    raw = iyzipay.InstallmentInfo().retrieve(req, opts)
     data = json.loads(raw.read().decode("utf-8"))
     if data.get("status") != "success" or not data.get("installmentDetails"):
         raise RuntimeError(f"iyzico installment hatası: {data.get('errorMessage', 'bilinmeyen')}")
@@ -86,7 +86,7 @@ def _real_installments(bin_number: str, price: float) -> dict:
                 "label": "Tek Çekim" if count == 1 else f"{count} Taksit",
             }
         )
-    options.sort(key=lambda o: o["count"])
+    options.sort(key=lambda o: int(str(o["count"])))
     return {
         "bin": bin_number,
         "price": round(price, 2),

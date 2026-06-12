@@ -147,12 +147,14 @@ async def _shipment_poll(db: AsyncSession) -> None:
         .all()
     )
     for o in orders:
+        if not o.carrier:
+            continue
         try:
             adapter = get_adapter(o.carrier)
         except ValueError:
             continue
         try:
-            events = await adapter.fetch(o.tracking_no)
+            events = await adapter.fetch(o.tracking_no or "")
         except Exception as e:
             logger.warning("shipment poll failed for %s: %s", o.order_no, e)
             continue

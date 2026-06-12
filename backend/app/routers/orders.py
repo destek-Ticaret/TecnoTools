@@ -78,7 +78,7 @@ async def _calc_totals(
 ) -> dict:
     from app.routers.settings import get_setting
 
-    subtotal = sum(Decimal(str(unit_price)) * Decimal(qty) for _, _, qty, unit_price in items_data)
+    subtotal = sum((Decimal(str(unit_price)) * Decimal(qty) for _, _, qty, unit_price in items_data), Decimal("0"))
     discount = Decimal("0")
     if coupon and coupon.is_active:
         if coupon.type == "percent":
@@ -283,8 +283,10 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             raise HTTPException(status_code=400, detail="Kapıda ödeme kapalı")
         order.payment_method = payload.payment_method
         order.payment_status = "pending"  # bankaya gelince admin manual onaylayacak
-        # COD/havale: ödeme gateway callback beklemeden stok hemen düş
-        await deduct_stock_once(db, order)
+        # COD: ürün kargoya verilir, ödeme kapıda; stok hemen düş
+        # Havale (wire): admin ödemeyi görünce "processing" yapar → stok o an düşer
+        if payload.payment_method == "cod":
+            await deduct_stock_once(db, order)
         await db.commit()
         await db.refresh(order)
         # Onay maili + admin bildirimi (fire-and-forget; SMTP yoksa konsola yazar)

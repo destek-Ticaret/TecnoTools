@@ -472,30 +472,30 @@ async def chat_admin_ws(websocket: WebSocket, token: str = Query(...)):
                 await manager.send_to_admins("chat_session", sess_payload)
             elif action == "close":
                 async with SessionLocal() as db:
-                    sess = (
+                    sess_or_none = (
                         await db.execute(
                             select(ChatSession).where(ChatSession.session_id == target_session)
                         )
                     ).scalar_one_or_none()
-                    if not sess:
+                    if not sess_or_none:
                         continue
-                    sess.status = ChatSessionStatus.CLOSED.value
+                    sess_or_none.status = ChatSessionStatus.CLOSED.value
                     await db.commit()
-                    payload_dict = _session_to_dict(sess)
+                    payload_dict = _session_to_dict(sess_or_none)
                 await manager.send_to_admins("chat_session", payload_dict)
                 await manager.send_to_customer(target_session, "chat_session", payload_dict)
             elif action == "mark_read":
                 async with SessionLocal() as db:
-                    sess = (
+                    sess_or_none = (
                         await db.execute(
                             select(ChatSession).where(ChatSession.session_id == target_session)
                         )
                     ).scalar_one_or_none()
-                    if not sess or not sess.unread_admin:
+                    if not sess_or_none or not sess_or_none.unread_admin:
                         continue
-                    sess.unread_admin = 0
+                    sess_or_none.unread_admin = 0
                     await db.commit()
-                    payload_dict = _session_to_dict(sess)
+                    payload_dict = _session_to_dict(sess_or_none)
                 await manager.send_to_admins("chat_session", payload_dict)
     except WebSocketDisconnect:
         pass

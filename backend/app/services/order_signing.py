@@ -13,10 +13,11 @@ doğrulama yapabilir. Yalnız sipariş_no + total bilgisi gösterilir.
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -38,9 +39,9 @@ def _ensure_keys_loaded() -> tuple[rsa.RSAPrivateKey, rsa.RSAPublicKey]:
     _KEYS_DIR.mkdir(parents=True, exist_ok=True)
     if _PRIV_PATH.exists() and _PUB_PATH.exists():
         with _PRIV_PATH.open("rb") as f:
-            _private_key = serialization.load_pem_private_key(f.read(), password=None)
+            _private_key = cast(rsa.RSAPrivateKey, serialization.load_pem_private_key(f.read(), password=None))
         with _PUB_PATH.open("rb") as f:
-            _public_key = serialization.load_pem_public_key(f.read())
+            _public_key = cast(rsa.RSAPublicKey, serialization.load_pem_public_key(f.read()))
     else:
         _private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         _public_key = _private_key.public_key()
@@ -69,7 +70,7 @@ def _b64url_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + pad)
 
 
-def sign_order(order_no: str, total: float | str) -> dict[str, str]:
+def sign_order(order_no: str, total: float | str) -> dict[str, Any]:
     """Order için imzalanmış token üretir. Dönen dict: token, public verify_path."""
     priv, _ = _ensure_keys_loaded()
     payload = {
@@ -90,7 +91,7 @@ def verify_token(token: str) -> dict[str, Any] | None:
         payload_b64, sig_b64 = token.split(".", 1)
         payload_bytes = _b64url_decode(payload_b64)
         sig = _b64url_decode(sig_b64)
-    except (ValueError, base64.binascii.Error):
+    except (ValueError, binascii.Error):
         return None
     try:
         pub.verify(sig, payload_bytes, padding.PKCS1v15(), hashes.SHA256())

@@ -97,15 +97,15 @@ async def frequently_bought_together(
     table = await _cooccurrence_table(db, days=days)
     pop: Counter = table.get("__pop__", Counter())
     in_basket = set(basket_pids)
-    aggregate: Counter = Counter()
+    aggregate: dict[int, float] = {}
     for pid in basket_pids:
         co = table.get(pid, Counter())
         pop_a = pop.get(pid, 0) or 1
         for other, cnt in co.items():
             if other in in_basket:
                 continue
-            aggregate[other] += _cosine(cnt, pop_a, pop.get(other, 0))
-    return aggregate.most_common(limit)
+            aggregate[other] = aggregate.get(other, 0.0) + _cosine(cnt, pop_a, pop.get(other, 0))
+    return sorted(aggregate.items(), key=lambda x: x[1], reverse=True)[:limit]
 
 
 async def content_similar(
@@ -161,14 +161,14 @@ async def trending_products(
     ).all()
     now = datetime.now(UTC)
     lam = math.log(2) / max(half_life_days, 0.1)
-    scores: Counter = Counter()
+    scores: dict[int, float] = {}
     for pid, qty, created_at in rows:
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
         age_days = (now - created_at).total_seconds() / 86400.0
         weight = math.exp(-lam * age_days)
-        scores[int(pid)] += float(qty) * weight
-    return scores.most_common(limit)
+        scores[int(pid)] = scores.get(int(pid), 0.0) + float(qty) * weight
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:limit]
 
 
 async def recommend_for_session(

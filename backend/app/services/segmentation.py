@@ -124,9 +124,9 @@ def rfm_segments(stats: list[CustomerStats]) -> list[dict]:
     """Skorları hesapla + segment etiketleri ata."""
     if not stats:
         return []
-    r_values = sorted(s.recency_days for s in stats)
-    f_values = sorted(s.frequency for s in stats)
-    m_values = sorted(s.monetary for s in stats)
+    r_values: list[float] = sorted(float(s.recency_days) for s in stats)
+    f_values: list[float] = sorted(float(s.frequency) for s in stats)
+    m_values: list[float] = sorted(float(s.monetary) for s in stats)
     out = []
     for s in stats:
         r = _quintile_score(s.recency_days, r_values, reverse=True)
@@ -215,7 +215,7 @@ def clv_table(stats: list[CustomerStats]) -> list[dict]:
                 "clv": customer_clv(s),
             }
         )
-    out.sort(key=lambda x: x["clv"], reverse=True)
+    out.sort(key=lambda x: float(x["clv"]), reverse=True)  # type: ignore[arg-type]
     return out
 
 

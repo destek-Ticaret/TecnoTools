@@ -30,7 +30,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -346,7 +346,7 @@ async def change_password(
     customer.password_hash = hash_password(payload.new_password)
     # Güvenlik: tüm aktif refresh token'larını iptal et (başka cihazlar çıkış yapar)
     await db.execute(
-        CustomerRefreshToken.__table__.update()
+        update(CustomerRefreshToken)
         .where(
             (CustomerRefreshToken.customer_id == customer.id)
             & (CustomerRefreshToken.revoked_at.is_(None))
@@ -417,7 +417,7 @@ async def reset_password(
     row.used_at = now
     # Aynı müşterinin diğer açık reset token'larını da iptal et
     await db.execute(
-        CustomerPasswordResetToken.__table__.update()
+        update(CustomerPasswordResetToken)
         .where(
             (CustomerPasswordResetToken.customer_id == customer.id)
             & (CustomerPasswordResetToken.used_at.is_(None))
@@ -426,7 +426,7 @@ async def reset_password(
     )
     # Tüm refresh token'larını iptal et (güvenlik)
     await db.execute(
-        CustomerRefreshToken.__table__.update()
+        update(CustomerRefreshToken)
         .where(
             (CustomerRefreshToken.customer_id == customer.id)
             & (CustomerRefreshToken.revoked_at.is_(None))
