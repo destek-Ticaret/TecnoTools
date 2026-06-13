@@ -534,6 +534,8 @@ html { scroll-behavior: smooth; }
     .price-wrap { display: flex; flex-direction: column; }
     .price { font-size: 1.2rem; font-weight: 800; color: var(--text); font-family: var(--font-display); letter-spacing: -0.01em; }
     .price-old { font-size: .8rem; color: var(--muted); text-decoration: line-through; }
+    .discount-chip { font-size: .72rem; font-weight: 700; background: #fef2f2; color: #dc2626; padding: .1rem .35rem; border-radius: 5px; }
+    .price-row { display: flex; align-items: center; gap: .4rem; }
     .add-btn {
       background: var(--text); color: #fff; border: none; border-radius: 10px;
       padding: .55rem .9rem; font-size: .82rem; font-weight: 700; cursor: pointer;
@@ -3095,8 +3097,11 @@ html { scroll-behavior: smooth; }
           ${soldOut ? `<div class="stock-out-msg">Stoklar tükendi — yakında yenilenecek</div>` : ''}
           <div class="product-foot">
             <div class="price-wrap">
-              <span class="price">${fmt(p.price)}</span>
-              ${p.old ? `<span class="price-old">${fmt(p.old)}</span>` : ''}
+              ${p.old && p.old > p.price ? `<span class="price-old">${fmt(p.old)}</span>` : ''}
+              <div class="price-row">
+                <span class="price">${fmt(p.price)}</span>
+                ${p.old && p.old > p.price ? `<span class="discount-chip">-%${Math.round((1-p.price/p.old)*100)}</span>` : ''}
+              </div>
             </div>
             <button class="add-btn" ${soldOut ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''} onclick="${soldOut ? '' : `addToCart(${p.id})`}">
               <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
@@ -3407,7 +3412,7 @@ html { scroll-behavior: smooth; }
       const newHash = `#product/${id}`;
       if (location.hash !== newHash) history.pushState(null, '', newHash);
     }
-    const discount = p.old ? Math.round((1 - p.price / p.old) * 100) : 0;
+    const discount = (p.old && p.old > p.price) ? Math.round((1 - p.price / p.old) * 100) : 0;
     const isFav = wishlist.includes(p.id);
     const galleryImgs = Array.isArray(p.images) && p.images.length ? p.images : (p.image ? [p.image] : []);
     const hasGallery = galleryImgs.length > 1;
@@ -3428,7 +3433,7 @@ html { scroll-behavior: smooth; }
         <div class="stars">${starsHTML(p.rating)}<span class="stars-num">${p.rating} · ${p.reviews} değerlendirme</span></div>
         <div class="modal-price-row">
           <span class="modal-price">${fmt(p.price)}</span>
-          ${p.old ? `<span class="modal-price-old">${fmt(p.old)}</span><span class="modal-discount">-%${discount}</span>` : ''}
+          ${(p.old && p.old > p.price) ? `<span class="modal-price-old">${fmt(p.old)}</span><span class="modal-discount">-%${discount}</span>` : ''}
         </div>
         ${qvSoldOut ? `<div class="stock-out-msg" style="margin:.2rem 0;">Stoklar tükendi — yakında yenilenecek</div>` : ''}
         ${p.desc ? `<p class="modal-desc">${p.desc}</p>` : ''}

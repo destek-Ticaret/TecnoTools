@@ -65,6 +65,7 @@
     .line-meta { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-size: .78rem; color: var(--muted); }
     .line-price { font-size: .9rem; font-weight: 600; color: var(--text-2); }
     .line-price-old { text-decoration: line-through; color: var(--muted); margin-right: .35rem; font-weight: 500; }
+    .line-discount-chip { font-size: .7rem; font-weight: 700; background: #fef2f2; color: #dc2626; padding: .1rem .3rem; border-radius: 5px; margin-left: .35rem; }
     .stock-chip { display: inline-flex; align-items: center; gap: .3rem; padding: 2px 7px; border-radius: 999px; font-size: .7rem; font-weight: 700; }
     .stock-chip.ok { background: var(--success-soft); color: var(--success); }
     .stock-chip.low { background: var(--warning-soft); color: var(--warning); }
@@ -413,7 +414,7 @@ function renderCart() {
           </div>
           <div class="line-meta">
             <span class="line-price">
-              ${oldPrice ? `<span class="line-price-old">${fmt(oldPrice)}</span>` : ''}${fmt(currentPrice)}
+              ${oldPrice ? `<span class="line-price-old">${fmt(oldPrice)}</span>` : ''}${fmt(currentPrice)}${oldPrice ? `<span class="line-discount-chip">-%${Math.round((1-currentPrice/oldPrice)*100)}</span>` : ''}
             </span>
             <span class="stock-chip ${stockState}">● ${stockLabel}</span>
           </div>
