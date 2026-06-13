@@ -2760,15 +2760,20 @@ html, body { height: 100%; }
             <input type="number" id="prodPrice" min="0" step="0.01" required placeholder="349" />
           </div>
           <div class="form-field">
+            <label for="prodOldPrice">Karşılaştırma Fiyatı (₺) — opsiyonel</label>
+            <input type="number" id="prodOldPrice" min="0" step="0.01" placeholder="499" />
+            <small style="color:var(--muted);font-size:.72rem;">Ürün sayfasında üstü çizili eski fiyat olarak gösterilir.</small>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
             <label for="prodStock">Stok Adedi</label>
             <input type="number" id="prodStock" min="0" step="1" required placeholder="50" />
           </div>
-        </div>
-        <div class="form-row single">
           <div class="form-field">
             <label for="prodCost">Alış Maliyeti (₺) — opsiyonel</label>
             <input type="number" id="prodCost" min="0" step="0.01" placeholder="210" />
-            <small style="color:var(--muted);font-size:.72rem;">Kâr raporu ve marj-tabanlı otomatik fiyatlandırma için kullanılır.</small>
+            <small style="color:var(--muted);font-size:.72rem;">Kâr raporu ve marj-tabanlı fiyatlandırma için kullanılır.</small>
           </div>
         </div>
         <div class="form-row single">
@@ -4657,8 +4662,9 @@ html, body { height: 100%; }
       document.getElementById('prodName').value  = p.name;
       document.getElementById('prodCat').value   = p.cat;
       document.getElementById('prodIcon').value  = p.icon || '📦';
-      document.getElementById('prodPrice').value = p.price;
-      document.getElementById('prodCost').value  = (p.cost != null ? p.cost : '');
+      document.getElementById('prodPrice').value    = p.price;
+      document.getElementById('prodOldPrice').value = (p.old != null ? p.old : '');
+      document.getElementById('prodCost').value     = (p.cost != null ? p.cost : '');
       document.getElementById('prodStock').value = p.stock || 0;
       document.getElementById('prodSub').value   = p.sub  || '';
       document.getElementById('prodDesc').value  = p.desc || '';
@@ -4675,7 +4681,8 @@ html, body { height: 100%; }
     } else {
       document.getElementById('productModalTitle').textContent = 'Yeni Ürün Ekle';
       document.getElementById('productModalSub').textContent = 'Katalog için yeni bir ürün oluşturun.';
-      document.getElementById('prodIcon').value = '📦';
+      document.getElementById('prodIcon').value     = '📦';
+      document.getElementById('prodOldPrice').value = '';
       workingImages = [];
       primaryImageIdx = 0;
       editVariants = [];
@@ -4712,6 +4719,7 @@ html, body { height: 100%; }
       icon:  document.getElementById('prodIcon').value.trim() || '📦',
       images: orderedImages,
       price: parseFloat(document.getElementById('prodPrice').value) || 0,
+      old:   document.getElementById('prodOldPrice').value !== '' ? parseFloat(document.getElementById('prodOldPrice').value) : null,
       cost:  document.getElementById('prodCost').value !== '' ? parseFloat(document.getElementById('prodCost').value) : null,
       stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
       sub:   document.getElementById('prodSub').value.trim(),
