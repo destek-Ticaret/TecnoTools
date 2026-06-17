@@ -13,6 +13,18 @@ repos:
       - id: ruff-format
         files: ^backend/
 
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.16.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports]
+        files: ^backend/app/
+        additional_dependencies:
+          - sqlalchemy[mypy]
+          - pydantic
+          - fastapi
+          - cryptography
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
