@@ -173,18 +173,16 @@ async def assign_carrier(
 
 
 def _guess_carrier(tracking_no: str) -> str | None:
-    """Takip numarası prefix'inden kargo firması kodunu tahmin et.
-    (tracking.py'deki görüntüleme kurallarıyla tutarlı.)"""
+    """Takip numarası prefix'inden kargo firması kodunu tahmin et."""
     tn = (tracking_no or "").upper()
+    # DHL Express: JD + rakam | 10 rakam | DHL prefix
     prefixes: tuple[tuple[tuple[str, ...], str], ...] = (
-        (("PTT",), "ptt"),
-        (("ARAS",), "aras"),
-        (("YK",), "yurtici"),
-        (("MNG",), "mng"),
-        (("HEPSI", "HX"), "hepsijet"),
-        (("TRX", "SUR"), "surat"),
+        (("JD", "DHL"), "dhl"),
     )
     for starts, code in prefixes:
         if tn.startswith(starts):
             return code
+    # DHL 10 haneli sayısal takip no
+    if tn.isdigit() and len(tn) in (10, 12):
+        return "dhl"
     return None

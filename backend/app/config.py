@@ -123,11 +123,14 @@ class Settings(BaseSettings):
     # Diğer firmalar — şimdilik webhook (event push) + mock fetch. Gerçek API
     # polling'i kimlik bilgileri geldiğinde her adapter'ın _fetch_real()'ine eklenir.
     # Webhook secret boşsa imza doğrulaması atlanır (firma push'u açık kabul edilir).
-    aras_webhook_secret: str = ""  # X-Aras-Signature
-    yurtici_webhook_secret: str = ""  # X-Yurtici-Signature
-    mng_webhook_secret: str = ""  # X-MNG-Signature
-    surat_webhook_secret: str = ""  # X-Surat-Signature
-    hepsijet_webhook_secret: str = ""  # X-Hepsijet-Signature
+    # DHL Lojistik (aktif kargo firması)
+    dhl_api_key: str = ""  # DHL Developer Portal → API key
+    dhl_webhook_secret: str = ""  # (opsiyonel) X-DHL-Signature HMAC secret
+    aras_webhook_secret: str = ""
+    yurtici_webhook_secret: str = ""
+    mng_webhook_secret: str = ""
+    surat_webhook_secret: str = ""
+    hepsijet_webhook_secret: str = ""
     # Gerçek API polling kimlikleri (boşsa ilgili adapter fetch()'i mock döner).
     # Aras: arascargoservice.asmx GetCargoTransaction(userName, password, code, integrationCode)
     aras_username: str = ""
