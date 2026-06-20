@@ -91,3 +91,28 @@ async def test_product_search(auth_client):
     items = r.json()
     assert len(items) == 1
     assert items[0]["name"] == "Matkap"
+
+
+async def test_product_video_url_roundtrip(auth_client):
+    """video_url create'te kaydedilir, admin ve public detayda geri döner."""
+    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    r = await auth_client.post(
+        "/api/products",
+        json={"name": "Videolu Ürün", "price": 99, "stock": 5, "video_url": url},
+    )
+    assert r.status_code == 201, r.text
+    pid = r.json()["id"]
+    assert r.json()["video_url"] == url
+
+    # Public detayda da görünmeli
+    pub = await auth_client.get(f"/api/products/{pid}")
+    assert pub.status_code == 200
+    assert pub.json()["video_url"] == url
+
+    # Boşaltma: null gönderince temizlenmeli
+    r2 = await auth_client.put(
+        f"/api/products/{pid}",
+        json={"name": "Videolu Ürün", "price": 99, "stock": 5, "video_url": None},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["video_url"] is None

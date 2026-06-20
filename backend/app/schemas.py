@@ -177,6 +177,7 @@ class ProductIn(BaseModel):
     badge: dict | None = None
     features: list[str] | None = None
     images: list[str] | None = None
+    video_url: str | None = None
     is_active: bool = True
     variants: list[ProductVariantIn] | None = None  # None = dokunma; [] = tümünü sil
 
@@ -198,6 +199,7 @@ class ProductOut(_ORMBase):
     badge: dict | None
     features: list[str] | None
     images: list[str] | None
+    video_url: str | None = None
     is_active: bool
     variants: list[ProductVariantOut] = []
 
@@ -220,6 +222,7 @@ class ProductPublicOut(_ORMBase):
     badge: dict | None
     features: list[str] | None
     images: list[str] | None
+    video_url: str | None = None
     variants: list[ProductVariantPublicOut] = []
 
 

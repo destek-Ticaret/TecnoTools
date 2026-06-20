@@ -2778,6 +2778,13 @@ html, body { height: 100%; }
         </div>
         <div class="form-row single">
           <div class="form-field">
+            <label for="prodVideo">Tanıtım Videosu (YouTube / Vimeo) — opsiyonel</label>
+            <input type="text" id="prodVideo" placeholder="https://www.youtube.com/watch?v=..." />
+            <small style="color:var(--muted);font-size:.72rem;">YouTube veya Vimeo linkini yapıştırın; ürün sayfasında gömülü oynatıcı olarak gösterilir.</small>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-field">
             <label for="prodSub">Kısa Açıklama</label>
             <input type="text" id="prodSub" placeholder="Örn. 32 parça · Kromvanadyum çelik" />
           </div>
@@ -3140,6 +3147,7 @@ html, body { height: 100%; }
       features: Array.isArray(p.features) ? p.features : [],
       images: imgs,
       image: imgs[0] || '',
+      video: p.video_url || '',
       is_active: p.is_active !== false,
       variants: Array.isArray(p.variants) ? p.variants : [],
     };
@@ -3159,6 +3167,7 @@ html, body { height: 100%; }
       badge: local.badge || null,
       features: Array.isArray(local.features) && local.features.length ? local.features : null,
       images: Array.isArray(local.images) && local.images.length ? local.images : null,
+      video_url: local.video ? String(local.video).trim() : null,
       is_active: local.is_active !== false,
       // Form'dan gelirse varyantları gönder (boş dizi = hepsini sil); başka
       // çağrılarda (ör. içe aktarma) yoksa null = dokunma
@@ -4666,6 +4675,7 @@ html, body { height: 100%; }
       document.getElementById('prodOldPrice').value = (p.old != null ? p.old : '');
       document.getElementById('prodCost').value     = (p.cost != null ? p.cost : '');
       document.getElementById('prodStock').value = p.stock || 0;
+      document.getElementById('prodVideo').value = p.video || '';
       document.getElementById('prodSub').value   = p.sub  || '';
       document.getElementById('prodDesc').value  = p.desc || '';
       editVariants = Array.isArray(p.variants) ? p.variants.map(v => ({ ...v })) : [];
@@ -4683,6 +4693,7 @@ html, body { height: 100%; }
       document.getElementById('productModalSub').textContent = 'Katalog için yeni bir ürün oluşturun.';
       document.getElementById('prodIcon').value     = '📦';
       document.getElementById('prodOldPrice').value = '';
+      document.getElementById('prodVideo').value    = '';
       workingImages = [];
       primaryImageIdx = 0;
       editVariants = [];
@@ -4722,6 +4733,7 @@ html, body { height: 100%; }
       old:   document.getElementById('prodOldPrice').value !== '' ? parseFloat(document.getElementById('prodOldPrice').value) : null,
       cost:  document.getElementById('prodCost').value !== '' ? parseFloat(document.getElementById('prodCost').value) : null,
       stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
+      video: document.getElementById('prodVideo').value.trim(),
       sub:   document.getElementById('prodSub').value.trim(),
       desc:  document.getElementById('prodDesc').value.trim(),
       variants: editVariants,

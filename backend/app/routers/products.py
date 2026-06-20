@@ -134,6 +134,7 @@ async def list_products_public(
                 badge=p.badge,
                 features=p.features,
                 images=p.images,
+                video_url=p.video_url,
                 variants=_variants_public(p, rate),
             )
         )
@@ -274,6 +275,7 @@ async def get_product_public(
         badge=p.badge,
         features=p.features,
         images=p.images,
+        video_url=p.video_url,
         variants=_variants_public(p, 1.0),
     )
 
