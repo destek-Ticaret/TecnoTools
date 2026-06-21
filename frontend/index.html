@@ -1427,7 +1427,7 @@ html { scroll-behavior: smooth; }
       </div>
       <div class="feature">
         <div class="feat-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9"/><polyline points="3 4 3 12 11 12"/></svg></div>
-        <div><div class="feat-title">14 Gün İade</div><div class="feat-sub">Koşulsuz iade garantisi</div></div>
+        <div><div class="feat-title">14 Gün İade</div><div class="feat-sub">Kutu açılmamışsa 14 gün içinde iade</div></div>
       </div>
       <div class="feature">
         <div class="feat-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
@@ -2341,7 +2341,7 @@ html { scroll-behavior: smooth; }
     <div style="display:flex;justify-content:space-between;align-items:center;padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);">
       <div>
         <div style="font-weight:800;font-size:1.05rem;">Ürün İade Talebi</div>
-        <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">14 gün koşulsuz iade · kargo bize ait</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">Kutu açılmamışsa 14 gün içinde iade · kargo bize ait</div>
       </div>
       <button type="button" onclick="closeReturnModal()" aria-label="Kapat" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:.4rem;">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -2552,7 +2552,7 @@ html { scroll-behavior: smooth; }
     "Ortalama Puan":"Average Rating", "Canlı Destek":"Live Support",
     // Features strip
     "Ücretsiz Kargo":"Free Shipping", "500₺ ve üzeri siparişlerde":"On orders ₺500 and above",
-    "14 Gün İade":"14-Day Returns", "Koşulsuz iade garantisi":"No-questions-asked returns",
+    "14 Gün İade":"14-Day Returns", "Kutu açılmamışsa 14 gün içinde iade":"Returns within 14 days if the box is unopened",
     "Güvenli Ödeme":"Secure Payment", "256-bit SSL şifreleme":"256-bit SSL encryption",
     "7/24 Destek":"24/7 Support", "Canlı sohbet & e-posta":"Live chat & email",
     // Sections
@@ -2648,7 +2648,7 @@ html { scroll-behavior: smooth; }
     "Güvenli ödeme ekranı yükleniyor…":"Loading secure payment screen…",
     // Return modal
     "Ürün İade Talebi":"Product Return Request",
-    "14 gün koşulsuz iade · kargo bize ait":"14-day no-questions returns · we cover shipping",
+    "Kutu açılmamışsa 14 gün içinde iade · kargo bize ait":"Returns within 14 days if the box is unopened · we cover shipping",
     "Sipariş numaranızı ve sipariş sırasında kullandığınız e-postayı girin. Sonraki adımda iade edeceğiniz ürünleri seçeceksiniz.":"Enter your order number and the email used at checkout. In the next step you'll pick the items to return.",
     "Sipariş No":"Order Number", "E-posta":"Email",
     "İptal":"Cancel", "Devam Et":"Continue",
@@ -4047,7 +4047,7 @@ html { scroll-behavior: smooth; }
          </div>`
       : (d.can_request_return
           ? `<div class="auth-msg ok" style="margin-top:1rem;">
-               14 gün içinde iade talebi açabilirsiniz.
+               Kutu açılmamışsa 14 gün içinde iade alınır.
              </div>`
           : '');
 
