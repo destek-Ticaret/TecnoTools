@@ -182,22 +182,22 @@ def test_event_to_status_mapping_complete():
 
 # ── End-to-end webhook ────────────────────────────────────────────────
 @pytest.mark.asyncio
-async def test_ptt_webhook_endpoint_applies_event(auth_client, db_session):
-    await _make_order(db_session, tracking_no="PTTE2E1", carrier="ptt", status="processing")
+async def test_dhl_webhook_endpoint_applies_event(auth_client, db_session):
+    await _make_order(db_session, tracking_no="DHLE2E1", carrier="dhl", status="processing")
     body = json.dumps(
         [
             {
-                "barkod": "PTTE2E1",
-                "durumKodu": "50",
-                "durum": "Teslim Edildi",
-                "tarih": "2026-05-28T11:00:00",
-                "birim": "Çankaya Merkez",
+                "trackingNumber": "DHLE2E1",
+                "eventCode": "DELIVERED",
+                "status": "delivered",
+                "timestamp": "2026-05-28T11:00:00",
+                "location": {"address": {"addressLocality": "Çankaya"}},
             }
         ]
     ).encode()
 
     resp = await auth_client.post(
-        "/api/shipping/webhook/ptt", content=body, headers={"content-type": "application/json"}
+        "/api/shipping/webhook/dhl", content=body, headers={"content-type": "application/json"}
     )
     assert resp.status_code == 202, resp.text
     data = resp.json()
@@ -224,16 +224,16 @@ async def test_webhook_unknown_carrier_404(auth_client):
 @pytest.mark.asyncio
 async def test_webhook_invalid_signature_401(auth_client, db_session):
     s = get_settings()
-    s.ptt_webhook_secret = "rotated-secret"
+    s.dhl_webhook_secret = "rotated-secret"
     try:
         resp = await auth_client.post(
-            "/api/shipping/webhook/ptt",
-            content=b'[{"barkod":"X"}]',
-            headers={"x-ptt-signature": "wrong"},
+            "/api/shipping/webhook/dhl",
+            content=b'[{"trackingNumber":"X"}]',
+            headers={"x-dhl-signature": "wrong"},
         )
         assert resp.status_code == 401
     finally:
-        s.ptt_webhook_secret = ""
+        s.dhl_webhook_secret = ""
 
 
 # ── Sync + assign admin endpoints ─────────────────────────────────────
@@ -241,21 +241,21 @@ async def test_webhook_invalid_signature_401(auth_client, db_session):
 async def test_assign_then_sync_uses_mock_events(auth_client, db_session):
     await _make_order(db_session, tracking_no="OLD", carrier=None, status="processing")
     r = await auth_client.post(
-        "/api/shipping/assign/TT-2026-0001", json={"carrier": "ptt", "tracking_no": "PTTNEW1"}
+        "/api/shipping/assign/TT-2026-0001", json={"carrier": "dhl", "tracking_no": "DHLNEW1"}
     )
     assert r.status_code == 200
-    assert r.json()["carrier"] == "ptt"
+    assert r.json()["carrier"] == "dhl"
 
     r2 = await auth_client.post("/api/shipping/sync/TT-2026-0001")
     assert r2.status_code == 200
     body = r2.json()
     assert body["fetched"] == 3
-    assert body["carrier"] == "ptt"
+    assert body["carrier"] == "dhl"
 
     r3 = await auth_client.get("/api/shipping/track/TT-2026-0001")
     assert r3.status_code == 200
     j = r3.json()
-    assert j["carrier"] == "ptt"
+    assert j["carrier"] == "dhl"
     assert len(j["events"]) >= 3
 
 
@@ -285,16 +285,14 @@ def test_all_carrier_codes_resolve_to_adapter():
 def test_real_api_is_configured_toggles_with_credentials():
     # Kimlik yokken adapter mock moddadır (is_configured False); set edilince True.
     s = get_settings()
-    assert get_adapter("aras").is_configured() is False
-    assert get_adapter("yurtici").is_configured() is False
-    s.aras_username, s.aras_password = "u", "p"
-    s.yurtici_username, s.yurtici_password = "u", "p"
+    old = s.dhl_api_key
+    s.dhl_api_key = ""
     try:
-        assert get_adapter("aras").is_configured() is True
-        assert get_adapter("yurtici").is_configured() is True
+        assert get_adapter("dhl").is_configured() is False
+        s.dhl_api_key = "test-key"
+        assert get_adapter("dhl").is_configured() is True
     finally:
-        s.aras_username = s.aras_password = ""
-        s.yurtici_username = s.yurtici_password = ""
+        s.dhl_api_key = old
 
 
 def test_generic_classify_text_fallback():
@@ -359,19 +357,19 @@ def test_generic_signature_verification():
 
 
 @pytest.mark.asyncio
-async def test_aras_webhook_endpoint_applies_event(auth_client, db_session):
-    await _make_order(db_session, tracking_no="ARASE2E", carrier="aras", status="processing")
+async def test_dhl_webhook_endpoint_applies_delivered(auth_client, db_session):
+    await _make_order(db_session, tracking_no="DHLE2E2", carrier="dhl", status="processing")
     body = json.dumps(
         [
             {
-                "trackingNumber": "ARASE2E",
+                "trackingNumber": "DHLE2E2",
                 "status": "Teslim Edildi",
                 "eventDate": "2026-05-28 11:00:00",
             }
         ]
     ).encode()
     resp = await auth_client.post(
-        "/api/shipping/webhook/aras", content=body, headers={"content-type": "application/json"}
+        "/api/shipping/webhook/dhl", content=body, headers={"content-type": "application/json"}
     )
     assert resp.status_code == 202, resp.text
     assert resp.json()["applied"] == 1
@@ -390,12 +388,12 @@ async def test_aras_webhook_endpoint_applies_event(auth_client, db_session):
 async def test_assign_and_sync_new_carrier(auth_client, db_session):
     await _make_order(db_session, tracking_no="OLD3", carrier=None, status="processing")
     r = await auth_client.post(
-        "/api/shipping/assign/TT-2026-0001", json={"carrier": "yurtici", "tracking_no": "YK123456"}
+        "/api/shipping/assign/TT-2026-0001", json={"carrier": "dhl", "tracking_no": "JD123456"}
     )
     assert r.status_code == 200
-    assert r.json()["carrier"] == "yurtici"
+    assert r.json()["carrier"] == "dhl"
 
     r2 = await auth_client.post("/api/shipping/sync/TT-2026-0001")
     assert r2.status_code == 200
     assert r2.json()["fetched"] == 3  # mock
-    assert r2.json()["carrier"] == "yurtici"
+    assert r2.json()["carrier"] == "dhl"
