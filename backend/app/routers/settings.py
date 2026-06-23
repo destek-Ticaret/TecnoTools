@@ -27,7 +27,7 @@ DEFAULTS = {
     "shipping_fee_default": "49.9",
     "low_stock_threshold": "5",
     "store_iban": "",
-    "store_iban_holder": "TecnoTools Ltd. Şti.",
+    "store_iban_holder": "Mert Çakır TecnoTools Şahıs Firması",
     "cod_enabled": "1",
     "wire_enabled": "1",
     "auto_invoice_enabled": "1",

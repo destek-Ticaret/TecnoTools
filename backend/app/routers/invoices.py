@@ -476,7 +476,7 @@ def _render_invoice_html(inv: Invoice) -> str:
 <div class="doc">
   <div class="head">
     <div class="brand">
-      <h1>TecnoTools <span>Ltd. Şti.</span></h1>
+      <h1>Mert Çakır TecnoTools <span>Şahıs Firması</span></h1>
       <p>Yenidoğan Mah., Sancaktepe / İstanbul<br/>VKN: 1234567890 · destek@tecnotools.org</p>
     </div>
     <div class="head-right">
@@ -493,7 +493,7 @@ def _render_invoice_html(inv: Invoice) -> str:
     <div class="parties">
       <div class="party">
         <div class="pname">Satıcı</div>
-        <p>TecnoTools Ltd. Şti.<br/>Yenidoğan Mah., Sancaktepe / İstanbul<br/>destek@tecnotools.org</p>
+        <p>Mert Çakır TecnoTools Şahıs Firması<br/>Yenidoğan Mah., Sancaktepe / İstanbul<br/>destek@tecnotools.org</p>
         <div class="tx">VKN: 1234567890 · Vergi Dairesi: Sancaktepe</div>
       </div>
       <div class="party">
