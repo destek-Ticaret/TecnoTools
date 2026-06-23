@@ -1,7 +1,11 @@
 {% extends "_base.html" %}
 {% block content %}
 <h2 style="margin:0 0 12px;font-size:20px;font-weight:800;">Siparişiniz alındı 🎉</h2>
+{% if bank_info %}
+<p style="margin:0 0 18px;color:#475569;">Merhaba <strong>{{ order.customer_name }}</strong>, siparişinizi aldık. Ödemenizi aşağıdaki banka hesabına havale/EFT ile gönderdiğinizde siparişiniz hazırlanmaya başlayacaktır.</p>
+{% else %}
 <p style="margin:0 0 18px;color:#475569;">Merhaba <strong>{{ order.customer_name }}</strong>, siparişinizi aldık ve ödemeniz onaylandı. Hazırlık aşamasına geçti.</p>
+{% endif %}
 
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
   <tr>
@@ -32,6 +36,16 @@
     {% endfor %}
   </tbody>
 </table>
+
+{% if bank_info %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+  <tr><td colspan="2" style="font-size:14px;font-weight:700;color:#1e3a8a;padding-bottom:8px;">Havale / EFT Bilgileri</td></tr>
+  <tr><td colspan="2" style="font-size:12px;color:#1e40af;padding-bottom:10px;line-height:1.6;">Lütfen <strong>₺{{ "%.2f"|format(order.total) }}</strong> tutarını aşağıdaki hesaba gönderin ve açıklamaya <strong>sipariş numaranızı</strong> yazın.</td></tr>
+  <tr><td style="font-size:12px;color:#64748b;padding:4px 0;">Alıcı</td><td align="right" style="font-weight:700;padding:4px 0;">{{ bank_info.holder }}</td></tr>
+  <tr><td style="font-size:12px;color:#64748b;padding:4px 0;">IBAN</td><td align="right" style="font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;padding:4px 0;">{{ bank_info.iban }}</td></tr>
+  <tr><td style="font-size:12px;color:#64748b;padding:4px 0;">Açıklama</td><td align="right" style="font-family:'JetBrains Mono',Consolas,monospace;font-weight:700;padding:4px 0;">{{ order.order_no }}</td></tr>
+</table>
+{% endif %}
 
 <div style="background:#f1f5f9;border-radius:10px;padding:14px 16px;margin-bottom:18px;font-size:13px;">
   <div style="margin-bottom:4px;"><strong>Teslimat:</strong> {{ order.customer_address }}{% if order.customer_city %}, {{ order.customer_city }}{% endif %}</div>

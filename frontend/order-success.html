@@ -109,6 +109,14 @@
       .container { padding: .75rem .75rem 2rem; }
       .card { border-radius: 14px; }
     }
+    .wire-box { margin: 1.25rem 0; padding: 1.1rem 1.25rem; border: 1px solid #bfdbfe; border-radius: 14px; background: #eff6ff; text-align: left; }
+    .wire-title { font-size: 15px; font-weight: 700; color: #1e3a8a; margin-bottom: .4rem; }
+    .wire-desc { font-size: 13px; color: #1e40af; line-height: 1.6; margin: 0 0 .9rem; }
+    .wire-row { display: flex; justify-content: space-between; gap: 12px; padding: .5rem 0; border-top: 1px dashed #bfdbfe; font-size: 13px; }
+    .wire-row > span { color: #475569; }
+    .wire-row > strong { color: #0f172a; text-align: right; word-break: break-all; }
+    .wire-row .mono { font-family: monospace; letter-spacing: .03em; }
+    .wire-copy { margin-top: .9rem; font-size: 13px; padding: .55rem 1rem; }
   </style>
 </head>
 <body>
@@ -190,6 +198,40 @@ async function waitForApi() {
   let tries = 0;
   while (!window.api && tries++ < 30) await new Promise(r => setTimeout(r, 100));
   return !!window.api;
+}
+
+/* ── Site ayarları (havale IBAN vb.) — bir kez yüklenir ── */
+let STORE_SETTINGS = {};
+async function loadSettings() {
+  try { STORE_SETTINGS = (await api.settings.list()) || {}; } catch (_) { STORE_SETTINGS = {}; }
+}
+
+/* Havale (wire) siparişlerinde IBAN bilgi kutusu. IBAN tanımlı değilse boş döner. */
+function wireBox(order) {
+  if ((order.payment_method || '').toLowerCase() !== 'wire') return '';
+  const iban = (STORE_SETTINGS.store_iban || '').replace(/\s+/g, '').toUpperCase();
+  const holder = (STORE_SETTINGS.store_iban_holder || '').trim();
+  if (!iban) return '';
+  const ibanFmt = iban.replace(/(.{4})/g, '$1 ').trim();
+  return `
+    <div class="wire-box">
+      <div class="wire-title">Havale / EFT ile ödeme</div>
+      <p class="wire-desc">Siparişinizi tamamlamak için aşağıdaki hesaba <strong>${fmtPrice(order.total)}</strong> tutarında havale/EFT yapın. Açıklama kısmına mutlaka <strong>sipariş numaranızı</strong> yazın; ödemeniz onaylandığında siparişiniz hazırlanmaya başlar.</p>
+      <div class="wire-row"><span>Alıcı</span><strong>${escapeHtml(holder)}</strong></div>
+      <div class="wire-row"><span>IBAN</span><strong class="mono">${escapeHtml(ibanFmt)}</strong></div>
+      <div class="wire-row"><span>Açıklama</span><strong class="mono">${escapeHtml(order.order_no || '')}</strong></div>
+      <button class="btn btn-secondary wire-copy" type="button" onclick="copyIban(this, '${escapeAttr(iban)}')">IBAN'ı Kopyala</button>
+    </div>`;
+}
+
+function copyIban(btn, iban) {
+  const done = () => { const t = btn.textContent; btn.textContent = 'Kopyalandı ✓'; setTimeout(() => { btn.textContent = t; }, 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(iban).then(done).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea'); ta.value = iban; document.body.appendChild(ta);
+    ta.select(); try { document.execCommand('copy'); done(); } catch (_) {} document.body.removeChild(ta);
+  }
 }
 
 /* ── Render fonksiyonları ── */
@@ -276,6 +318,7 @@ function renderSuccess(order) {
         <span class="info-val">${statusText(order.status)}</span>
       </div>
     </div>
+    ${wireBox(order)}
     ${itemsHtml}
     <div class="actions">
       <a class="btn btn-primary" href="track-order.html?order_no=${encodeURIComponent(order.order_no || '')}&email=${encodeURIComponent(getStoredEmail() || '')}">
@@ -367,6 +410,7 @@ async function init() {
     renderError('API istemcisi yüklenemedi. Sayfayı yenileyin.');
     return;
   }
+  await loadSettings();
   init();
 })();
 </script>

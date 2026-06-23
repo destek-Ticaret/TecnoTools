@@ -128,8 +128,9 @@ def render_template(template_name: str, **context) -> str:
 
 
 # ── Senaryolar ──
-async def send_order_confirmation(order) -> None:
-    html = render_template("order_confirmation.html", order=order)
+async def send_order_confirmation(order, bank_info: dict | None = None) -> None:
+    """bank_info verilirse (havale siparişi) e-postaya IBAN bilgi kutusu eklenir."""
+    html = render_template("order_confirmation.html", order=order, bank_info=bank_info)
     await send_email(
         to=order.customer_email, subject=f"Siparişiniz alındı · {order.order_no}", html=html
     )

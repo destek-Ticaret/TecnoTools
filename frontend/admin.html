@@ -2533,6 +2533,24 @@ html, body { height: 100%; }
             </div>
 
             <div style="border-top:1px solid var(--border);padding-top:1.25rem;">
+              <h4 style="font-size:.92rem;margin-bottom:.4rem;">Havale / Banka Bilgileri</h4>
+              <p style="font-size:.85rem;color:var(--muted);margin-bottom:.8rem;">Havale (banka transferi) ile ödeyen müşterilere sipariş onay sayfasında ve e-postasında gösterilir. Boş bırakırsanız müşteri IBAN göremez.</p>
+              <div style="display:flex;flex-direction:column;gap:.7rem;max-width:520px;">
+                <div>
+                  <label for="setIbanHolder" style="display:block;font-size:.82rem;font-weight:600;margin-bottom:.25rem;">IBAN Sahibi (alıcı adı)</label>
+                  <input type="text" id="setIbanHolder" maxlength="255" placeholder="Mert Çakır TecnoTools Şahıs Firması" style="width:100%;padding:.6rem .75rem;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--text);font-size:.9rem;" />
+                </div>
+                <div>
+                  <label for="setIban" style="display:block;font-size:.82rem;font-weight:600;margin-bottom:.25rem;">IBAN</label>
+                  <input type="text" id="setIban" maxlength="34" placeholder="TR00 0000 0000 0000 0000 0000 00" style="width:100%;padding:.6rem .75rem;border:1px solid var(--border);border-radius:9px;background:var(--bg2);color:var(--text);font-size:.9rem;font-family:monospace;letter-spacing:.02em;" />
+                </div>
+                <div>
+                  <button class="btn btn-primary btn-sm" id="ibanSaveBtn" onclick="savePaymentSettings()" style="align-self:flex-start;">Kaydet</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);padding-top:1.25rem;">
               <h4 style="font-size:.92rem;margin-bottom:.4rem;">Kullanıcı Yönetimi</h4>
               <p style="font-size:.85rem;color:var(--muted);margin-bottom:.8rem;">Ek yönetici hesapları ekleyin. Roller: <strong>admin</strong> (tam yetki), <strong>editor</strong> (sipariş & ürün), <strong>viewer</strong> (sadece okuma).</p>
               <div id="userList" style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:.8rem;"></div>
@@ -5130,6 +5148,39 @@ html, body { height: 100%; }
       showToast('Ayar kaydedilemedi: ' + (e.message || ''), 'danger');
     } finally {
       el.disabled = false;
+    }
+  }
+
+  // ── Ayarlar: havale IBAN / banka bilgileri ──
+  async function renderPaymentSettings() {
+    try {
+      const s = await api.settings.list().catch(() => ({}));
+      const h = document.getElementById('setIbanHolder');
+      const i = document.getElementById('setIban');
+      if (h) h.value = s.store_iban_holder || '';
+      if (i) i.value = s.store_iban || '';
+    } catch (_) {}
+  }
+
+  async function savePaymentSettings() {
+    const btn = document.getElementById('ibanSaveBtn');
+    const holder = document.getElementById('setIbanHolder').value.trim();
+    // IBAN: boşlukları temizle, büyük harfe çevir (TR..)
+    const iban = document.getElementById('setIban').value.replace(/\s+/g, '').toUpperCase();
+    if (iban && !/^TR\d{24}$/.test(iban)) {
+      showToast('IBAN geçersiz — TR ile başlayıp 26 haneli olmalı (TR + 24 rakam).', 'danger');
+      return;
+    }
+    if (btn) btn.disabled = true;
+    try {
+      await api.settings.update({ store_iban: iban, store_iban_holder: holder });
+      document.getElementById('setIban').value = iban;
+      showToast('Banka bilgileri kaydedildi', 'success');
+      if (typeof logAudit === 'function') logAudit('settings', 'Havale IBAN bilgileri güncellendi');
+    } catch (e) {
+      showToast('Kaydedilemedi: ' + (e.message || ''), 'danger');
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -7862,7 +7913,7 @@ html, body { height: 100%; }
     if (name === 'blog') renderBlogPosts();
     if (name === 'pages') renderCmsPages();
     if (name === 'pricing') renderPricingRules();
-    if (name === 'settings') { renderAuditPanel(); renderStockLogPanel(); renderUserList(); renderSubscriberList(); renderTwoFAStatus(); renderInvoiceSettings(); }
+    if (name === 'settings') { renderAuditPanel(); renderStockLogPanel(); renderUserList(); renderSubscriberList(); renderTwoFAStatus(); renderInvoiceSettings(); renderPaymentSettings(); }
     if (window.innerWidth <= 860) {
       document.getElementById('sidebar').classList.remove('open');
       document.body.classList.remove('sidebar-open');

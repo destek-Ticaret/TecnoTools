@@ -290,8 +290,17 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         await db.commit()
         await db.refresh(order)
         # Onay maili + admin bildirimi (fire-and-forget; SMTP yoksa konsola yazar)
+        # Havale siparişinde IBAN bilgilerini maile ekle
+        bank_info = None
+        if payload.payment_method == "wire":
+            iban = (await get_setting(db, "store_iban", "") or "").replace(" ", "").upper()
+            if iban:
+                bank_info = {
+                    "iban": " ".join(iban[i : i + 4] for i in range(0, len(iban), 4)),
+                    "holder": await get_setting(db, "store_iban_holder", "") or "",
+                }
         try:
-            await send_order_confirmation(order)
+            await send_order_confirmation(order, bank_info)
         except Exception:
             pass
         try:
