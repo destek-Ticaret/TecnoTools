@@ -148,26 +148,20 @@ app = FastAPI(title="TecnoTools API", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
-# Dev modunda LAN origin'lerini regex ile kabul et (telefondan/diğer cihazlardan test).
-# Production'da yalnız explicit `cors_origins` listesi çalışır.
-_cors_kwargs = {
-    "allow_origins": settings.cors_origin_list,
-    "allow_credentials": True,
-    "allow_methods": ["*"],
-    "allow_headers": ["*"],
-}
+# Auth: Bearer token (Authorization header) kullanılıyor — cookie yok.
+# allow_credentials=True + allow_headers=["*"] Starlette'de çakışır;
+# Bearer token için credentials=False yeterli.
+_cors_origins = settings.cors_origin_list
 if settings.app_env == "development":
-    _cors_kwargs["allow_origin_regex"] = (
-        r"^https?://("
-        r"localhost(:\d+)?"
-        r"|127\.0\.0\.1(:\d+)?"
-        r"|10\.\d+\.\d+\.\d+(:\d+)?"
-        r"|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+(:\d+)?"
-        r"|192\.168\.\d+\.\d+(:\d+)?"
-        r")$"
-    )
+    _cors_origins = ["*"]
 
-app.add_middleware(CORSMiddleware, **_cors_kwargs)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_middleware(AdminIPFilterMiddleware, allowed_ips=settings.admin_ip_list)
 
