@@ -206,3 +206,22 @@ app.include_router(imports.router)
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "env": settings.app_env}
+
+
+@app.get("/api/debug/paytr")
+async def debug_paytr():
+    """Geçici: Railway'deki PayTR config değerlerini doğrula (credentials göstermez)."""
+    mid = settings.paytr_merchant_id
+    key = settings.paytr_merchant_key
+    salt = settings.paytr_merchant_salt
+    return {
+        "merchant_id": mid,
+        "merchant_id_len": len(mid),
+        "key_len": len(key),
+        "key_first2": key[:2] if key else "",
+        "salt_len": len(salt),
+        "salt_first2": salt[:2] if salt else "",
+        "test_mode": settings.paytr_test_mode,
+        "ok_url": settings.paytr_ok_url,
+        "fail_url": settings.paytr_fail_url,
+    }
