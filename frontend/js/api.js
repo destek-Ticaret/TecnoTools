@@ -24,12 +24,15 @@
     if (global.TT_API_BASE) return String(global.TT_API_BASE).replace(/\/$/, '');
     const meta = document.querySelector('meta[name="tt-api-base"]');
     const metaVal = meta && meta.content ? meta.content.trim() : '';
-    // Sayfa http(s) üzerinden yüklendiyse aynı hostname'in 8000 portunu kullan.
-    // Bu sayede 127.0.0.1, localhost veya LAN IP'sinden açılınca backend otomatik bulunur.
-    if (typeof location !== 'undefined' && /^https?:$/.test(location.protocol) && location.hostname) {
-      return `${location.protocol}//${location.hostname}:8000`;
+    if (metaVal) return metaVal.replace(/\/$/, '');
+    // Sadece localhost/LAN'da :8000 portunu kullan
+    if (typeof location !== 'undefined' && /^https?:$/.test(location.protocol)) {
+      const h = location.hostname;
+      if (h === 'localhost' || h === '127.0.0.1' || /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(h)) {
+        return `${location.protocol}//${h}:8000`;
+      }
     }
-    return metaVal ? metaVal.replace(/\/$/, '') : DEFAULT_BASE;
+    return DEFAULT_BASE;
   }
 
   const BASE_URL = resolveBaseUrl();
