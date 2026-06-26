@@ -14,7 +14,8 @@ import json
 import secrets
 from collections.abc import Iterable
 
-import httpx
+import urllib.parse
+import urllib.request
 
 from app.config import get_settings
 
@@ -83,14 +84,22 @@ def build_paytr_token(
         "currency": currency,
         "test_mode": settings.paytr_test_mode,
     }
-    with httpx.Client(timeout=15.0) as client:
-        resp = client.post(PAYTR_TOKEN_URL, data=data)
-    if resp.status_code != 200:
-        raise RuntimeError(f"PayTR HTTP {resp.status_code} — {resp.text[:300]}")
+    encoded = urllib.parse.urlencode({k: str(v) for k, v in data.items()}).encode("utf-8")
+    req = urllib.request.Request(
+        PAYTR_TOKEN_URL,
+        data=encoded,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
     try:
-        body = resp.json()
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        raw = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"PayTR HTTP {e.code} — {raw[:300]}")
+    try:
+        body = json.loads(raw)
     except Exception:
-        raise RuntimeError(f"PayTR geçersiz JSON yanıtı: {resp.text[:300]}")
+        raise RuntimeError(f"PayTR geçersiz JSON yanıtı: {raw[:300]}")
     if body.get("status") != "success":
         raise RuntimeError(f"PayTR token üretilemedi: {body.get('reason', 'bilinmeyen')}")
     return {"token": body["token"], "raw_response": body, "merchant_oid": merchant_oid}
