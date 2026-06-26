@@ -334,18 +334,28 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             iframe_url=sess["url"],
             provider="stripe",
         )
-    paytr = build_paytr_token(
-        order_no=order.order_no,
-        email=order.customer_email,
-        amount_kurus=int(round(order.total * 100)),
-        user_name=order.customer_name,
-        user_phone=order.customer_phone,
-        user_address=f"{order.customer_address}, {order.customer_city or ''}",
-        basket=[
-            (f"{p.name} ({v.name})" if v else p.name, unit_price, qty)
-            for p, v, qty, unit_price in items_data
-        ],
+    user_ip = (
+        request.headers.get("x-real-ip")
+        or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+        or (request.client.host if request.client else "")
+        or "127.0.0.1"
     )
+    try:
+        paytr = build_paytr_token(
+            order_no=order.order_no,
+            email=order.customer_email,
+            amount_kurus=int(round(order.total * 100)),
+            user_name=order.customer_name,
+            user_phone=order.customer_phone,
+            user_address=f"{order.customer_address}, {order.customer_city or ''}",
+            basket=[
+                (f"{p.name} ({v.name})" if v else p.name, unit_price, qty)
+                for p, v, qty, unit_price in items_data
+            ],
+            user_ip=user_ip,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     return PaymentStartResponse(
         order_no=order.order_no,
         iframe_token=paytr["token"],
