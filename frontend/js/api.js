@@ -12,7 +12,7 @@
 (function (global) {
   'use strict';
 
-  const DEFAULT_BASE = 'http://localhost:8000';
+  const DEFAULT_BASE = 'https://api.tecnotools.org';
   const ACCESS_KEY = 'tt_auth_access';
   const REFRESH_KEY = 'tt_auth_refresh';
   const CUSTOMER_ACCESS_KEY = 'tt_customer_access';
