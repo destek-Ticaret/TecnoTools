@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="tt-api-base" content="http://localhost:8000" />
+  <meta name="tt-api-base" content="https://api.tecnotools.org" />
   <meta name="description" content="Siparişinizi tamamlayın — güvenli ödeme, hızlı kargo." />
   <meta name="robots" content="noindex,nofollow" />
   <title>Ödeme — TecnoTools</title>
-  <link rel="icon" href="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" />
+  <link rel="icon" href="images/logo-300x100.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -31,8 +31,8 @@
     .hdr-inner { max-width: 1280px; margin: 0 auto; padding: .85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
     .brand { display: flex; align-items: center; gap: .55rem; font-weight: 800; color: var(--text); font-size: 1.05rem; text-decoration: none; }
     .brand:hover { text-decoration: none; }
-    .brand-logo { width: 38px; height: 38px; border-radius: 10px; overflow: hidden; background: var(--surface); box-shadow: 0 2px 6px rgba(15,23,42,.08); }
-    .brand-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .brand-logo { display: flex; align-items: center; }
+    .brand-logo img { height: 40px; width: auto; display: block; }
     .hdr-steps { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .85rem; }
     .hdr-steps .step { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .55rem; border-radius: 999px; }
     .hdr-steps .step.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
@@ -128,6 +128,21 @@
     .overlay .box { background: var(--surface); border-radius: 16px; padding: 2rem; max-width: 360px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
     .overlay .spinner { width: 48px; height: 48px; margin: 0 auto 1rem; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* PayTR iframe modal */
+    .paytr-modal { position: fixed; inset: 0; background: rgba(15,23,42,.85); z-index: 400; display: none; align-items: center; justify-content: center; backdrop-filter: blur(6px); padding: 1rem; }
+    .paytr-modal.show { display: flex; }
+    .paytr-modal-inner { position: relative; background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.5); width: 100%; max-width: 800px; }
+    .paytr-modal-header { display: flex; align-items: center; justify-content: space-between; padding: .85rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .paytr-modal-title { font-weight: 700; font-size: .95rem; display: flex; align-items: center; gap: .5rem; }
+    .paytr-modal-title svg { width: 18px; height: 18px; color: var(--success); }
+    .paytr-modal-close { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg2); color: var(--text-2); cursor: pointer; display: grid; place-items: center; transition: background .15s, color .15s; }
+    .paytr-modal-close:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+    .paytr-iframe-wrap { position: relative; height: 560px; }
+    .paytr-iframe-loader { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg2); }
+    .paytr-iframe-loader .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    .paytr-iframe { width: 100%; height: 100%; border: none; display: block; }
+    @media (max-width: 600px) { .paytr-iframe-wrap { height: 480px; } }
 
     /* Empty cart redirect */
     .info-box { background: var(--info-soft); border: 1px solid #93c5fd; border-radius: 12px; padding: 1.5rem; text-align: center; color: var(--text-2); }
@@ -230,7 +245,7 @@
   <header class="hdr">
     <div class="hdr-inner">
       <a class="brand" href="index.html">
-        <div class="brand-logo"><img src="Gemini_Generated_Image_bfu5uabfu5uabfu5.png" alt="TecnoTools" /></div>
+        <div class="brand-logo"><img src="images/logo-300x100.png" alt="TecnoTools" /></div>
         <span>TecnoTools</span>
       </a>
       <div class="hdr-steps" aria-label="Ödeme adımları">
@@ -288,6 +303,25 @@
     </div>
   </div>
 
+  <!-- PayTR iframe modal -->
+  <div class="paytr-modal" id="paytrModal">
+    <div class="paytr-modal-inner">
+      <div class="paytr-modal-header">
+        <span class="paytr-modal-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Güvenli Ödeme
+        </span>
+        <button class="paytr-modal-close" id="paytrModalClose" title="Kapat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="paytr-iframe-wrap">
+        <div class="paytr-iframe-loader" id="paytrLoader"><div class="spinner"></div></div>
+        <iframe id="paytrFrame" class="paytr-iframe" src="about:blank" allow="payment" title="PayTR Ödeme"></iframe>
+      </div>
+    </div>
+  </div>
+
   <div class="toast-stack" id="toastStack"></div>
 
 <script>
@@ -336,6 +370,50 @@ function showOverlay(title, sub = '') {
   $('#overlay').classList.add('show');
 }
 function hideOverlay() { $('#overlay').classList.remove('show'); }
+
+/* ── PayTR iframe modal ── */
+let _paytrPollTimer = null;
+
+function openPaytrModal(iframeUrl, orderNo) {
+  const modal = $('#paytrModal');
+  const frame = $('#paytrFrame');
+  const loader = $('#paytrLoader');
+
+  loader.style.display = 'flex';
+  frame.src = iframeUrl;
+  frame.onload = () => { loader.style.display = 'none'; };
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+
+  // Ödeme sonucunu backend'den poll et (PayTR callback bizim sunucuya gelir)
+  _paytrPollTimer = setInterval(async () => {
+    try {
+      const data = await api.payments.getOrderStatus(orderNo);
+      if (data.payment_status === 'success') {
+        clearInterval(_paytrPollTimer);
+        closePaytrModal();
+        clearCouponSession();
+        location.href = 'order-success.html?order_no=' + encodeURIComponent(orderNo);
+      } else if (data.payment_status === 'failed') {
+        clearInterval(_paytrPollTimer);
+        closePaytrModal();
+        submitting = false;
+        const btn = $('#submitBtn');
+        if (btn) btn.disabled = false;
+        showToast('Ödeme başarısız. Lütfen tekrar deneyin.', 'danger');
+      }
+    } catch (_) {}
+  }, 3000);
+}
+
+function closePaytrModal() {
+  clearInterval(_paytrPollTimer);
+  const modal = $('#paytrModal');
+  const frame = $('#paytrFrame');
+  modal.classList.remove('show');
+  document.body.style.overflow = '';
+  frame.src = 'about:blank';
+}
 
 // applyTheme / toggleTheme → js/common.js (ortak)
 
@@ -891,25 +969,23 @@ async function submitOrder() {
     const res = await api.orders.checkout(payload);
     if (!res || !res.order_no) throw new Error('Sipariş oluşturulamadı.');
     const orderNo = res.order_no;
-    const paytr = res.payment_url || res.iframe_url || res.redirect_url || res.payment_token;
-    // Backend PayTR iframe_token'i veya redirect URL'i döner
-    if (res.iframe_token && res.ok_url) {
-      // PayTR iframe akışı: ok_url'e order_no ekleyerek yönlendir, PayTR iframe orada açılır
-      const okUrl = new URL(res.ok_url, location.origin);
-      okUrl.searchParams.set('order_no', orderNo);
+    const iframeUrl = res.iframe_url;
+    const provider = res.provider;
+
+    // PayTR → iframe modal içinde aç (müşteri sayfayı terk etmez)
+    if (provider === 'paytr' && iframeUrl && /^https?:\/\//.test(iframeUrl)) {
       hideOverlay();
-      location.href = okUrl.toString();
+      openPaytrModal(iframeUrl, orderNo);
       return;
     }
-    if (paytr && /^https?:\/\//.test(paytr)) {
+    // Stripe → harici checkout sayfasına yönlendir
+    if (iframeUrl && /^https?:\/\//.test(iframeUrl)) {
       hideOverlay();
-      // PayTR/Stripe yönlendirmesi — başarı sayfasına order_no ile geri dönecek
-      const sep = paytr.includes('?') ? '&' : '?';
-      const url = paytr + sep + 'order_no=' + encodeURIComponent(orderNo);
-      location.href = url;
+      const sep = iframeUrl.includes('?') ? '&' : '?';
+      location.href = iframeUrl + sep + 'order_no=' + encodeURIComponent(orderNo);
       return;
     }
-    // Yönlendirme yoksa direkt success sayfasına git (havale / kapıda)
+    // Havale / kapıda → direkt başarı sayfası
     hideOverlay();
     clearCouponSession();
     location.href = 'order-success.html?order_no=' + encodeURIComponent(orderNo);
@@ -982,6 +1058,17 @@ async function init() {
 }
 
 ttReady(init);
+
+// PayTR modal kapatma butonu
+document.addEventListener('DOMContentLoaded', () => {
+  const closeBtn = $('#paytrModalClose');
+  if (closeBtn) closeBtn.addEventListener('click', () => {
+    closePaytrModal();
+    submitting = false;
+    const btn = $('#submitBtn');
+    if (btn) btn.disabled = false;
+  });
+});
 </script>
 </body>
 </html>
