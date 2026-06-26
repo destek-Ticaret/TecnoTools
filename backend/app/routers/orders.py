@@ -334,12 +334,6 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             iframe_url=sess["url"],
             provider="stripe",
         )
-    user_ip = (
-        request.headers.get("X-Real-IP")
-        or request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        or (request.client.host if request.client else "")
-        or "1.2.3.4"
-    )
     paytr = build_paytr_token(
         order_no=order.order_no,
         email=order.customer_email,
@@ -351,7 +345,6 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             (f"{p.name} ({v.name})" if v else p.name, unit_price, qty)
             for p, v, qty, unit_price in items_data
         ],
-        user_ip=user_ip,
     )
     return PaymentStartResponse(
         order_no=order.order_no,

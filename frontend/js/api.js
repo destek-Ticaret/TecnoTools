@@ -12,7 +12,7 @@
 (function (global) {
   'use strict';
 
-  const DEFAULT_BASE = 'https://api.tecnotools.org';
+  const DEFAULT_BASE = 'http://localhost:8000';
   const ACCESS_KEY = 'tt_auth_access';
   const REFRESH_KEY = 'tt_auth_refresh';
   const CUSTOMER_ACCESS_KEY = 'tt_customer_access';
@@ -24,15 +24,12 @@
     if (global.TT_API_BASE) return String(global.TT_API_BASE).replace(/\/$/, '');
     const meta = document.querySelector('meta[name="tt-api-base"]');
     const metaVal = meta && meta.content ? meta.content.trim() : '';
-    if (metaVal) return metaVal.replace(/\/$/, '');
-    // Sadece localhost / 127.0.0.1 / LAN IP'sinde :8000 portunu kullan
-    if (typeof location !== 'undefined' && /^https?:$/.test(location.protocol)) {
-      const h = location.hostname;
-      if (h === 'localhost' || h === '127.0.0.1' || /^10\.|^192\.168\.|^172\.(1[6-9]|2\d|3[01])\./.test(h)) {
-        return `${location.protocol}//${h}:8000`;
-      }
+    // Sayfa http(s) üzerinden yüklendiyse aynı hostname'in 8000 portunu kullan.
+    // Bu sayede 127.0.0.1, localhost veya LAN IP'sinden açılınca backend otomatik bulunur.
+    if (typeof location !== 'undefined' && /^https?:$/.test(location.protocol) && location.hostname) {
+      return `${location.protocol}//${location.hostname}:8000`;
     }
-    return DEFAULT_BASE;
+    return metaVal ? metaVal.replace(/\/$/, '') : DEFAULT_BASE;
   }
 
   const BASE_URL = resolveBaseUrl();

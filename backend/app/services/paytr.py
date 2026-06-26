@@ -83,14 +83,9 @@ def build_paytr_token(
         "currency": currency,
         "test_mode": settings.paytr_test_mode,
     }
-    import logging
-    _log = logging.getLogger("paytr")
     with httpx.Client(timeout=15.0) as client:
         resp = client.post(PAYTR_TOKEN_URL, data=data)
-    _log.error("PayTR HTTP %s | body: %r | sent: %s", resp.status_code, resp.text[:500], {k: v for k, v in data.items() if k != "paytr_token"})
-    if not resp.text.strip():
-        raise RuntimeError(f"PayTR boş yanıt döndü (HTTP {resp.status_code})")
-    body = resp.json()
+        body = resp.json()
     if body.get("status") != "success":
         raise RuntimeError(f"PayTR token üretilemedi: {body.get('reason', 'bilinmeyen')}")
     return {"token": body["token"], "raw_response": body, "merchant_oid": merchant_oid}
