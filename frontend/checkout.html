@@ -903,10 +903,14 @@ async function submitOrder() {
     }
     if (paytr && /^https?:\/\//.test(paytr)) {
       hideOverlay();
-      // PayTR/Stripe yönlendirmesi — başarı sayfasına order_no ile geri dönecek
-      const sep = paytr.includes('?') ? '&' : '?';
-      const url = paytr + sep + 'order_no=' + encodeURIComponent(orderNo);
-      location.href = url;
+      if (paytr.includes('paytr.com')) {
+        // PayTR: token URL'e parametre ekleme, direkt yönlendir
+        location.href = paytr;
+      } else {
+        // Stripe ve diğerleri: order_no ekle
+        const sep = paytr.includes('?') ? '&' : '?';
+        location.href = paytr + sep + 'order_no=' + encodeURIComponent(orderNo);
+      }
       return;
     }
     // Yönlendirme yoksa direkt success sayfasına git (havale / kapıda)
