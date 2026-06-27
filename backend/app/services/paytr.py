@@ -58,11 +58,13 @@ def build_paytr_token(
     merchant_oid = order_no.replace("-", "")  # PayTR yalnız alfanumerik kabul eder
     basket_b64 = _encode_basket(basket)
 
+    # PayTR dok: hash_str sonuna merchant_salt eklenir, HMAC key = merchant_key
     hash_str = (
         f"{settings.paytr_merchant_id}{user_ip}{merchant_oid}{email}{amount_kurus}"
         f"{basket_b64}{no_installment}{max_installment}{currency}{settings.paytr_test_mode}"
+        f"{settings.paytr_merchant_salt}"
     )
-    paytr_token = _hmac_b64(settings.paytr_merchant_key + settings.paytr_merchant_salt, hash_str)
+    paytr_token = _hmac_b64(settings.paytr_merchant_key, hash_str)
 
     data = {
         "merchant_id": settings.paytr_merchant_id,
