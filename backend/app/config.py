@@ -46,6 +46,19 @@ class Settings(BaseSettings):
     iyzico_secret_key: str = ""
     iyzico_base_url: str = "https://sandbox-api.iyzipay.com"  # canlı: https://api.iyzipay.com
 
+    # Dropshipping / tedarikçi entegrasyonu.
+    # supplier_mode: "mock" (sahte örnek veri) | "aliexpress" (gerçek API).
+    # AliExpress Open Platform anahtarları onaylanınca doldurulur.
+    supplier_mode: str = "mock"
+    aliexpress_app_key: str = ""
+    aliexpress_app_secret: str = ""
+    aliexpress_tracking_id: str = ""  # affiliate/dropship tracking id
+    # Varsayılan kâr marjı çarpanı: satış fiyatı = tedarikçi fiyatı * markup.
+    # 1.8 = %80 kâr. Ürün bazında override edilebilir.
+    dropship_markup: float = 1.8
+    # Satış fiyatını ".90" gibi psikolojik sona yuvarla (örn 179.90).
+    dropship_price_ending: float = 0.90
+
     initial_admin_username: str = "TecnoTools"
     initial_admin_password: str = "ChangeMeOnFirstLogin!"
     initial_admin_email: str = "admin@tecnotools.local"
