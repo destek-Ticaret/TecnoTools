@@ -24,6 +24,24 @@ CART_ABANDON_INTERVAL_SEC = 30 * 60
 CART_ABANDON_MIN_AGE_MIN = 60
 # Yedek kontrol sıklığı — gün-bazlı dosya adı gerçek sıklığı günde 1'e indirir
 DB_BACKUP_INTERVAL_SEC = 6 * 3600
+# Dropshipping tedarikçi fiyat/stok senkronu — günde 1
+DROPSHIP_SYNC_INTERVAL_SEC = 24 * 3600
+
+
+async def _dropship_sync(db: AsyncSession) -> None:
+    """Tedarikçi (dropship) ürünlerinin fiyat/stok senkronu. Yalnız gerçek API
+    modunda çalışır (mock modda dış çağrı anlamsız)."""
+    from app.config import get_settings
+    from app.services.suppliers.sync import sync_all
+
+    if get_settings().supplier_mode == "mock":
+        return
+    out = await sync_all(db, reprice=True)
+    await db.commit()
+    if out["synced"]:
+        logger.info(
+            "Dropship sync: %d ürün güncellendi, %d hata", out["synced"], len(out["errors"])
+        )
 
 
 async def _low_stock_alert(db: AsyncSession) -> None:
@@ -174,8 +192,10 @@ async def _scheduler_loop() -> None:
     low_stock_counter = 0
     ship_counter = 0
     backup_counter = 0
+    dropship_counter = 0
     ship_period = max(1, ship_interval // CART_ABANDON_INTERVAL_SEC)
     backup_period = DB_BACKUP_INTERVAL_SEC // CART_ABANDON_INTERVAL_SEC
+    dropship_period = DROPSHIP_SYNC_INTERVAL_SEC // CART_ABANDON_INTERVAL_SEC
     while True:
         try:
             async with SessionLocal() as db:
@@ -184,6 +204,8 @@ async def _scheduler_loop() -> None:
                 await _abandoned_cart_alert(db)
                 if ship_counter == 0:
                     await _shipment_poll(db)
+                if dropship_counter == 0:
+                    await _dropship_sync(db)
             if backup_counter == 0:
                 from app.services.backup import run_db_backup
 
@@ -195,6 +217,7 @@ async def _scheduler_loop() -> None:
         )
         ship_counter = (ship_counter + 1) % ship_period
         backup_counter = (backup_counter + 1) % backup_period
+        dropship_counter = (dropship_counter + 1) % dropship_period
         await asyncio.sleep(CART_ABANDON_INTERVAL_SEC)
 
 

@@ -4864,6 +4864,11 @@ html, body { height: 100%; }
         </div>
       </div>
 
+      <div class="drawer-section" id="dropshipSection" style="display:none;">
+        <h4>Tedarikçi (Dropship)</h4>
+        <div id="dropshipPanel" style="font-size:.82rem;color:var(--muted);">Kontrol ediliyor…</div>
+      </div>
+
       ${o.note ? `
       <div class="drawer-section">
         <h4>Müşteri Notu</h4>
@@ -4969,6 +4974,40 @@ html, body { height: 100%; }
 
     renderOrderQR(o.id);
     loadShipEvents(o.id);
+    loadDropshipFulfillment(o.id);
+  }
+
+  /* ── Dropship: siparişin tedarikçi karşılama bilgisi ── */
+  async function loadDropshipFulfillment(orderId) {
+    const sec = document.getElementById('dropshipSection');
+    const panel = document.getElementById('dropshipPanel');
+    if (!sec || !panel) return;
+    try {
+      const f = await api.dropshipping.orderFulfillment(orderId);
+      if (!f.is_dropship) return;  // dropship kalemi yoksa bölümü gizli bırak
+      sec.style.display = '';
+      const addr = `${f.shipping.name}\n${f.shipping.phone}\n${f.shipping.address}, ${f.shipping.city || ''}`;
+      const lines = f.lines.map(l => `
+        <div style="display:flex;gap:.6rem;align-items:center;justify-content:space-between;padding:.55rem .7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.5rem;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;color:var(--text);font-size:.85rem;">${escapeHtml(l.name)}</div>
+            <div style="color:var(--muted);font-size:.76rem;">${l.qty} adet${l.unit_cost!=null?` · birim maliyet ${fmt(l.unit_cost)}`:''}</div>
+          </div>
+          ${l.supplier_url ? `<a href="${escapeHtml(l.supplier_url)}" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="flex-shrink:0;">Tedarikçide aç ↗</a>` : '<span style="color:var(--muted);font-size:.76rem;">link yok</span>'}
+        </div>`).join('');
+      panel.innerHTML = `
+        <p style="margin:0 0 .6rem;color:var(--text);">Bu siparişte <b>${f.lines.length}</b> tedarikçi ürünü var. Tedarikçide siparişi <b>müşteri adresine</b> ver:</p>
+        ${lines}
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:.6rem .7rem;margin-top:.4rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem;">
+            <span class="info-label">Teslimat adresi</span>
+            <button class="btn btn-outline btn-sm" onclick='navigator.clipboard.writeText(${JSON.stringify(addr)}).then(()=>showToast("Adres kopyalandı","success"))'>Kopyala</button>
+          </div>
+          <div style="font-size:.8rem;color:var(--text);white-space:pre-line;">${escapeHtml(addr)}</div>
+        </div>`;
+    } catch (e) {
+      // sessizce gizle — dropship yoksa veya hata olursa bölüm görünmez
+    }
   }
 
   /* ── KARGO (carrier) yardımcıları ── */
