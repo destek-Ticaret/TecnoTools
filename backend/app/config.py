@@ -47,12 +47,15 @@ class Settings(BaseSettings):
     iyzico_base_url: str = "https://sandbox-api.iyzipay.com"  # canlı: https://api.iyzipay.com
 
     # Dropshipping / tedarikçi entegrasyonu.
-    # supplier_mode: "mock" (sahte örnek veri) | "aliexpress" (gerçek API).
-    # AliExpress Open Platform anahtarları onaylanınca doldurulur.
+    # supplier_mode: "mock" (sahte örnek veri) | "live" (gerçek API).
+    # Kaynak (aliexpress | 1688) ürün linkinin domaininden otomatik tespit edilir.
     supplier_mode: str = "mock"
     aliexpress_app_key: str = ""
     aliexpress_app_secret: str = ""
     aliexpress_tracking_id: str = ""  # affiliate/dropship tracking id
+    # 1688 / Alibaba Açık Platform (open.1688.com) erişimi
+    onesixeighteight_app_key: str = ""
+    onesixeighteight_app_secret: str = ""
     # Varsayılan kâr marjı çarpanı: satış fiyatı = tedarikçi fiyatı * markup.
     # 1.8 = %80 kâr. Ürün bazında override edilebilir.
     dropship_markup: float = 1.8

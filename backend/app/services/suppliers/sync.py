@@ -24,7 +24,7 @@ async def sync_one(db: AsyncSession, product: Product, reprice: bool) -> dict:
 
     Commit ETMEZ — çağıran tarafı commit eder.
     """
-    supplier = get_supplier()
+    supplier = get_supplier(product.supplier or "aliexpress")
     sp = await supplier.fetch_product(product.supplier_url or product.supplier_product_id or "")
     sale, cost = await compute_sale_price(sp.supplier_price, sp.currency)
 

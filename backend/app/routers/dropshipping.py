@@ -21,7 +21,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.deps import require_permission
 from app.models import AuditLog, Order, Product, StockMovement, User
-from app.services.suppliers import get_supplier
+from app.services.suppliers import get_supplier_for_url
 from app.services.suppliers.pricing import build_draft
 from app.services.suppliers.sync import sync_all as _sync_all_products
 from app.services.suppliers.sync import sync_one as _sync_product
@@ -39,7 +39,7 @@ async def preview(
     _: User = Depends(_can_import),
 ):
     """Tedarikçi ürününü çekip satış fiyatı hesaplanmış taslağı döndürür (DB'ye yazmaz)."""
-    supplier = get_supplier()
+    supplier = get_supplier_for_url(url)
     try:
         sp = await supplier.fetch_product(url)
     except Exception as e:
@@ -59,7 +59,7 @@ async def import_one(
 ):
     """Tedarikçi ürününü mağaza ürünü olarak ekler. Aynı supplier_product_id varsa
     çift kayıt engellenir (önce o ürünü güncellemen beklenir)."""
-    supplier = get_supplier()
+    supplier = get_supplier_for_url(url)
     try:
         sp = await supplier.fetch_product(url)
     except Exception as e:

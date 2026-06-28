@@ -21,6 +21,19 @@ async def test_preview_builds_draft_with_markup(auth_client):
 
 
 @pytest.mark.asyncio
+async def test_preview_detects_1688_source(auth_client):
+    r = await auth_client.get(
+        "/api/dropshipping/preview",
+        params={"url": "https://detail.1688.com/offer/987654321.html"},
+    )
+    assert r.status_code == 200, r.text
+    draft = r.json()["draft"]
+    assert draft["supplier"] == "1688"
+    assert draft["supplier_product_id"] == "987654321"
+    assert draft["price"] > draft["cost"] > 0
+
+
+@pytest.mark.asyncio
 async def test_custom_markup_changes_price(auth_client):
     url = "https://www.aliexpress.com/item/1005006789012345.html"
     low = (

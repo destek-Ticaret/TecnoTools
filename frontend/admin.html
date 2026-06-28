@@ -8535,9 +8535,9 @@ html, body { height: 100%; }
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10000;padding:1rem;';
     overlay.innerHTML = `<div style="background:var(--surface);color:var(--text);border-radius:14px;max-width:560px;width:100%;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:92vh;overflow:auto;">
       <h3 style="margin:0 0 .3rem;">Tedarikçiden Ürün Ekle</h3>
-      <p style="font-size:.82rem;color:var(--muted);margin:0 0 1rem;">AliExpress ürün linkini yapıştır, önizle, fiyatı ayarla ve ekle. Maliyet (tedarikçi fiyatı) otomatik kaydedilir.</p>
-      <label style="font-size:.8rem;font-weight:600;">Ürün linki / ID</label>
-      <input type="text" id="dsUrl" placeholder="https://www.aliexpress.com/item/100500...html" style="${_ttInput}margin:.3rem 0 .8rem;"/>
+      <p style="font-size:.82rem;color:var(--muted);margin:0 0 1rem;">AliExpress veya 1688.com ürün linkini yapıştır, önizle, fiyatı ayarla ve ekle. Kaynak linkten otomatik anlaşılır; maliyet (tedarikçi fiyatı) otomatik kaydedilir.</p>
+      <label style="font-size:.8rem;font-weight:600;">Ürün linki / ID (AliExpress veya 1688)</label>
+      <input type="text" id="dsUrl" placeholder="https://...aliexpress.com/item/...  veya  https://detail.1688.com/offer/...html" style="${_ttInput}margin:.3rem 0 .8rem;"/>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
         <div style="flex:1;min-width:120px;">
           <label style="font-size:.8rem;font-weight:600;">Kâr çarpanı</label>
