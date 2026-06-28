@@ -57,6 +57,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
 
+  <script src="js/i18n.js?v=1"></script>
   <script src="js/config.js"></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/api.js?v=20260626" defer></script>
@@ -1327,9 +1328,7 @@ html { scroll-behavior: smooth; }
     <div class="topbar-right">
       <a href="admin.html" id="adminPanelLink" style="display:none;">⚙️ <span class="lbl-admin">Admin Panel</span></a>
       <span class="sep" id="adminPanelSep" style="display:none;"></span>
-      <button type="button" id="langSwitchBtn" class="lang-switch" onclick="toggleLang()" title="Dil / Language" aria-label="Dil seçici">
-        <span id="langFlag">🇹🇷</span> <span id="langCode">TR</span>
-      </button>
+      <span id="ttLangMount" class="lang-switch" title="Dil / Language"></span>
     </div>
   </div>
 </div>
@@ -2835,26 +2834,11 @@ html { scroll-behavior: smooth; }
     });
   }
 
+  // Çeviri artık ortak js/i18n.js motoruna devredildi (6 dil: TR/EN/DE/FR/ES/IT).
+  // Bu fonksiyon geriye dönük uyumluluk için bırakıldı; sadece dile delege eder.
   function applyStoreI18n() {
-    const lang = storeLang();
-    // Update the legacy [data-i18n] elements (for elements explicitly tagged)
-    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = ts(el.dataset.i18n); });
-    document.documentElement.setAttribute('lang', lang);
-    // Update the switcher UI
-    const flag = document.getElementById('langFlag');
-    const code = document.getElementById('langCode');
-    if (flag && code) {
-      // Show the language you'd switch TO, so users know what clicking does
-      flag.textContent = lang === 'en' ? '🇹🇷' : '🇬🇧';
-      code.textContent = lang === 'en' ? 'TR' : 'EN';
-    }
-    if (lang === 'en') {
-      _walkAndTranslate(document.body, TR_EN);
-      _startObserver();
-    } else {
-      _stopObserver();
-      _walkAndTranslate(document.body, buildReverse());
-    }
+    if (window.TTI18n) { window.TTI18n.apply(); return; }
+    document.documentElement.setAttribute('lang', storeLang());
   }
 
   // Dil değişince pazar da değişir (tr → TR ürünleri, en → yurt dışı/dropship)
