@@ -13,22 +13,19 @@
 (function (global) {
   'use strict';
 
-  var LANGS = ['tr', 'en', 'de', 'fr', 'es', 'it'];
+  var LANGS = ['en', 'tr', 'de', 'fr', 'es', 'it'];
   var LANG_NAMES = { tr: 'Türkçe', en: 'English', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano' };
   var LANG_FLAGS = { tr: '🇹🇷', en: '🇬🇧', de: '🇩🇪', fr: '🇫🇷', es: '🇪🇸', it: '🇮🇹' };
 
   function storeLang() { return localStorage.getItem('tt_lang') || 'tr'; }
 
-  // İlk ziyarette tarayıcı diline göre dil + para birimi (bir kez).
+  // İlk ziyarette varsayılan dil İngilizce + EUR (uluslararası öncelik).
+  // Kullanıcı dil seçiciden değiştirebilir; seçim hatırlanır.
   (function initLocale() {
     try {
       if (!localStorage.getItem('tt_lang')) {
-        var nav = (navigator.language || navigator.userLanguage || 'tr').toLowerCase().slice(0, 2);
-        var lang = LANGS.indexOf(nav) >= 0 ? nav : 'en';
-        localStorage.setItem('tt_lang', lang);
-        if (!localStorage.getItem('tt_currency')) {
-          localStorage.setItem('tt_currency', lang === 'tr' ? 'TRY' : 'EUR');
-        }
+        localStorage.setItem('tt_lang', 'en');
+        if (!localStorage.getItem('tt_currency')) localStorage.setItem('tt_currency', 'EUR');
       }
     } catch (e) {}
   })();

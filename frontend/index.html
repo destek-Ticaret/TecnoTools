@@ -2718,18 +2718,12 @@ html { scroll-behavior: smooth; }
 
   function storeLang() { return localStorage.getItem('tt_lang') || 'tr'; }
 
-  // İlk ziyarette dil + para birimini tarayıcı diline göre otomatik belirle:
-  // Türkçe tarayıcı → TR + ₺; diğer (yurt dışı) → İngilizce + €. Bir kez yapılır,
-  // sonra kullanıcı dil butonuyla değiştirebilir.
+  // İlk ziyarette varsayılan dil İngilizce + EUR (uluslararası öncelik).
   (function initLocale() {
     try {
       if (!localStorage.getItem('tt_lang')) {
-        const nav = (navigator.language || navigator.userLanguage || 'tr').toLowerCase();
-        const isTR = nav.startsWith('tr');
-        localStorage.setItem('tt_lang', isTR ? 'tr' : 'en');
-        if (!localStorage.getItem('tt_currency')) {
-          localStorage.setItem('tt_currency', isTR ? 'TRY' : 'EUR');
-        }
+        localStorage.setItem('tt_lang', 'en');
+        if (!localStorage.getItem('tt_currency')) localStorage.setItem('tt_currency', 'EUR');
       }
     } catch (e) {}
   })();
