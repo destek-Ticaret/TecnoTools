@@ -51,3 +51,42 @@ async def test_import_creates_product_and_blocks_duplicate(auth_client):
 async def test_preview_requires_auth(client):
     r = await client.get("/api/dropshipping/preview", params={"url": "123456789"})
     assert r.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_sync_product(auth_client):
+    url = "https://www.aliexpress.com/item/1005006700011111.html"
+    pid = (await auth_client.post("/api/dropshipping/import", json={"url": url})).json()["id"]
+    r = await auth_client.post(f"/api/dropshipping/products/{pid}/sync", json={"reprice": True})
+    assert r.status_code == 200, r.text
+    assert r.json()["product_id"] == pid
+    assert "changes" in r.json()
+
+
+@pytest.mark.asyncio
+async def test_sync_non_supplier_product_rejected(auth_client):
+    # Tedarikçiye bağlı olmayan normal ürün oluştur
+    created = await auth_client.post(
+        "/api/products", json={"name": "Yerli Ürün", "price": 100, "stock": 5}
+    )
+    assert created.status_code in (200, 201), created.text
+    pid = created.json()["id"]
+    r = await auth_client.post(f"/api/dropshipping/products/{pid}/sync", json={})
+    assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_sync_all(auth_client):
+    await auth_client.post(
+        "/api/dropshipping/import",
+        json={"url": "https://www.aliexpress.com/item/1005006700022222.html"},
+    )
+    r = await auth_client.post("/api/dropshipping/sync", json={"reprice": True})
+    assert r.status_code == 200, r.text
+    assert r.json()["synced"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_fulfillment_404_for_missing_order(auth_client):
+    r = await auth_client.get("/api/dropshipping/orders/999999/fulfillment")
+    assert r.status_code == 404
