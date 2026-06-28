@@ -329,13 +329,18 @@
       sel.appendChild(o);
     }
     sel.onchange = function () { setLang(this.value); };
-    var base = 'padding:.35rem .5rem;border-radius:8px;border:1px solid rgba(128,128,128,.35);background:transparent;color:inherit;font:inherit;font-size:.85rem;cursor:pointer;';
+    // Açılır liste her zaman koyu zemin + beyaz yazı (beyaz-üstü-beyaz sorununu önler)
+    if (!document.getElementById('ttLangStyle')) {
+      var st = document.createElement('style');
+      st.id = 'ttLangStyle';
+      st.textContent = '#ttLangSelect{background:#111!important;color:#fff!important;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:.35rem .5rem;font:inherit;font-size:.85rem;cursor:pointer;}#ttLangSelect option{background:#111;color:#fff;}';
+      document.head.appendChild(st);
+    }
     var mount = document.getElementById('ttLangMount');
     if (mount) {
-      sel.style.cssText = base;
       mount.appendChild(sel);
     } else {
-      sel.style.cssText = base + 'position:fixed;top:10px;right:10px;z-index:99999;background:#fff;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.15);';
+      sel.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.25);';
       (document.body || document.documentElement).appendChild(sel);
     }
   }
