@@ -8540,8 +8540,8 @@ html, body { height: 100%; }
       <input type="text" id="dsUrl" placeholder="https://...aliexpress.com/item/...  veya  https://detail.1688.com/offer/...html" style="${_ttInput}margin:.3rem 0 .8rem;"/>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
         <div style="flex:1;min-width:120px;">
-          <label style="font-size:.8rem;font-weight:600;">Kâr çarpanı</label>
-          <input type="number" id="dsMarkup" step="0.1" min="1" placeholder="varsayılan" style="${_ttInput}margin-top:.3rem;"/>
+          <label style="font-size:.8rem;font-weight:600;">Kâr marjı (%)</label>
+          <input type="number" id="dsMarkup" step="1" min="0" placeholder="örn. 80" title="Maliyet üzerine eklenecek kâr yüzdesi (80 = %80 kâr)" style="${_ttInput}margin-top:.3rem;"/>
         </div>
         <div style="flex:2;min-width:160px;">
           <label style="font-size:.8rem;font-weight:600;">Kategori</label>
@@ -8562,7 +8562,8 @@ html, body { height: 100%; }
     overlay.querySelector('#dsCancel').onclick = close;
     const out = overlay.querySelector('#dsPreview');
     const goBtn = overlay.querySelector('#dsGo');
-    const getMarkup = () => { const v = parseFloat(overlay.querySelector('#dsMarkup').value); return isNaN(v) ? null : v; };
+    // Kullanıcı yüzde girer (80 = %80 kâr) → backend çarpan ister (1.8)
+    const getMarkup = () => { const v = parseFloat(overlay.querySelector('#dsMarkup').value); return isNaN(v) ? null : 1 + v / 100; };
 
     overlay.querySelector('#dsPrev').onclick = async () => {
       const url = overlay.querySelector('#dsUrl').value.trim();
@@ -8577,7 +8578,7 @@ html, body { height: 100%; }
           ${img}
           <div style="min-width:0;">
             <div style="font-weight:600;">${escapeHtml(d.name)}</div>
-            <div style="color:var(--muted);font-size:.8rem;margin:.2rem 0;">Maliyet: <b>${d.cost} ${escapeHtml(d.currency)}</b> · Markup ×${d.markup}</div>
+            <div style="color:var(--muted);font-size:.8rem;margin:.2rem 0;">Maliyet: <b>${d.cost} ${escapeHtml(d.currency)}</b> · Kâr marjı %${Math.round((d.markup - 1) * 100)}</div>
             <div style="font-size:1.05rem;font-weight:700;color:var(--success);">Satış: ${d.price} ${escapeHtml(d.currency)}</div>
             <div style="color:var(--muted);font-size:.75rem;margin-top:.2rem;">Stok: ${d.stock} · ${d.images ? d.images.length : 0} görsel · kaynak: ${escapeHtml(d.supplier)}</div>
           </div></div>
