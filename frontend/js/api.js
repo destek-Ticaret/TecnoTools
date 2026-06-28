@@ -658,6 +658,21 @@
       },
     },
 
+    /* ── Dropshipping — tedarikçiden ürün kaynaklama ── */
+    dropshipping: {
+      preview(url, markup = null) {
+        const params = { url };
+        if (markup != null) params.markup = markup;
+        return request('/api/dropshipping/preview', { auth: true, params });
+      },
+      importOne({ url, markup = null, categoryId = null, isActive = false }) {
+        const body = { url, is_active: isActive };
+        if (markup != null) body.markup = markup;
+        if (categoryId != null) body.category_id = categoryId;
+        return request('/api/dropshipping/import', { method: 'POST', auth: true, body });
+      },
+    },
+
     /* ── Canlı destek (chat) ── */
     chat: {
       /**

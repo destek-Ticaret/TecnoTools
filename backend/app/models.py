@@ -98,6 +98,16 @@ class Product(Base):
     features: Mapped[list | None] = mapped_column(JSONType, nullable=True)
     images: Mapped[list | None] = mapped_column(JSONType, nullable=True)  # list of URLs
     video_url: Mapped[str | None] = mapped_column(String(512), nullable=True)  # YouTube/Vimeo
+    # Dropshipping — ürün bir tedarikçiden geliyorsa kaynak bilgisi. Boşsa
+    # ürün kendi stoğumuzdandır. supplier_price = tedarikçideki alış fiyatı
+    # (cost ile aynı olabilir; senkronda cost güncellenir).
+    supplier: Mapped[str | None] = mapped_column(String(32), nullable=True)  # aliexpress | manual
+    supplier_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    supplier_product_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    supplier_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    supplier_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

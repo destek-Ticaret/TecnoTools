@@ -26,6 +26,7 @@ from app.routers import (
     coupons,
     currency,
     customer_auth,
+    dropshipping,
     events,
     exports,
     feeds,
@@ -201,6 +202,7 @@ app.include_router(blog.router)
 app.include_router(pages.router)
 app.include_router(pricing_rules.router)
 app.include_router(imports.router)
+app.include_router(dropshipping.router)
 
 
 @app.get("/api/health")

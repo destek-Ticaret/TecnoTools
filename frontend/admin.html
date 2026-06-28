@@ -1668,6 +1668,10 @@ html, body { height: 100%; }
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 İçe Aktar
               </button>
+              <button class="btn btn-ghost btn-sm" onclick="openDropshipSource()" title="Tedarikçi linkinden ürün ekle (AliExpress)">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9h18l-1.5 11a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8L3 9z"/><path d="M16 9V6a4 4 0 0 0-8 0v3"/></svg>
+                Tedarikçiden Ekle
+              </button>
               <button class="btn btn-primary btn-sm" onclick="openProductModal()">
                 <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Ürün Ekle
@@ -8480,6 +8484,88 @@ html, body { height: 100%; }
     };
     overlay.querySelector('#impDry').onclick = () => run(true);
     overlay.querySelector('#impGo').onclick = () => run(false);
+  }
+
+  /* ── Dropshipping: tedarikçi linkinden ürün ekle ── */
+  async function openDropshipSource() {
+    const cats = (typeof CATEGORIES_OBJ !== 'undefined' && CATEGORIES_OBJ.length)
+      ? CATEGORIES_OBJ : (await reloadAdminCategoriesFromBackend().catch(() => []));
+    const catOpts = '<option value="">— Kategori seç (opsiyonel) —</option>' +
+      (cats || []).map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10000;padding:1rem;';
+    overlay.innerHTML = `<div style="background:var(--surface);color:var(--text);border-radius:14px;max-width:560px;width:100%;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:92vh;overflow:auto;">
+      <h3 style="margin:0 0 .3rem;">Tedarikçiden Ürün Ekle</h3>
+      <p style="font-size:.82rem;color:var(--muted);margin:0 0 1rem;">AliExpress ürün linkini yapıştır, önizle, fiyatı ayarla ve ekle. Maliyet (tedarikçi fiyatı) otomatik kaydedilir.</p>
+      <label style="font-size:.8rem;font-weight:600;">Ürün linki / ID</label>
+      <input type="text" id="dsUrl" placeholder="https://www.aliexpress.com/item/100500...html" style="${_ttInput}margin:.3rem 0 .8rem;"/>
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;">
+          <label style="font-size:.8rem;font-weight:600;">Kâr çarpanı</label>
+          <input type="number" id="dsMarkup" step="0.1" min="1" placeholder="varsayılan" style="${_ttInput}margin-top:.3rem;"/>
+        </div>
+        <div style="flex:2;min-width:160px;">
+          <label style="font-size:.8rem;font-weight:600;">Kategori</label>
+          <select id="dsCat" style="${_ttInput}margin-top:.3rem;">${catOpts}</select>
+        </div>
+      </div>
+      <div style="margin-top:.6rem;"><label style="font-size:.85rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" id="dsActive" style="width:16px;height:16px;"/> Eklenince hemen yayınla (varsayılan: pasif, gözden geçir)</label></div>
+      <div id="dsPreview" style="font-size:.85rem;margin-top:1rem;"></div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
+        <button class="btn btn-ghost btn-sm" id="dsCancel">Kapat</button>
+        <button class="btn btn-ghost btn-sm" id="dsPrev">Önizle</button>
+        <button class="btn btn-primary btn-sm" id="dsGo" disabled>Ürünü Ekle</button>
+      </div></div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('#dsCancel').onclick = close;
+    const out = overlay.querySelector('#dsPreview');
+    const goBtn = overlay.querySelector('#dsGo');
+    const getMarkup = () => { const v = parseFloat(overlay.querySelector('#dsMarkup').value); return isNaN(v) ? null : v; };
+
+    overlay.querySelector('#dsPrev').onclick = async () => {
+      const url = overlay.querySelector('#dsUrl').value.trim();
+      if (!url) { showToast('Ürün linki girin', 'danger'); return; }
+      out.innerHTML = '<span style="color:var(--muted);">Tedarikçiden çekiliyor…</span>';
+      goBtn.disabled = true;
+      try {
+        const r = await api.dropshipping.preview(url, getMarkup());
+        const d = r.draft;
+        const img = (d.images && d.images[0]) ? `<img src="${escapeHtml(d.images[0])}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;" onerror="this.style.display='none'"/>` : '';
+        out.innerHTML = `<div style="display:flex;gap:.8rem;padding:.8rem;border:1px solid var(--border);border-radius:10px;background:var(--bg);">
+          ${img}
+          <div style="min-width:0;">
+            <div style="font-weight:600;">${escapeHtml(d.name)}</div>
+            <div style="color:var(--muted);font-size:.8rem;margin:.2rem 0;">Maliyet: <b>${d.cost} ${escapeHtml(d.currency)}</b> · Markup ×${d.markup}</div>
+            <div style="font-size:1.05rem;font-weight:700;color:var(--success);">Satış: ${d.price} ${escapeHtml(d.currency)}</div>
+            <div style="color:var(--muted);font-size:.75rem;margin-top:.2rem;">Stok: ${d.stock} · ${d.images ? d.images.length : 0} görsel · kaynak: ${escapeHtml(d.supplier)}</div>
+          </div></div>
+          <p style="font-size:.72rem;color:var(--muted);margin:.5rem 0 0;">Mod: ${escapeHtml(r.mode)}${r.mode === 'mock' ? ' (AliExpress API onayı gelince gerçek veriye geçilir)' : ''}</p>`;
+        goBtn.disabled = false;
+      } catch (e) { out.innerHTML = `<span style="color:var(--danger);">Hata: ${escapeHtml(e.message)}</span>`; }
+    };
+
+    overlay.querySelector('#dsGo').onclick = async () => {
+      const url = overlay.querySelector('#dsUrl').value.trim();
+      if (!url) return;
+      goBtn.disabled = true;
+      try {
+        const r = await api.dropshipping.importOne({
+          url,
+          markup: getMarkup(),
+          categoryId: overlay.querySelector('#dsCat').value ? parseInt(overlay.querySelector('#dsCat').value, 10) : null,
+          isActive: overlay.querySelector('#dsActive').checked,
+        });
+        showToast(`Ürün eklendi: ${r.name}`, 'success');
+        if (typeof renderProducts === 'function') renderProducts();
+        close();
+      } catch (e) {
+        showToast(e.message, 'danger');
+        goBtn.disabled = false;
+      }
+    };
   }
 
   /* ── DASHBOARD WIDGET ÖZELLEŞTİRME (admin-yerel, localStorage) ── */
