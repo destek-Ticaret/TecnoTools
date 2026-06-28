@@ -3,8 +3,9 @@
 Ürün fiyatları BASE_CURRENCY (varsayılan TRY) ile saklanır. Public API endpoint'i
 istemcinin sorgu parametresi (?currency=USD) ile döviz kuru uygular.
 
-Kur sağlayıcı: frankfurter.app — Avrupa Merkez Bankası verisi, API key gerekmiyor,
-ücretsiz, üretim kullanımına uygun.
+Kur sağlayıcı: frankfurter.dev — Avrupa Merkez Bankası verisi, API key gerekmiyor,
+ücretsiz, üretim kullanımına uygun. (Eski api.frankfurter.app artık .dev'e 301
+yönlendiriyor; yeni domain + redirect takibi kullanılır.)
 
 Cache: in-memory dict, 6 saat TTL.
 """
@@ -27,8 +28,8 @@ _LOCK = asyncio.Lock()
 
 async def _fetch_rates(base: str) -> dict:
     """Tüm desteklenen para birimleri için kur. Network hata → cache fallback."""
-    url = f"https://api.frankfurter.app/latest?from={base}"
-    async with httpx.AsyncClient(timeout=10) as client:
+    url = f"https://api.frankfurter.dev/v1/latest?from={base}"
+    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
         resp = await client.get(url)
         resp.raise_for_status()
         data = resp.json()
