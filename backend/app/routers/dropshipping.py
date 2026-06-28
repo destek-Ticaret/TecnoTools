@@ -12,8 +12,6 @@ Yetki: products.import (toplu içe aktarma ile aynı izin).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +22,9 @@ from app.database import get_db
 from app.deps import require_permission
 from app.models import AuditLog, Order, Product, StockMovement, User
 from app.services.suppliers import get_supplier
-from app.services.suppliers.pricing import build_draft, compute_sale_price
+from app.services.suppliers.pricing import build_draft
+from app.services.suppliers.sync import sync_all as _sync_all_products
+from app.services.suppliers.sync import sync_one as _sync_product
 
 settings = get_settings()
 
@@ -170,36 +170,6 @@ async def order_fulfillment(
     }
 
 
-async def _sync_product(db: AsyncSession, product: Product, reprice: bool) -> dict:
-    """Tek ürünü tedarikçiden tazeler: maliyet/stok güncelle, istenirse yeniden fiyatla."""
-    supplier = get_supplier()
-    sp = await supplier.fetch_product(product.supplier_url or product.supplier_product_id or "")
-    sale, cost = await compute_sale_price(sp.supplier_price, sp.currency)
-
-    changes: dict = {}
-    if product.supplier_price is None or float(product.supplier_price) != cost:
-        changes["cost"] = cost
-        product.cost = cost
-        product.supplier_price = cost
-    old_stock = product.stock or 0
-    if sp.stock != old_stock:
-        changes["stock"] = sp.stock
-        product.stock = sp.stock
-        db.add(
-            StockMovement(
-                product_id=product.id,
-                product_name=product.name,
-                delta=sp.stock - old_stock,
-                reason="dropship-sync",
-            )
-        )
-    if reprice and float(product.price) != sale:
-        changes["price"] = sale
-        product.price = sale
-    product.supplier_synced_at = datetime.now(UTC)
-    return {"product_id": product.id, "name": product.name, "changes": changes}
-
-
 @router.post("/products/{product_id}/sync")
 async def sync_product(
     product_id: int,
@@ -237,21 +207,13 @@ async def sync_all(
     user: User = Depends(_can_import),
 ):
     """Tüm tedarikçi (dropship) ürünlerini senkronla. Tek tek hatalar atlanır."""
-    products = (
-        (await db.execute(select(Product).where(Product.supplier.is_not(None)))).scalars().all()
-    )
-    results, errors = [], []
-    for p in products:
-        try:
-            results.append(await _sync_product(db, p, reprice))
-        except Exception as e:
-            errors.append({"product_id": p.id, "error": str(e)})
+    out = await _sync_all_products(db, reprice)
     db.add(
         AuditLog(
             actor=user.username,
             action="dropship-sync-all",
-            message=f"Toplu tedarikçi senkronu: {len(results)} ürün, {len(errors)} hata",
+            message=f"Toplu tedarikçi senkronu: {out['synced']} ürün, {len(out['errors'])} hata",
         )
     )
     await db.commit()
-    return {"synced": len(results), "errors": errors, "results": results}
+    return out

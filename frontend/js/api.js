@@ -671,6 +671,15 @@
         if (categoryId != null) body.category_id = categoryId;
         return request('/api/dropshipping/import', { method: 'POST', auth: true, body });
       },
+      orderFulfillment(orderId) {
+        return request(`/api/dropshipping/orders/${orderId}/fulfillment`, { auth: true });
+      },
+      syncProduct(productId, reprice = true) {
+        return request(`/api/dropshipping/products/${productId}/sync`, { method: 'POST', auth: true, body: { reprice } });
+      },
+      syncAll(reprice = true) {
+        return request('/api/dropshipping/sync', { method: 'POST', auth: true, body: { reprice } });
+      },
     },
 
     /* ── Canlı destek (chat) ── */
