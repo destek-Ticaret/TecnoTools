@@ -48,6 +48,22 @@ async def preview(
     return {"mode": settings.supplier_mode, "draft": draft}
 
 
+@router.get("/debug")
+async def debug_raw(
+    url: str = Query(..., description="Tedarikçi ürün linki veya ID"),
+    _: User = Depends(_can_import),
+):
+    """AliExpress ham API yanıtını döndürür — yalnız alan adlarını doğrulamak için.
+    Sadece live modda ve aliexpress kaynağı için çalışır."""
+    supplier = get_supplier_for_url(url)
+    if not hasattr(supplier, "fetch_raw"):
+        return {"note": "Bu kaynak/mod için ham yanıt yok (mock veya 1688).", "mode": settings.supplier_mode}
+    try:
+        return {"mode": settings.supplier_mode, "raw": await supplier.fetch_raw(url)}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+
 @router.post("/import")
 async def import_one(
     db: AsyncSession = Depends(get_db),
