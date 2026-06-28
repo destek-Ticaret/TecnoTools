@@ -190,7 +190,28 @@
     "Favorilerden kaldırıldı": { en:"Removed from favorites", de:"Aus Favoriten entfernt", fr:"Retiré des favoris", es:"Eliminado de favoritos", it:"Rimosso dai preferiti" },
     // Chat widget
     "Canlı destek": { en:"Live support", de:"Live-Support", fr:"Support en direct", es:"Soporte en vivo", it:"Supporto dal vivo" },
-    "Mesajınızı yazın...": { en:"Type your message...", de:"Nachricht eingeben...", fr:"Saisissez votre message...", es:"Escribe tu mensaje...", it:"Scrivi il tuo messaggio..." }
+    "Mesajınızı yazın...": { en:"Type your message...", de:"Nachricht eingeben...", fr:"Saisissez votre message...", es:"Escribe tu mensaje...", it:"Scrivi il tuo messaggio..." },
+    // Sayfa-özel (ürün / sepet / ödeme / hesap / takip)
+    "İçeriğe atla": { en:"Skip to content", de:"Zum Inhalt springen", fr:"Aller au contenu", es:"Saltar al contenido", it:"Vai al contenuto" },
+    "Ürün bilgisi yükleniyor…": { en:"Loading product…", de:"Produkt wird geladen…", fr:"Chargement du produit…", es:"Cargando producto…", it:"Caricamento prodotto…" },
+    "(0 ürün)": { en:"(0 items)", de:"(0 Artikel)", fr:"(0 articles)", es:"(0 artículos)", it:"(0 articoli)" },
+    "Sepeti boşalt": { en:"Empty cart", de:"Warenkorb leeren", fr:"Vider le panier", es:"Vaciar carrito", it:"Svuota carrello" },
+    "Mesafeli Satış": { en:"Distance Sales", de:"Fernabsatz", fr:"Vente à distance", es:"Venta a distancia", it:"Vendita a distanza" },
+    "Ödemeye Geç": { en:"Proceed to Payment", de:"Zur Zahlung", fr:"Passer au paiement", es:"Ir al pago", it:"Vai al pagamento" },
+    "Alışverişe devam": { en:"Continue shopping", de:"Weiter einkaufen", fr:"Continuer mes achats", es:"Seguir comprando", it:"Continua lo shopping" },
+    "Teslimat bilgilerini doldurun, kargo ve ödeme yöntemini seçin.": { en:"Enter your delivery details, choose shipping and payment.", de:"Geben Sie Ihre Lieferdaten ein und wählen Sie Versand und Zahlung.", fr:"Saisissez vos informations de livraison, choisissez l'expédition et le paiement.", es:"Introduce tus datos de entrega, elige envío y pago.", it:"Inserisci i dati di consegna, scegli spedizione e pagamento." },
+    "© TecnoTools — Güvenli ödeme · 256-bit SSL · Kutu açılmamışsa 14 gün içinde iade": { en:"© TecnoTools — Secure payment · 256-bit SSL · Returns within 14 days if the box is unopened", de:"© TecnoTools — Sichere Zahlung · 256-Bit-SSL · Rückgabe innerhalb von 14 Tagen bei ungeöffneter Verpackung", fr:"© TecnoTools — Paiement sécurisé · SSL 256 bits · Retour sous 14 jours si la boîte n'est pas ouverte", es:"© TecnoTools — Pago seguro · SSL de 256 bits · Devolución en 14 días si la caja está sin abrir", it:"© TecnoTools — Pagamento sicuro · SSL 256 bit · Reso entro 14 giorni se la confezione è chiusa" },
+    "İşleniyor…": { en:"Processing…", de:"Wird verarbeitet…", fr:"Traitement…", es:"Procesando…", it:"Elaborazione…" },
+    "Lütfen bekleyin.": { en:"Please wait.", de:"Bitte warten.", fr:"Veuillez patienter.", es:"Por favor, espera.", it:"Attendere prego." },
+    "Ödeme adımları": { en:"Payment steps", de:"Zahlungsschritte", fr:"Étapes de paiement", es:"Pasos de pago", it:"Passaggi di pagamento" },
+    "Sepete dön": { en:"Back to cart", de:"Zurück zum Warenkorb", fr:"Retour au panier", es:"Volver al carrito", it:"Torna al carrello" },
+    "Siparişleriniz, favorileriniz ve kişisel verileriniz.": { en:"Your orders, favorites and personal data.", de:"Ihre Bestellungen, Favoriten und persönlichen Daten.", fr:"Vos commandes, favoris et données personnelles.", es:"Tus pedidos, favoritos y datos personales.", it:"I tuoi ordini, preferiti e dati personali." },
+    "Siparişinizin kargo durumunu sorgulamak için sipariş no ve e-posta adresinizi girin.": { en:"Enter your order number and email to check your shipment status.", de:"Geben Sie Bestellnummer und E-Mail ein, um den Sendungsstatus zu prüfen.", fr:"Saisissez votre numéro de commande et votre e-mail pour suivre votre envoi.", es:"Introduce tu número de pedido y correo para ver el estado del envío.", it:"Inserisci numero d'ordine ed e-mail per controllare lo stato della spedizione." },
+    "Hesabınız var mı?": { en:"Have an account?", de:"Haben Sie ein Konto?", fr:"Vous avez un compte ?", es:"¿Tienes una cuenta?", it:"Hai un account?" },
+    "Üye girişi yapın": { en:"Sign in", de:"Anmelden", fr:"Connectez-vous", es:"Inicia sesión", it:"Accedi" },
+    "— tüm siparişlerinizi tek yerden görün.": { en:"— see all your orders in one place.", de:"— alle Bestellungen an einem Ort.", fr:"— voyez toutes vos commandes au même endroit.", es:"— ve todos tus pedidos en un solo lugar.", it:"— vedi tutti i tuoi ordini in un unico posto." },
+    "© TecnoTools — Sipariş Takip · Kargo Sorgu": { en:"© TecnoTools — Order Tracking · Shipment Lookup", de:"© TecnoTools — Sendungsverfolgung · Sendungsabfrage", fr:"© TecnoTools — Suivi de commande · Recherche d'envoi", es:"© TecnoTools — Seguimiento de pedido · Consulta de envío", it:"© TecnoTools — Tracciamento ordine · Ricerca spedizione" },
+    "örn: TT-2026-001234": { en:"e.g. TT-2026-001234", de:"z. B. TT-2026-001234", fr:"ex : TT-2026-001234", es:"p. ej. TT-2026-001234", it:"es. TT-2026-001234" }
   };
 
   // ── Çeviri motoru ──
