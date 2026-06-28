@@ -2807,6 +2807,17 @@ html, body { height: 100%; }
         </div>
         <div class="form-row single">
           <div class="form-field">
+            <label for="prodMarket">Pazar (hangi müşteriler görsün)</label>
+            <select id="prodMarket">
+              <option value="both">Her ikisi (TR + Yurt dışı)</option>
+              <option value="tr">Sadece Türkiye</option>
+              <option value="intl">Sadece Yurt dışı (dropshipping)</option>
+            </select>
+            <small style="color:var(--muted);font-size:.72rem;">TR vitrini Türkçe, yurt dışı vitrini İngilizce dil seçimine göre filtrelenir.</small>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-field">
             <label for="prodSub">Kısa Açıklama</label>
             <input type="text" id="prodSub" placeholder="Örn. 32 parça · Kromvanadyum çelik" />
           </div>
@@ -3170,6 +3181,7 @@ html, body { height: 100%; }
       images: imgs,
       image: imgs[0] || '',
       video: p.video_url || '',
+      market: p.market || 'both',
       is_active: p.is_active !== false,
       variants: Array.isArray(p.variants) ? p.variants : [],
     };
@@ -3190,6 +3202,7 @@ html, body { height: 100%; }
       features: Array.isArray(local.features) && local.features.length ? local.features : null,
       images: Array.isArray(local.images) && local.images.length ? local.images : null,
       video_url: local.video ? String(local.video).trim() : null,
+      market: local.market || 'both',
       is_active: local.is_active !== false,
       // Form'dan gelirse varyantları gönder (boş dizi = hepsini sil); başka
       // çağrılarda (ör. içe aktarma) yoksa null = dokunma
@@ -4698,6 +4711,7 @@ html, body { height: 100%; }
       document.getElementById('prodCost').value     = (p.cost != null ? p.cost : '');
       document.getElementById('prodStock').value = p.stock || 0;
       document.getElementById('prodVideo').value = p.video || '';
+      document.getElementById('prodMarket').value = p.market || 'both';
       document.getElementById('prodSub').value   = p.sub  || '';
       document.getElementById('prodDesc').value  = p.desc || '';
       editVariants = Array.isArray(p.variants) ? p.variants.map(v => ({ ...v })) : [];
@@ -4716,6 +4730,7 @@ html, body { height: 100%; }
       document.getElementById('prodIcon').value     = '📦';
       document.getElementById('prodOldPrice').value = '';
       document.getElementById('prodVideo').value    = '';
+      document.getElementById('prodMarket').value   = 'both';
       workingImages = [];
       primaryImageIdx = 0;
       editVariants = [];
@@ -4756,6 +4771,7 @@ html, body { height: 100%; }
       cost:  document.getElementById('prodCost').value !== '' ? parseFloat(document.getElementById('prodCost').value) : null,
       stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
       video: document.getElementById('prodVideo').value.trim(),
+      market: document.getElementById('prodMarket').value || 'both',
       sub:   document.getElementById('prodSub').value.trim(),
       desc:  document.getElementById('prodDesc').value.trim(),
       variants: editVariants,

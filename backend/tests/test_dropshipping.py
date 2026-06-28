@@ -103,3 +103,20 @@ async def test_sync_all(auth_client):
 async def test_fulfillment_404_for_missing_order(auth_client):
     r = await auth_client.get("/api/dropshipping/orders/999999/fulfillment")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_dropship_product_is_intl_market(auth_client, client):
+    # Dropship ürünü intl pazara gider, hemen yayınla
+    r = await auth_client.post(
+        "/api/dropshipping/import",
+        json={"url": "https://www.aliexpress.com/item/1005006712345678.html", "is_active": True},
+    )
+    pid = r.json()["id"]
+
+    # intl vitrininde görünür
+    intl = (await client.get("/api/products", params={"market": "intl"})).json()
+    assert any(p["id"] == pid for p in intl)
+    # tr vitrininde görünmez
+    tr = (await client.get("/api/products", params={"market": "tr"})).json()
+    assert all(p["id"] != pid for p in tr)

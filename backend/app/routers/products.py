@@ -97,10 +97,14 @@ async def list_products_public(
     category_id: int | None = Query(None),
     q: str | None = Query(None),
     currency: str | None = Query(None, description="Görüntülenecek para birimi (varsayılan: TRY)"),
+    market: str | None = Query(None, description="Pazar filtresi: tr | intl (boşsa tümü)"),
 ):
     stmt = select(Product).where(Product.is_active == True)  # noqa: E712
     if category_id:
         stmt = stmt.where(Product.category_id == category_id)
+    if market in ("tr", "intl"):
+        # İlgili pazarın ürünleri + her iki pazara açık olanlar
+        stmt = stmt.where(Product.market.in_([market, "both"]))
     if q:
         stmt = stmt.where(Product.name.ilike(f"%{q}%"))
     products = (await db.execute(stmt.order_by(Product.id.desc()))).scalars().unique().all()

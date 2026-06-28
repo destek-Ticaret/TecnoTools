@@ -178,6 +178,7 @@ class ProductIn(BaseModel):
     features: list[str] | None = None
     images: list[str] | None = None
     video_url: str | None = None
+    market: str = "both"  # tr | intl | both
     is_active: bool = True
     variants: list[ProductVariantIn] | None = None  # None = dokunma; [] = tümünü sil
 
@@ -200,6 +201,7 @@ class ProductOut(_ORMBase):
     features: list[str] | None
     images: list[str] | None
     video_url: str | None = None
+    market: str = "both"
     is_active: bool
     variants: list[ProductVariantOut] = []
 

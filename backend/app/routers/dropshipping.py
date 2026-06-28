@@ -90,6 +90,7 @@ async def import_one(
         supplier_url=draft["supplier_url"],
         supplier_product_id=draft["supplier_product_id"],
         supplier_price=draft["supplier_price"],
+        market="intl",  # dropship ürünleri yurt dışı pazara
         is_active=is_active,
     )
     db.add(product)

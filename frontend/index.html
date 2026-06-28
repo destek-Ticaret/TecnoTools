@@ -2841,15 +2841,27 @@ html { scroll-behavior: smooth; }
     }
   }
 
+  // Dil değişince pazar da değişir (tr → TR ürünleri, en → yurt dışı/dropship)
+  async function reloadProductsForMarket() {
+    try {
+      const list = await loadProductsFromBackend();
+      products = list;
+      safeSetItem('tt_products', JSON.stringify(products));
+      renderProducts();
+      if (typeof updateHeroStats === 'function') updateHeroStats(products);
+    } catch (_) {}
+  }
+
   window.toggleLang = function () {
     const next = storeLang() === 'en' ? 'tr' : 'en';
     try { localStorage.setItem('tt_lang', next); } catch (e) {}
     applyStoreI18n();
+    reloadProductsForMarket();
   };
 
   // Listen for admin / other tab language change
   window.addEventListener('storage', e => {
-    if (e.key === 'tt_lang') applyStoreI18n();
+    if (e.key === 'tt_lang') { applyStoreI18n(); reloadProductsForMarket(); }
   });
 
   /* Products are managed in admin.html and stored in localStorage('tt_products').

@@ -306,11 +306,15 @@
 
     products: {
       listPublic(opts = {}) {
+        // Pazar: TR dili → 'tr', diğer diller (en) → 'intl'. opts.market ile override edilebilir.
+        const lang = (localStorage.getItem('tt_lang') || 'tr');
+        const market = opts.market || (lang === 'tr' ? 'tr' : 'intl');
         return request('/api/products', {
           params: {
             session_id: getSessionId(),
             category_id: opts.categoryId,
             q: opts.query,
+            market,
             currency: opts.currency || localStorage.getItem('tt_currency') || undefined,
           },
         });

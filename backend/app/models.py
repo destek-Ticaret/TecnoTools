@@ -101,6 +101,9 @@ class Product(Base):
     # Dropshipping — ürün bir tedarikçiden geliyorsa kaynak bilgisi. Boşsa
     # ürün kendi stoğumuzdandır. supplier_price = tedarikçideki alış fiyatı
     # (cost ile aynı olabilir; senkronda cost güncellenir).
+    # Pazar hedefi: "tr" (sadece Türkiye), "intl" (sadece yurt dışı), "both" (her ikisi).
+    # Vitrin ziyaretçinin diline göre filtreler. Dropship ürünleri varsayılan "intl".
+    market: Mapped[str] = mapped_column(String(8), default="both", server_default="both")
     supplier: Mapped[str | None] = mapped_column(String(32), nullable=True)  # aliexpress | manual
     supplier_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     supplier_product_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
