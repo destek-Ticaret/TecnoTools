@@ -2719,6 +2719,22 @@ html { scroll-behavior: smooth; }
 
   function storeLang() { return localStorage.getItem('tt_lang') || 'tr'; }
 
+  // İlk ziyarette dil + para birimini tarayıcı diline göre otomatik belirle:
+  // Türkçe tarayıcı → TR + ₺; diğer (yurt dışı) → İngilizce + €. Bir kez yapılır,
+  // sonra kullanıcı dil butonuyla değiştirebilir.
+  (function initLocale() {
+    try {
+      if (!localStorage.getItem('tt_lang')) {
+        const nav = (navigator.language || navigator.userLanguage || 'tr').toLowerCase();
+        const isTR = nav.startsWith('tr');
+        localStorage.setItem('tt_lang', isTR ? 'tr' : 'en');
+        if (!localStorage.getItem('tt_currency')) {
+          localStorage.setItem('tt_currency', isTR ? 'TRY' : 'EUR');
+        }
+      }
+    } catch (e) {}
+  })();
+
   // Legacy key-based API kept for backwards compatibility (existing data-i18n attributes).
   const STORE_I18N = {
     tr: {
@@ -2854,9 +2870,14 @@ html { scroll-behavior: smooth; }
 
   window.toggleLang = function () {
     const next = storeLang() === 'en' ? 'tr' : 'en';
-    try { localStorage.setItem('tt_lang', next); } catch (e) {}
+    try {
+      localStorage.setItem('tt_lang', next);
+      // Dil ile para birimini eşle: İngilizce → €, Türkçe → ₺
+      localStorage.setItem('tt_currency', next === 'en' ? 'EUR' : 'TRY');
+    } catch (e) {}
     applyStoreI18n();
     reloadProductsForMarket();
+    if (typeof updateCart === 'function') updateCart();
   };
 
   // Listen for admin / other tab language change
