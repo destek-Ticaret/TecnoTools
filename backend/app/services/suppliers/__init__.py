@@ -1,23 +1,36 @@
 """Dropshipping tedarikçi adapterleri.
 
-Aktif moda (settings.supplier_mode) göre uygun adapter'ı döndürür. Mock ile
-geliştirme/test yapılır; AliExpress API anahtarları onaylanınca "aliexpress"
-moduna geçilir.
+Kaynak (aliexpress | 1688) URL'den tespit edilir. settings.supplier_mode ile
+mock/gerçek seçilir: "mock" → sahte veri (geliştirme/test); "live" → gerçek API
+(her kaynağın kendi adapter'ı). Geriye uyum: "aliexpress" değeri de "live" sayılır.
 """
 
 from app.config import get_settings
 from app.services.suppliers.base import SupplierAdapter, SupplierProduct
+from app.services.suppliers.util import detect_supplier
 
 
-def get_supplier() -> SupplierAdapter:
+def get_supplier(source: str = "aliexpress") -> SupplierAdapter:
+    """Verilen kaynak için uygun adapter'ı döndürür."""
     settings = get_settings()
-    if settings.supplier_mode == "aliexpress":
+    live = settings.supplier_mode in ("live", "aliexpress", "1688")
+    if live:
+        if source == "1688":
+            from app.services.suppliers.alibaba1688 import Alibaba1688Adapter
+
+            return Alibaba1688Adapter()
         from app.services.suppliers.aliexpress import AliExpressAdapter
 
         return AliExpressAdapter()
+
     from app.services.suppliers.mock import MockSupplierAdapter
 
-    return MockSupplierAdapter()
+    return MockSupplierAdapter(source)
 
 
-__all__ = ["SupplierAdapter", "SupplierProduct", "get_supplier"]
+def get_supplier_for_url(url_or_id: str) -> SupplierAdapter:
+    """URL'den kaynağı tespit edip uygun adapter'ı döndürür."""
+    return get_supplier(detect_supplier(url_or_id))
+
+
+__all__ = ["SupplierAdapter", "SupplierProduct", "get_supplier", "get_supplier_for_url"]
