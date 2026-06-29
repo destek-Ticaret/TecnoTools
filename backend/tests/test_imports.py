@@ -175,3 +175,15 @@ async def test_import_warns_on_unknown_category(auth_client):
     assert body["created"] == 1
     # Warning kaydı var
     assert any(e.get("warning") for e in body["errors"])
+
+
+async def test_import_auto_creates_category(auth_client):
+    """Olmayan kategori import sırasında otomatik oluşturulur ve ürüne atanır."""
+    csv_data = "name,price,stock,category\nMatkap,1299.90,5,Elektrikli\n".encode("utf-8")
+    files = {"file": ("p.csv", io.BytesIO(csv_data), "text/csv")}
+    r = await auth_client.post("/api/imports/products", files=files)
+    assert r.status_code == 200, r.text
+    assert r.json()["created"] == 1
+    # Kategori oluştu mu?
+    cats = (await auth_client.get("/api/categories")).json()
+    assert any(c["name"] == "Elektrikli" for c in cats)

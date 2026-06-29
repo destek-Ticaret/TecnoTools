@@ -174,8 +174,15 @@ async def import_products(
             if cat_name:
                 cat_id = cat_by_name.get(cat_name.lower())
                 if cat_id is None:
+                    # Kategori yoksa otomatik oluştur (import'u kolaylaştırır)
+                    if not dry_run:
+                        new_cat = Category(name=cat_name[:64])
+                        db.add(new_cat)
+                        await db.flush()
+                        cat_id = new_cat.id
+                    cat_by_name[cat_name.lower()] = cat_id
                     errors.append(
-                        {"row": idx, "error": f"kategori bulunamadı: {cat_name}", "warning": True}
+                        {"row": idx, "error": f"kategori oluşturuldu: {cat_name}", "warning": True}
                     )
 
             # is_active: dosyada sütun varsa kullan, yoksa mevcut değeri koru (yeni ürün: True)
