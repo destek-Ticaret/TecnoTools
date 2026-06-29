@@ -57,6 +57,9 @@ class AliExpressAdapter(SupplierAdapter):
             "target_currency": "USD",
             "target_language": "EN",
         }
+        # OAuth2 access_token (varsa) — ds.product.get yetki için gerekir
+        if settings.aliexpress_access_token:
+            params["access_token"] = settings.aliexpress_access_token
         params["sign"] = _sign(params, settings.aliexpress_app_secret)
         async with httpx.AsyncClient(timeout=30.0) as client:
             r = await client.get(API_GATEWAY, params=params)

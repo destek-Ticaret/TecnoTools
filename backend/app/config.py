@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     aliexpress_app_key: str = ""
     aliexpress_app_secret: str = ""
     aliexpress_tracking_id: str = ""  # affiliate/dropship tracking id
+    aliexpress_access_token: str = ""  # OAuth2 access_token (Token Query Tool'dan; 30 gün)
     # 1688 / Alibaba Açık Platform (open.1688.com) erişimi
     onesixeighteight_app_key: str = ""
     onesixeighteight_app_secret: str = ""
