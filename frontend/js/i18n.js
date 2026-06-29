@@ -19,14 +19,13 @@
 
   function storeLang() { return localStorage.getItem('tt_lang') || 'tr'; }
 
-  // İlk ziyarette varsayılan dil İngilizce + EUR (uluslararası öncelik).
-  // Kullanıcı dil seçiciden değiştirebilir; seçim hatırlanır.
+  // Varsayılan dil İngilizce; para birimi HER yüklemede dile göre senkronlanır
+  // (tr → TRY, diğer → EUR). Böylece eski TRY kalıntısı kalsa bile düzeltilir.
   (function initLocale() {
     try {
-      if (!localStorage.getItem('tt_lang')) {
-        localStorage.setItem('tt_lang', 'en');
-        if (!localStorage.getItem('tt_currency')) localStorage.setItem('tt_currency', 'EUR');
-      }
+      var lang = localStorage.getItem('tt_lang');
+      if (!lang) { lang = 'en'; localStorage.setItem('tt_lang', lang); }
+      localStorage.setItem('tt_currency', lang === 'tr' ? 'TRY' : 'EUR');
     } catch (e) {}
   })();
 

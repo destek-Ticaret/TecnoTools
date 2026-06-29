@@ -17,13 +17,12 @@
 
   const THEME_KEY = 'tt_theme';
 
-  // İlk ziyarette varsayılan dil İngilizce + EUR (uluslararası öncelik).
+  // Varsayılan dil İngilizce; para birimi her yüklemede dile göre senkronlanır.
   (function initLocale() {
     try {
-      if (!localStorage.getItem('tt_lang')) {
-        localStorage.setItem('tt_lang', 'en');
-        if (!localStorage.getItem('tt_currency')) localStorage.setItem('tt_currency', 'EUR');
-      }
+      var lang = localStorage.getItem('tt_lang');
+      if (!lang) { lang = 'en'; localStorage.setItem('tt_lang', lang); }
+      localStorage.setItem('tt_currency', lang === 'tr' ? 'TRY' : 'EUR');
     } catch (e) {}
   })();
 
