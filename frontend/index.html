@@ -5653,7 +5653,7 @@ html { scroll-behavior: smooth; }
     document.body.appendChild(modal);
 
     const listEl = modal.querySelector('#ttConsentList');
-    const current = (api && api.privacy && api.privacy.readConsent) ? api.privacy.readConsent() : { essential: true, preference: false, analytics: false, marketing: false };
+    const current = (window.api && api.privacy && api.privacy.readConsent) ? api.privacy.readConsent() : { essential: true, preference: false, analytics: false, marketing: false };
     CATEGORIES.forEach(cat => {
       const row = document.createElement('label');
       row.style.cssText = 'display:flex;align-items:flex-start;gap:.7rem;padding:.7rem .8rem;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;background:#f8fafc;';
