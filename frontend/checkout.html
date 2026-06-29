@@ -316,7 +316,7 @@ let lookupDebounce = null;
 /* ── HELPERS ── */
 const $ = sel => document.querySelector(sel);
 // escapeHtml / escapeAttr → js/common.js (ortak)
-const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = n => (window.TTI18n ? TTI18n.formatPrice(n) : '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const EMAIL_KEY = 'tt_last_order_email';
 const CONSENT_KEY = 'tt_consent_v2';
 const COUPON_SESSION_KEY = 'tt_coupon_for_checkout';

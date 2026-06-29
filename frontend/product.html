@@ -494,7 +494,7 @@
   /* ── Helpers ── */
   const $ = sel => document.querySelector(sel);
   // escapeHtml / escapeAttr → js/common.js (ortak)
-  const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = n => (window.TTI18n ? TTI18n.formatPrice(n) : '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : '';
   const getId = () => {
     const u = new URLSearchParams(location.search);

@@ -209,7 +209,7 @@ let shippingEvents = null;
 /* ── HELPERS ── */
 const $ = sel => document.querySelector(sel);
 // escapeHtml / escapeAttr → js/common.js (ortak)
-const fmt = n => '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = n => (window.TTI18n ? TTI18n.formatPrice(n) : '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const fmtDate = iso => iso ? new Date(iso).toLocaleString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const STATUS_LABEL = {
   pending: 'Beklemede', processing: 'Hazırlanıyor', shipped: 'Kargoda',

@@ -19,15 +19,30 @@
 
   function storeLang() { return localStorage.getItem('tt_lang') || 'tr'; }
 
-  // Varsayılan dil İngilizce; para birimi HER yüklemede dile göre senkronlanır
-  // (tr → TRY, diğer → EUR). Böylece eski TRY kalıntısı kalsa bile düzeltilir.
+  // Varsayılan: dil İngilizce, para birimi EUR (ilk ziyarette). Dil ve kur
+  // AYRI seçicilerle yönetilir; kullanıcı kuru bağımsız değiştirebilir.
   (function initLocale() {
     try {
-      var lang = localStorage.getItem('tt_lang');
-      if (!lang) { lang = 'en'; localStorage.setItem('tt_lang', lang); }
-      localStorage.setItem('tt_currency', lang === 'tr' ? 'TRY' : 'EUR');
+      if (!localStorage.getItem('tt_lang')) localStorage.setItem('tt_lang', 'en');
+      if (!localStorage.getItem('tt_currency')) localStorage.setItem('tt_currency', 'EUR');
     } catch (e) {}
   })();
+
+  // ── Para birimi ──
+  var CUR_SYM = { TRY: '₺', USD: '$', EUR: '€', GBP: '£' };
+  var CURRENCIES = ['EUR', 'USD', 'TRY'];
+  function currency() { return localStorage.getItem('tt_currency') || 'EUR'; }
+  function setCurrency(c) {
+    if (CURRENCIES.indexOf(c) < 0) return;
+    try { localStorage.setItem('tt_currency', c); } catch (e) {}
+    location.reload();
+  }
+  function formatPrice(n) {
+    var c = currency();
+    var sym = CUR_SYM[c] || (c + ' ');
+    var loc = c === 'TRY' ? 'tr-TR' : 'en-US';
+    return sym + Number(n || 0).toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
   // ── Sözlük: Türkçe ifade → { dil: çeviri }. Eksik dil EN'e, o da yoksa TR'ye düşer.
   var DICT = {
@@ -318,40 +333,61 @@
   // Dil değiştir: dil + para birimi kaydet, sayfayı yeniden yükle (temiz çeviri)
   function setLang(code) {
     if (LANGS.indexOf(code) < 0) return;
-    try {
-      localStorage.setItem('tt_lang', code);
-      localStorage.setItem('tt_currency', code === 'tr' ? 'TRY' : 'EUR');
-    } catch (e) {}
+    try { localStorage.setItem('tt_lang', code); } catch (e) {}
     location.reload();
   }
 
-  // Dil seçici <select> üret ve sayfadaki #ttLangMount'a koy; yoksa sağ üste sabitle.
+  var CUR_NAMES = { TRY: 'Türk Lirası', USD: 'Dolar', EUR: 'Euro' };
+
+  // Dil + kur seçicilerini üret; #ttLangMount'a koy, yoksa sağ üste sabitle.
   function buildSwitcher() {
     if (document.getElementById('ttLangSelect')) return;
-    var sel = document.createElement('select');
-    sel.id = 'ttLangSelect';
-    sel.setAttribute('aria-label', 'Language');
+    // Ortak koyu stil (beyaz-üstü-beyaz sorununu önler)
+    if (!document.getElementById('ttLangStyle')) {
+      var st = document.createElement('style');
+      st.id = 'ttLangStyle';
+      st.textContent = '.tt-switch{background:#111!important;color:#fff!important;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:.35rem .5rem;font:inherit;font-size:.85rem;cursor:pointer;}.tt-switch option{background:#111;color:#fff;}';
+      document.head.appendChild(st);
+    }
+
+    var langSel = document.createElement('select');
+    langSel.id = 'ttLangSelect';
+    langSel.className = 'tt-switch';
+    langSel.setAttribute('aria-label', 'Language');
     for (var i = 0; i < LANGS.length; i++) {
       var o = document.createElement('option');
       o.value = LANGS[i];
       o.textContent = LANG_FLAGS[LANGS[i]] + ' ' + LANG_NAMES[LANGS[i]];
       if (LANGS[i] === storeLang()) o.selected = true;
-      sel.appendChild(o);
+      langSel.appendChild(o);
     }
-    sel.onchange = function () { setLang(this.value); };
-    // Açılır liste her zaman koyu zemin + beyaz yazı (beyaz-üstü-beyaz sorununu önler)
-    if (!document.getElementById('ttLangStyle')) {
-      var st = document.createElement('style');
-      st.id = 'ttLangStyle';
-      st.textContent = '#ttLangSelect{background:#111!important;color:#fff!important;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:.35rem .5rem;font:inherit;font-size:.85rem;cursor:pointer;}#ttLangSelect option{background:#111;color:#fff;}';
-      document.head.appendChild(st);
+    langSel.onchange = function () { setLang(this.value); };
+
+    var curSel = document.createElement('select');
+    curSel.id = 'ttCurSelect';
+    curSel.className = 'tt-switch';
+    curSel.setAttribute('aria-label', 'Currency');
+    curSel.style.marginLeft = '.4rem';
+    for (var j = 0; j < CURRENCIES.length; j++) {
+      var c = CURRENCIES[j];
+      var co = document.createElement('option');
+      co.value = c;
+      co.textContent = CUR_SYM[c] + ' ' + CUR_NAMES[c];
+      if (c === currency()) co.selected = true;
+      curSel.appendChild(co);
     }
+    curSel.onchange = function () { setCurrency(this.value); };
+
     var mount = document.getElementById('ttLangMount');
     if (mount) {
-      mount.appendChild(sel);
+      mount.appendChild(langSel);
+      mount.appendChild(curSel);
     } else {
-      sel.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;box-shadow:0 2px 8px rgba(0,0,0,.25);';
-      (document.body || document.documentElement).appendChild(sel);
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;display:flex;box-shadow:0 2px 8px rgba(0,0,0,.25);';
+      wrap.appendChild(langSel);
+      wrap.appendChild(curSel);
+      (document.body || document.documentElement).appendChild(wrap);
     }
   }
 
@@ -373,6 +409,7 @@
   // Global API (index.html gibi kendi mantığı olan sayfalar kullanabilir)
   global.TTI18n = {
     langs: LANGS, names: LANG_NAMES, flags: LANG_FLAGS,
-    storeLang: storeLang, setLang: setLang, apply: applyI18n, dict: DICT
+    storeLang: storeLang, setLang: setLang, apply: applyI18n, dict: DICT,
+    currency: currency, setCurrency: setCurrency, formatPrice: formatPrice, currencies: CURRENCIES
   };
 })(window);
