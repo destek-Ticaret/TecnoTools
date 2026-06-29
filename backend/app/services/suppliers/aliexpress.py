@@ -36,6 +36,11 @@ class AliExpressAdapter(SupplierAdapter):
     code = "aliexpress"
     display_name = "AliExpress"
 
+    def __init__(self) -> None:
+        # Router/sync, DB'den geçerli OAuth token'ı buraya enjekte eder.
+        # Yoksa env'deki manuel token'a düşer.
+        self.access_token = settings.aliexpress_access_token or ""
+
     def is_configured(self) -> bool:
         return bool(settings.aliexpress_app_key and settings.aliexpress_app_secret)
 
@@ -58,8 +63,8 @@ class AliExpressAdapter(SupplierAdapter):
             "target_language": "EN",
         }
         # OAuth2 access_token (varsa) — ds.product.get yetki için gerekir
-        if settings.aliexpress_access_token:
-            params["access_token"] = settings.aliexpress_access_token
+        if self.access_token:
+            params["access_token"] = self.access_token
         params["sign"] = _sign(params, settings.aliexpress_app_secret)
         async with httpx.AsyncClient(timeout=30.0) as client:
             r = await client.get(API_GATEWAY, params=params)

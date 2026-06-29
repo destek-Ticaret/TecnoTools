@@ -25,6 +25,15 @@ async def sync_one(db: AsyncSession, product: Product, reprice: bool) -> dict:
     Commit ETMEZ — çağıran tarafı commit eder.
     """
     supplier = get_supplier(product.supplier or "aliexpress")
+    # AliExpress ise DB'deki geçerli OAuth token'ı enjekte et
+    from app.services.suppliers.aliexpress import AliExpressAdapter
+
+    if isinstance(supplier, AliExpressAdapter):
+        from app.services.suppliers.aliexpress_oauth import get_valid_token
+
+        tok = await get_valid_token(db)
+        if tok:
+            supplier.access_token = tok
     sp = await supplier.fetch_product(product.supplier_url or product.supplier_product_id or "")
     sale, cost = await compute_sale_price(sp.supplier_price, sp.currency)
 

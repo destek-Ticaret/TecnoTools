@@ -482,6 +482,20 @@ class SiteSetting(Base):
     )
 
 
+class OAuthToken(Base):
+    """Tedarikçi OAuth token'ları — GİZLİ (public ayarlardan ayrı tutulur).
+    provider: "aliexpress" gibi. access/refresh token + son geçerlilik (epoch sn)."""
+
+    __tablename__ = "oauth_tokens"
+    provider: Mapped[str] = mapped_column(String(32), primary_key=True)
+    access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expire_at: Mapped[int | None] = mapped_column(Integer, nullable=True)  # epoch saniye
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class OrderCounter(Base):
     """Sipariş numarası counter — yıl bazlı tek satır."""
 

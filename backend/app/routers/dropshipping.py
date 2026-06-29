@@ -22,6 +22,8 @@ from app.database import get_db
 from app.deps import require_permission
 from app.models import AuditLog, Order, Product, StockMovement, User
 from app.services.suppliers import get_supplier_for_url
+from app.services.suppliers.aliexpress import AliExpressAdapter
+from app.services.suppliers.aliexpress_oauth import authorize_url, exchange_code, get_valid_token
 from app.services.suppliers.pricing import build_draft
 from app.services.suppliers.sync import sync_all as _sync_all_products
 from app.services.suppliers.sync import sync_one as _sync_product
@@ -32,14 +34,25 @@ router = APIRouter(prefix="/api/dropshipping", tags=["dropshipping"])
 _can_import = require_permission("products.import")
 
 
+async def _supplier_for(url: str, db: AsyncSession):
+    """URL'ye göre adapter; AliExpress ise DB'deki geçerli OAuth token'ı enjekte eder."""
+    supplier = get_supplier_for_url(url)
+    if isinstance(supplier, AliExpressAdapter):
+        tok = await get_valid_token(db)
+        if tok:
+            supplier.access_token = tok
+    return supplier
+
+
 @router.get("/preview")
 async def preview(
     url: str = Query(..., description="Tedarikçi ürün linki veya ID"),
     markup: float | None = Query(None, gt=0, description="Kâr çarpanı (boşsa varsayılan)"),
+    db: AsyncSession = Depends(get_db),
     _: User = Depends(_can_import),
 ):
     """Tedarikçi ürününü çekip satış fiyatı hesaplanmış taslağı döndürür (DB'ye yazmaz)."""
-    supplier = get_supplier_for_url(url)
+    supplier = await _supplier_for(url, db)
     try:
         sp = await supplier.fetch_product(url)
     except Exception as e:
@@ -48,14 +61,42 @@ async def preview(
     return {"mode": settings.supplier_mode, "draft": draft}
 
 
+@router.get("/oauth/url")
+async def oauth_url(_: User = Depends(_can_import)):
+    """AliExpress yetkilendirme linkini döndürür. Admin bu linke gidip hesabı yetkilendirir."""
+    return {"authorize_url": authorize_url(), "redirect_uri": settings.api_public_url or "https://api.tecnotools.org"}
+
+
+@router.get("/oauth/exchange")
+async def oauth_exchange(
+    code: str = Query(..., description="authorize sonrası adres çubuğundaki code"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(_can_import),
+):
+    """authorize sonrası gelen code'u access_token'a çevirip GİZLİ tabloya kaydeder."""
+    try:
+        data = await exchange_code(db, code)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    db.add(AuditLog(actor=user.username, action="aliexpress-oauth", message="AliExpress token alındı"))
+    await db.commit()
+    return {
+        "ok": True,
+        "expires_in": data.get("expires_in"),
+        "has_refresh": bool(data.get("refresh_token")),
+        "note": "Token kaydedildi. Artık Tedarikçiden Ekle gerçek veriyle çalışır.",
+    }
+
+
 @router.get("/debug")
 async def debug_raw(
     url: str = Query(..., description="Tedarikçi ürün linki veya ID"),
+    db: AsyncSession = Depends(get_db),
     _: User = Depends(_can_import),
 ):
     """AliExpress ham API yanıtını döndürür — yalnız alan adlarını doğrulamak için.
     Sadece live modda ve aliexpress kaynağı için çalışır."""
-    supplier = get_supplier_for_url(url)
+    supplier = await _supplier_for(url, db)
     if not hasattr(supplier, "fetch_raw"):
         return {"note": "Bu kaynak/mod için ham yanıt yok (mock veya 1688).", "mode": settings.supplier_mode}
     try:
@@ -75,7 +116,7 @@ async def import_one(
 ):
     """Tedarikçi ürününü mağaza ürünü olarak ekler. Aynı supplier_product_id varsa
     çift kayıt engellenir (önce o ürünü güncellemen beklenir)."""
-    supplier = get_supplier_for_url(url)
+    supplier = await _supplier_for(url, db)
     try:
         sp = await supplier.fetch_product(url)
     except Exception as e:
