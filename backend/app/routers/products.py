@@ -256,13 +256,23 @@ async def search_autocomplete(
 
 @router.get("/{product_id}", response_model=ProductPublicOut)
 async def get_product_public(
-    product_id: int, db: AsyncSession = Depends(get_db), session_id: str | None = Query(None)
+    product_id: int,
+    db: AsyncSession = Depends(get_db),
+    session_id: str | None = Query(None),
+    currency: str | None = Query(None, description="Görüntülenecek para birimi (varsayılan: TRY)"),
 ):
     p = (await db.execute(select(Product).where(Product.id == product_id))).scalar_one_or_none()
     if not p or not p.is_active:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
     reserved = await _effective_stock_map(db, [p.id], session_id)
     eff = _effective_stock(p, reserved.get(p.id, 0))
+
+    # Kur uygula (BASE_CURRENCY → istenen) — liste endpoint'i ile aynı mantık
+    rate = 1.0
+    target_cur = (currency or _cfg.base_currency).upper()
+    if target_cur != _cfg.base_currency and is_supported(target_cur):
+        rate = await get_rate(_cfg.base_currency, target_cur)
+
     return ProductPublicOut(
         id=p.id,
         name=p.name,
@@ -271,8 +281,8 @@ async def get_product_public(
         icon=p.icon,
         category_id=p.category_id,
         category=p.category,
-        price=float(p.price),
-        old_price=float(p.old_price) if p.old_price is not None else None,
+        price=convert(float(p.price), rate),
+        old_price=convert(float(p.old_price), rate) if p.old_price is not None else None,
         effective_stock=eff,
         rating=float(p.rating or 0),
         review_count=p.review_count or 0,
@@ -280,7 +290,7 @@ async def get_product_public(
         features=p.features,
         images=p.images,
         video_url=p.video_url,
-        variants=_variants_public(p, 1.0),
+        variants=_variants_public(p, rate),
     )
 
 
