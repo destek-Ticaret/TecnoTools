@@ -2718,12 +2718,12 @@ html { scroll-behavior: smooth; }
 
   function storeLang() { return localStorage.getItem('tt_lang') || 'tr'; }
 
-  // Varsayılan dil İngilizce; para birimi her yüklemede dile göre senkronlanır.
+  // Varsayılan: dil İngilizce, para birimi EUR (ilk ziyarette). Kur ayrı seçici ile
+  // yönetilir; kullanıcının seçimi ezilmesin diye SADECE yoksa atanır.
   (function initLocale() {
     try {
-      let lang = localStorage.getItem('tt_lang');
-      if (!lang) { lang = 'en'; localStorage.setItem('tt_lang', lang); }
-      localStorage.setItem('tt_currency', lang === 'tr' ? 'TRY' : 'EUR');
+      if (!localStorage.getItem('tt_lang')) localStorage.setItem('tt_lang', 'en');
+      if (!localStorage.getItem('tt_currency')) localStorage.setItem('tt_currency', 'EUR');
     } catch (e) {}
   })();
 
