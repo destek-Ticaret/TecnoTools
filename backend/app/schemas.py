@@ -179,6 +179,7 @@ class ProductIn(BaseModel):
     images: list[str] | None = None
     video_url: str | None = None
     market: str = "both"  # tr | intl | both
+    max_per_order: int | None = Field(default=None, ge=1)  # sipariş başına azami adet
     is_active: bool = True
     variants: list[ProductVariantIn] | None = None  # None = dokunma; [] = tümünü sil
 
@@ -202,6 +203,7 @@ class ProductOut(_ORMBase):
     images: list[str] | None
     video_url: str | None = None
     market: str = "both"
+    max_per_order: int | None = None
     is_active: bool
     variants: list[ProductVariantOut] = []
 
@@ -225,6 +227,7 @@ class ProductPublicOut(_ORMBase):
     features: list[str] | None
     images: list[str] | None
     video_url: str | None = None
+    max_per_order: int | None = None
     variants: list[ProductVariantPublicOut] = []
 
 

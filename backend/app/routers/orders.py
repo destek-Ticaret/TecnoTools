@@ -131,6 +131,12 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
         p = pmap.get(it.product_id)
         if not p or not p.is_active:
             raise HTTPException(status_code=400, detail=f"Ürün bulunamadı: #{it.product_id}")
+        # Sipariş başına maksimum adet sınırı
+        if p.max_per_order is not None and it.qty > p.max_per_order:
+            raise HTTPException(
+                status_code=409,
+                detail=f"{p.name}: bu üründen sipariş başına en fazla {p.max_per_order} adet alınabilir",
+            )
         active_variants = [v for v in p.variants if v.is_active]
         if active_variants:
             # Varyantlı ürün → seçim zorunlu, ürüne ait + aktif olmalı

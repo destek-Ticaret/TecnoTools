@@ -139,6 +139,7 @@ async def list_products_public(
                 features=p.features,
                 images=p.images,
                 video_url=p.video_url,
+                max_per_order=p.max_per_order,
                 variants=_variants_public(p, rate),
             )
         )
@@ -290,6 +291,7 @@ async def get_product_public(
         features=p.features,
         images=p.images,
         video_url=p.video_url,
+        max_per_order=p.max_per_order,
         variants=_variants_public(p, rate),
     )
 

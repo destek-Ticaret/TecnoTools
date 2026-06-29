@@ -104,6 +104,8 @@ class Product(Base):
     # Pazar hedefi: "tr" (sadece Türkiye), "intl" (sadece yurt dışı), "both" (her ikisi).
     # Vitrin ziyaretçinin diline göre filtreler. Dropship ürünleri varsayılan "intl".
     market: Mapped[str] = mapped_column(String(8), default="both", server_default="both")
+    # Sipariş başına maksimum adet sınırı (None = sınırsız). Örn. 1 → kişi başı 1 adet.
+    max_per_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     supplier: Mapped[str | None] = mapped_column(String(32), nullable=True)  # aliexpress | manual
     supplier_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     supplier_product_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)

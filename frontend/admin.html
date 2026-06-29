@@ -2822,6 +2822,13 @@ html, body { height: 100%; }
         </div>
         <div class="form-row single">
           <div class="form-field">
+            <label for="prodMaxPerOrder">Sipariş başına azami adet (opsiyonel)</label>
+            <input type="number" id="prodMaxPerOrder" min="1" step="1" placeholder="boş = sınırsız (örn. 1)" />
+            <small style="color:var(--muted);font-size:.72rem;">Boş bırakılırsa sınırsız. Örn. 1 yazarsan bir siparişte bu üründen en fazla 1 adet alınır.</small>
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-field">
             <label for="prodSub">Kısa Açıklama</label>
             <input type="text" id="prodSub" placeholder="Örn. 32 parça · Kromvanadyum çelik" />
           </div>
@@ -3186,6 +3193,7 @@ html, body { height: 100%; }
       image: imgs[0] || '',
       video: p.video_url || '',
       market: p.market || 'both',
+      maxPerOrder: p.max_per_order != null ? Number(p.max_per_order) : null,
       is_active: p.is_active !== false,
       variants: Array.isArray(p.variants) ? p.variants : [],
     };
@@ -3207,6 +3215,7 @@ html, body { height: 100%; }
       images: Array.isArray(local.images) && local.images.length ? local.images : null,
       video_url: local.video ? String(local.video).trim() : null,
       market: local.market || 'both',
+      max_per_order: (local.maxPerOrder != null && local.maxPerOrder > 0) ? Number(local.maxPerOrder) : null,
       is_active: local.is_active !== false,
       // Form'dan gelirse varyantları gönder (boş dizi = hepsini sil); başka
       // çağrılarda (ör. içe aktarma) yoksa null = dokunma
@@ -4716,6 +4725,7 @@ html, body { height: 100%; }
       document.getElementById('prodStock').value = p.stock || 0;
       document.getElementById('prodVideo').value = p.video || '';
       document.getElementById('prodMarket').value = p.market || 'both';
+      document.getElementById('prodMaxPerOrder').value = (p.maxPerOrder != null ? p.maxPerOrder : '');
       document.getElementById('prodSub').value   = p.sub  || '';
       document.getElementById('prodDesc').value  = p.desc || '';
       editVariants = Array.isArray(p.variants) ? p.variants.map(v => ({ ...v })) : [];
@@ -4735,6 +4745,7 @@ html, body { height: 100%; }
       document.getElementById('prodOldPrice').value = '';
       document.getElementById('prodVideo').value    = '';
       document.getElementById('prodMarket').value   = 'both';
+      document.getElementById('prodMaxPerOrder').value = '';
       workingImages = [];
       primaryImageIdx = 0;
       editVariants = [];
@@ -4776,6 +4787,7 @@ html, body { height: 100%; }
       stock: parseInt(document.getElementById('prodStock').value, 10) || 0,
       video: document.getElementById('prodVideo').value.trim(),
       market: document.getElementById('prodMarket').value || 'both',
+      maxPerOrder: document.getElementById('prodMaxPerOrder').value !== '' ? parseInt(document.getElementById('prodMaxPerOrder').value, 10) : null,
       sub:   document.getElementById('prodSub').value.trim(),
       desc:  document.getElementById('prodDesc').value.trim(),
       variants: editVariants,

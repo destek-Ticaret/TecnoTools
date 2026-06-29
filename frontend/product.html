@@ -1075,8 +1075,15 @@
   /* ── Qty + sepete ekle ── */
   function setQty(n) {
     const stock = currentStock();
-    qty = Math.max(1, Math.min(stock || 999, n || 1));
+    let cap = stock || 999;
+    // Sipariş başına azami adet sınırı
+    if (PRODUCT && PRODUCT.max_per_order) cap = Math.min(cap, PRODUCT.max_per_order);
+    qty = Math.max(1, Math.min(cap, n || 1));
     const el = $('#qtyInput'); if (el) el.value = qty;
+    // Sınıra ulaşıldıysa kısa bilgi
+    if (PRODUCT && PRODUCT.max_per_order && qty >= PRODUCT.max_per_order && (n || 1) > PRODUCT.max_per_order) {
+      showToast(`Bu üründen sipariş başına en fazla ${PRODUCT.max_per_order} adet alınabilir`, 'warning');
+    }
   }
   function onAdd() {
     if (activeVariants().length && !selectedVariant) { showToast('Lütfen bir seçenek seçin', 'warning'); return; }

@@ -188,3 +188,24 @@ async def test_cancel_before_fulfill_keeps_stock(auth_client):
     pid, order_no = await _wire_order(auth_client, stock=4, qty=1)
     await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "cancelled"})
     assert await _eff_stock(auth_client, pid) == 4  # hiç düşmedi → geri ekleme de yok
+
+
+async def test_max_per_order_enforced(auth_client):
+    """max_per_order=1 olan üründen 2 adet alınamaz."""
+    pr = await auth_client.post(
+        "/api/products", json={"name": "Sınırlı Ürün", "price": 50, "stock": 10, "max_per_order": 1}
+    )
+    pid = pr.json()["id"]
+    payload = {
+        "items": [{"product_id": pid, "qty": 2}],
+        "customer_name": "Ali Veli",
+        "customer_email": "ali@example.com",
+        "customer_phone": "+905551112233",
+        "customer_address": "Mahalle Sokak No:1 Daire:5",
+    }
+    r = await auth_client.post("/api/orders/checkout", json=payload)
+    assert r.status_code == 409, r.text
+    # 1 adet kabul edilir
+    payload["items"][0]["qty"] = 1
+    ok = await auth_client.post("/api/orders/checkout", json=payload)
+    assert ok.status_code == 200, ok.text
