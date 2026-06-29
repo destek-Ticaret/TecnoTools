@@ -128,6 +128,7 @@
     "Garanti Koşulları": { en:"Warranty Terms", de:"Garantiebedingungen", fr:"Conditions de garantie", es:"Términos de garantía", it:"Condizioni di garanzia" },
     "Şirket": { en:"Company", de:"Unternehmen", fr:"Entreprise", es:"Empresa", it:"Azienda" },
     "Hakkımızda": { en:"About Us", de:"Über uns", fr:"À propos", es:"Sobre nosotros", it:"Chi siamo" },
+    "Teslimat ve İade Şartları": { en:"Shipping & Returns", de:"Versand & Rückgabe", fr:"Livraison et retours", es:"Envío y devoluciones", it:"Spedizione e resi" },
     "Kariyer": { en:"Careers", de:"Karriere", fr:"Carrières", es:"Empleo", it:"Lavora con noi" },
     "Gizlilik & Çerez Politikası": { en:"Privacy & Cookie Policy", de:"Datenschutz & Cookie-Richtlinie", fr:"Politique de confidentialité et cookies", es:"Política de privacidad y cookies", it:"Privacy e cookie" },
     "Çerez ayarları": { en:"Cookie settings", de:"Cookie-Einstellungen", fr:"Paramètres des cookies", es:"Configuración de cookies", it:"Impostazioni cookie" },
