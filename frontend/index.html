@@ -5677,7 +5677,7 @@ html { scroll-behavior: smooth; }
     }
 
     function save(cats) {
-      if (api && api.privacy) api.privacy.saveConsent(cats);
+      if (window.api && api.privacy) api.privacy.saveConsent(cats);
       modal.style.display = 'none';
     }
 
@@ -5686,7 +5686,7 @@ html { scroll-behavior: smooth; }
     modal.querySelector('#ttConsentOnlyEssential').onclick = () => save({ essential: true, preference: false, analytics: false, marketing: false });
 
     // İlk ziyaret veya v1 → v2 göç: tercih henüz kaydedilmediyse modal'ı aç
-    if (!api || !api.privacy || !api.privacy.hasConsent()) {
+    if (!window.api || !api.privacy || !api.privacy.hasConsent()) {
       modal.style.display = 'flex';
     }
 
