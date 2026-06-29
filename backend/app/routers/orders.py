@@ -32,6 +32,7 @@ from app.schemas import (
     PaymentStartResponse,
 )
 from app.security import decode_customer_token
+from app.services.currency import convert, get_rate, is_supported
 from app.services.email import (
     send_admin_new_order,
     send_order_confirmation,
@@ -316,15 +317,18 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             provider=payload.payment_method,
         )
 
-    # Ödeme sağlayıcısı .env'den seçilir
-    if _pay_settings.payment_provider == "stripe":
+    # Ödeme yönlendirme: TRY → PayTR (Türkiye), diğer para birimleri (EUR/USD) → Stripe
+    # (yurt dışı / dropshipping). Tutar müşterinin para birimine çevrilerek tahsil edilir.
+    target_cur = (payload.currency or _pay_settings.base_currency).upper()
+    use_stripe = target_cur != _pay_settings.base_currency and is_supported(target_cur)
+    if use_stripe:
+        rate = await get_rate(_pay_settings.base_currency, target_cur)
+        # Toplam tutarı (kargo + KDV − indirim dahil) tek kalemde, hedef para biriminde tahsil et
         sess = create_checkout_session(
             order_no=order.order_no,
             customer_email=order.customer_email,
-            line_items=[
-                (f"{p.name} ({v.name})" if v else p.name, unit_price, qty)
-                for p, v, qty, unit_price in items_data
-            ],
+            line_items=[(f"TecnoTools #{order.order_no}", convert(float(order.total), rate), 1)],
+            currency=target_cur.lower(),
         )
         order.payment_method = "stripe"
         await db.commit()

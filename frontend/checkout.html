@@ -881,6 +881,8 @@ async function submitOrder() {
     coupon_code: appliedCoupon ? appliedCoupon.code : null,
     note: formData.note || null,
     payment_method: formData.payment_method,
+    // Para birimi: TRY → PayTR (Türkiye), EUR/USD → Stripe (yurt dışı)
+    currency: localStorage.getItem('tt_currency') || 'TRY',
     // Puan kullanımı: tüm bakiye gönderilir, sunucu %20 sınırına göre kırpar
     use_loyalty_points: (useLoyaltyPoints && loyalty && loyalty.points > 0) ? loyalty.points : 0,
     tax_no: formData.tax_no || null,

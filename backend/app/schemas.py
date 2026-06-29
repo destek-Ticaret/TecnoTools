@@ -246,6 +246,7 @@ class CheckoutRequest(BaseModel):
     note: str | None = None
     session_id: str | None = None  # rezervasyonu eşleştirmek için
     payment_method: str = Field(default="card")  # card | wire | cod (havale | kapıda)
+    currency: str = Field(default="TRY")  # TRY → PayTR (TR), EUR/USD → Stripe (yurt dışı)
     # Sadakat puanı harcama — üye girişi (customer_access token) zorunlu;
     # sunucu bakiye + %20 sepet sınırına göre kırpar.
     use_loyalty_points: int = Field(default=0, ge=0)

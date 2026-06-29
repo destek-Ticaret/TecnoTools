@@ -38,6 +38,26 @@ async def test_checkout_creates_order_and_returns_token(auth_client, db_session)
     assert pub.json()["effective_stock"] == 50
 
 
+async def test_checkout_routes_eur_to_stripe(auth_client):
+    """EUR (yurt dışı) → Stripe; TRY → PayTR yönlendirmesi."""
+    pr = await auth_client.post("/api/products", json={"name": "Kulaklık", "price": 200.0, "stock": 10})
+    pid = pr.json()["id"]
+    base = {
+        "items": [{"product_id": pid, "qty": 1}],
+        "customer_name": "Jane Doe",
+        "customer_email": "jane@example.com",
+        "customer_phone": "+491701234567",
+        "customer_address": "Hauptstrasse 1, Berlin",
+    }
+    eur = await auth_client.post("/api/orders/checkout", json={**base, "currency": "EUR"})
+    assert eur.status_code == 200, eur.text
+    assert eur.json()["provider"] == "stripe"
+
+    tr = await auth_client.post("/api/orders/checkout", json={**base, "currency": "TRY"})
+    assert tr.status_code == 200, tr.text
+    assert tr.json()["provider"] == "paytr"
+
+
 async def test_checkout_rejects_oversold(auth_client):
     pr = await auth_client.post(
         "/api/products",
