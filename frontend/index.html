@@ -5203,8 +5203,10 @@ html { scroll-behavior: smooth; }
   populateReviewProductDropdown();
 
   /* ── BACKEND'DEN GÜNCEL VERİYİ YÜKLE ──
-     Önce cache görünür, sonra backend taze veriyi getirir ve grid yenilenir. */
-  (async function loadFromBackend() {
+     Önce cache görünür, sonra backend taze veriyi getirir ve grid yenilenir.
+     NOT: api.js `defer` ile yüklendiğinden, ilk çalıştırmada `api` henüz tanımlı
+     olmayabilir; bu yüzden api hazır olunca (DOMContentLoaded) çağrılır. */
+  async function loadFromBackend() {
     try {
       const [backendProducts, backendCategories] = await Promise.all([
         loadProductsFromBackend(),
@@ -5238,7 +5240,10 @@ html { scroll-behavior: smooth; }
       console.warn('Backend ulaşılamadı, localStorage cache kullanılıyor:', err.message);
       // Sessiz fallback — kullanıcı zaten cache görüyor
     }
-  })();
+  }
+  // api.js (defer) yüklendikten sonra çalıştır
+  if (window.api) loadFromBackend();
+  else document.addEventListener('DOMContentLoaded', loadFromBackend);
 
   // Sekme tekrar focus alınca güncel veriyi çek (başka cihazda admin değişiklik yapmış olabilir)
   window.addEventListener('focus', () => {
@@ -5471,7 +5476,7 @@ html { scroll-behavior: smooth; }
   }
 
   /* ── ANALYTICS (anonim, IP hash'li) ── */
-  if (api && api.analytics) {
+  if (window.api && api.analytics) {
     api.analytics.track('page_view');
     // Sayfa görüntüleme: hash değişimleri (deep link product modal) için de
     window.addEventListener('hashchange', () => api.analytics.track('page_view'));
