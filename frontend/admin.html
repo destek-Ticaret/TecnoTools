@@ -1672,6 +1672,10 @@ html, body { height: 100%; }
                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9h18l-1.5 11a2 2 0 0 1-2 1.8H6.5a2 2 0 0 1-2-1.8L3 9z"/><path d="M16 9V6a4 4 0 0 0-8 0v3"/></svg>
                 Tedarikçiden Ekle
               </button>
+              <button class="btn btn-ghost btn-sm" onclick="connectAliExpress()" title="AliExpress API hesabını bağla (bir kez)">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                AliExpress Bağla
+              </button>
               <button class="btn btn-primary btn-sm" onclick="openProductModal()">
                 <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Ürün Ekle
@@ -8539,6 +8543,44 @@ html, body { height: 100%; }
     };
     overlay.querySelector('#impDry').onclick = () => run(true);
     overlay.querySelector('#impGo').onclick = () => run(false);
+  }
+
+  /* ── AliExpress API hesabını bağla (OAuth, bir kez) ── */
+  async function connectAliExpress() {
+    let info;
+    try { info = await api.dropshipping.oauthUrl(); }
+    catch (e) { showToast('Yetkilendirme linki alınamadı: ' + e.message, 'danger'); return; }
+    // 1) Yetkilendirme sayfasını yeni sekmede aç
+    window.open(info.authorize_url, '_blank', 'noopener');
+    // 2) Kullanıcıdan code iste
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:10000;padding:1rem;';
+    overlay.innerHTML = `<div style="background:var(--surface);color:var(--text);border-radius:14px;max-width:520px;width:100%;padding:1.5rem;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <h3 style="margin:0 0 .3rem;">AliExpress Bağla</h3>
+      <p style="font-size:.83rem;color:var(--muted);margin:0 0 1rem;">Açılan sekmede AliExpress hesabını <b>yetkilendir (Authorize)</b>. Sonra adres çubuğunda <code>?code=...</code> kısmındaki kodu kopyalayıp buraya yapıştır.</p>
+      <input type="text" id="aeCode" placeholder="code değerini yapıştır" style="${_ttInput}margin-bottom:1rem;"/>
+      <div id="aeResult" style="font-size:.83rem;margin-bottom:.8rem;"></div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" id="aeCancel">Kapat</button>
+        <button class="btn btn-primary btn-sm" id="aeGo">Bağla</button>
+      </div></div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('#aeCancel').onclick = close;
+    overlay.querySelector('#aeGo').onclick = async () => {
+      let code = overlay.querySelector('#aeCode').value.trim();
+      if (!code) { showToast('Kodu yapıştırın', 'danger'); return; }
+      // Tam URL yapıştırıldıysa code parametresini ayıkla
+      const m = code.match(/[?&]code=([^&]+)/); if (m) code = decodeURIComponent(m[1]);
+      const out = overlay.querySelector('#aeResult');
+      out.innerHTML = '<span style="color:var(--muted);">Bağlanıyor…</span>';
+      try {
+        const r = await api.dropshipping.oauthExchange(code);
+        out.innerHTML = `<span style="color:var(--success);">✓ Bağlandı! Token ${r.expires_in ? Math.round(r.expires_in/86400)+' gün' : ''} geçerli. Otomatik yenilenecek.</span>`;
+        showToast('AliExpress bağlandı', 'success');
+      } catch (e) { out.innerHTML = `<span style="color:var(--danger);">Hata: ${escapeHtml(e.message)}</span>`; }
+    };
   }
 
   /* ── Dropshipping: tedarikçi linkinden ürün ekle ── */

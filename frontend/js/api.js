@@ -678,6 +678,9 @@
       orderFulfillment(orderId) {
         return request(`/api/dropshipping/orders/${orderId}/fulfillment`, { auth: true });
       },
+      oauthUrl() { return request('/api/dropshipping/oauth/url', { auth: true }); },
+      oauthExchange(code) { return request('/api/dropshipping/oauth/exchange', { auth: true, params: { code } }); },
+      debugRaw(url) { return request('/api/dropshipping/debug', { auth: true, params: { url } }); },
       syncProduct(productId, reprice = true) {
         return request(`/api/dropshipping/products/${productId}/sync`, { method: 'POST', auth: true, body: { reprice } });
       },
