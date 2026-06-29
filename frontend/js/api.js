@@ -669,8 +669,8 @@
         if (markup != null) params.markup = markup;
         return request('/api/dropshipping/preview', { auth: true, params });
       },
-      importOne({ url, markup = null, categoryId = null, isActive = false }) {
-        const body = { url, is_active: isActive };
+      importOne({ url, markup = null, categoryId = null, market = 'both', isActive = true }) {
+        const body = { url, is_active: isActive, market };
         if (markup != null) body.markup = markup;
         if (categoryId != null) body.category_id = categoryId;
         return request('/api/dropshipping/import', { method: 'POST', auth: true, body });

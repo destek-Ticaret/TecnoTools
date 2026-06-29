@@ -112,7 +112,8 @@ async def import_one(
     url: str = Body(..., embed=True),
     markup: float | None = Body(None, embed=True),
     category_id: int | None = Body(None, embed=True),
-    is_active: bool = Body(False, embed=True),  # varsayılan pasif: admin gözden geçirsin
+    market: str = Body("both", embed=True),  # both | tr | intl (varsayılan her iki mağaza)
+    is_active: bool = Body(True, embed=True),  # varsayılan yayında (iyzico/müşteri görsün)
 ):
     """Tedarikçi ürününü mağaza ürünü olarak ekler. Aynı supplier_product_id varsa
     çift kayıt engellenir (önce o ürünü güncellemen beklenir)."""
@@ -147,7 +148,7 @@ async def import_one(
         supplier_url=draft["supplier_url"],
         supplier_product_id=draft["supplier_product_id"],
         supplier_price=draft["supplier_price"],
-        market="intl",  # dropship ürünleri yurt dışı pazara
+        market=market if market in ("both", "tr", "intl") else "both",
         is_active=is_active,
     )
     db.add(product)

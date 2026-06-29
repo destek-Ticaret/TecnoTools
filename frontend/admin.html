@@ -8606,8 +8606,16 @@ html, body { height: 100%; }
           <select id="dsCat" style="${_ttInput}margin-top:.3rem;">${catOpts}</select>
         </div>
       </div>
+      <div style="margin-top:.6rem;">
+        <label style="font-size:.8rem;font-weight:600;">Hangi mağazada görünsün?</label>
+        <select id="dsMarket" style="${_ttInput}margin-top:.3rem;">
+          <option value="both" selected>Her ikisi (TR + Yurt dışı)</option>
+          <option value="intl">Sadece Yurt dışı</option>
+          <option value="tr">Sadece Türkiye</option>
+        </select>
+      </div>
       <div style="margin-top:.6rem;"><label style="font-size:.85rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-        <input type="checkbox" id="dsActive" style="width:16px;height:16px;"/> Eklenince hemen yayınla (varsayılan: pasif, gözden geçir)</label></div>
+        <input type="checkbox" id="dsActive" checked style="width:16px;height:16px;"/> Eklenince hemen yayınla (önerilen)</label></div>
       <div id="dsPreview" style="font-size:.85rem;margin-top:1rem;"></div>
       <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
         <button class="btn btn-ghost btn-sm" id="dsCancel">Kapat</button>
@@ -8654,6 +8662,7 @@ html, body { height: 100%; }
           url,
           markup: getMarkup(),
           categoryId: overlay.querySelector('#dsCat').value ? parseInt(overlay.querySelector('#dsCat').value, 10) : null,
+          market: overlay.querySelector('#dsMarket').value || 'both',
           isActive: overlay.querySelector('#dsActive').checked,
         });
         showToast(`Ürün eklendi: ${r.name}`, 'success');

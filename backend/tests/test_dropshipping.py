@@ -106,17 +106,28 @@ async def test_fulfillment_404_for_missing_order(auth_client):
 
 
 @pytest.mark.asyncio
-async def test_dropship_product_is_intl_market(auth_client, client):
-    # Dropship ürünü intl pazara gider, hemen yayınla
+async def test_dropship_default_both_markets(auth_client, client):
+    # Varsayılan: market=both, yayında → hem tr hem intl vitrinde görünür
     r = await auth_client.post(
         "/api/dropshipping/import",
-        json={"url": "https://www.aliexpress.com/item/1005006712345678.html", "is_active": True},
+        json={"url": "https://www.aliexpress.com/item/1005006712345678.html"},
     )
     pid = r.json()["id"]
-
-    # intl vitrininde görünür
     intl = (await client.get("/api/products", params={"market": "intl"})).json()
-    assert any(p["id"] == pid for p in intl)
-    # tr vitrininde görünmez
     tr = (await client.get("/api/products", params={"market": "tr"})).json()
+    assert any(p["id"] == pid for p in intl)
+    assert any(p["id"] == pid for p in tr)
+
+
+@pytest.mark.asyncio
+async def test_dropship_market_intl_only(auth_client, client):
+    # market=intl seçilince sadece yurt dışı vitrinde görünür
+    r = await auth_client.post(
+        "/api/dropshipping/import",
+        json={"url": "https://www.aliexpress.com/item/1005006799999999.html", "market": "intl"},
+    )
+    pid = r.json()["id"]
+    intl = (await client.get("/api/products", params={"market": "intl"})).json()
+    tr = (await client.get("/api/products", params={"market": "tr"})).json()
+    assert any(p["id"] == pid for p in intl)
     assert all(p["id"] != pid for p in tr)
