@@ -12,10 +12,9 @@ import hashlib
 import hmac
 import json
 import secrets
-from collections.abc import Iterable
-
 import urllib.parse
 import urllib.request
+from collections.abc import Iterable
 
 from app.config import get_settings
 
@@ -97,11 +96,11 @@ def build_paytr_token(
             raw = resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"PayTR HTTP {e.code} — {raw[:300]}")
+        raise RuntimeError(f"PayTR HTTP {e.code} — {raw[:300]}") from e
     try:
         body = json.loads(raw)
-    except Exception:
-        raise RuntimeError(f"PayTR geçersiz JSON yanıtı: {raw[:300]}")
+    except Exception as e:
+        raise RuntimeError(f"PayTR geçersiz JSON yanıtı: {raw[:300]}") from e
     if body.get("status") != "success":
         raise RuntimeError(f"PayTR token üretilemedi: {body.get('reason', 'bilinmeyen')}")
     return {"token": body["token"], "raw_response": body, "merchant_oid": merchant_oid}

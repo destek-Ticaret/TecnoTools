@@ -19,11 +19,10 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
-from app.services.carriers.base import CarrierAdapter, NormalizedEvent
+from app.services.carriers.base import NormalizedEvent
 from app.services.carriers.common import (
     GenericCarrierAdapter,
     classify,
-    mock_events,
     parse_dt,
 )
 

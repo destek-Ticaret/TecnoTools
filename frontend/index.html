@@ -2841,33 +2841,9 @@ html { scroll-behavior: smooth; }
     document.documentElement.setAttribute('lang', storeLang());
   }
 
-  // Dil değişince pazar da değişir (tr → TR ürünleri, en → yurt dışı/dropship)
-  async function reloadProductsForMarket() {
-    try {
-      const list = await loadProductsFromBackend();
-      products = list;
-      safeSetItem('tt_products', JSON.stringify(products));
-      renderProducts();
-      if (typeof updateHeroStats === 'function') updateHeroStats(products);
-    } catch (_) {}
-  }
-
-  window.toggleLang = function () {
-    const next = storeLang() === 'en' ? 'tr' : 'en';
-    try {
-      localStorage.setItem('tt_lang', next);
-      // Dil ile para birimini eşle: İngilizce → €, Türkçe → ₺
-      localStorage.setItem('tt_currency', next === 'en' ? 'EUR' : 'TRY');
-    } catch (e) {}
-    applyStoreI18n();
-    reloadProductsForMarket();
-    if (typeof updateCart === 'function') updateCart();
-  };
-
-  // Listen for admin / other tab language change
-  window.addEventListener('storage', e => {
-    if (e.key === 'tt_lang') { applyStoreI18n(); reloadProductsForMarket(); }
-  });
+  // Dil değişimi artık js/i18n.js'teki seçici ile yapılır (sayfayı yeniden yükler);
+  // eski toggleLang kaldırıldı — kur seçimini ezmesin. Diğer sekme dil değişimini
+  // de i18n.js'in storage dinleyicisi (reload) karşılar.
 
   /* Products are managed in admin.html and stored in localStorage('tt_products').
      Any add/edit/delete in admin.html is reflected here automatically. */

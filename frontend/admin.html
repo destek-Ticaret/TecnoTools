@@ -3319,9 +3319,6 @@ html, body { height: 100%; }
     }
   }
 
-  // backward-compat alias for any old references
-  const catalog = products;
-
   const STATUS = {
     pending:    { label:'Beklemede',    icon:'⏳' },
     processing: { label:'Hazırlanıyor', icon:'🔧' },
@@ -6309,8 +6306,8 @@ html, body { height: 100%; }
   function loadDemoData() {
     if (!confirm('Mevcut ürünler ve siparişler demo verisiyle değiştirilecek. Devam edilsin mi?')) return;
 
-    // 1) Products
-    localStorage.setItem('tt_products', JSON.stringify(DEMO_PRODUCTS));
+    // 1) Products (admin'in kendi cache anahtarı — vitrin cache'ine yazma)
+    localStorage.setItem('tt_admin_products', JSON.stringify(DEMO_PRODUCTS));
     localStorage.setItem('tt_categories', JSON.stringify(['El Aletleri','Elektrikli','Ölçüm','Güvenlik','Depolama','Aksesuarlar','Isıtma']));
 
     // 2) Generate 25 demo orders over last 60 days
@@ -6425,7 +6422,7 @@ html, body { height: 100%; }
       version: 1,
       exportedAt: new Date().toISOString(),
       orders:    JSON.parse(localStorage.getItem('tt_orders')      || '[]'),
-      products:  JSON.parse(localStorage.getItem('tt_products')    || '[]'),
+      products:  JSON.parse(localStorage.getItem('tt_admin_products') || '[]'),
       coupons:   JSON.parse(localStorage.getItem('tt_coupons')     || '[]'),
       audit:     JSON.parse(localStorage.getItem('tt_audit')       || '[]'),
       categories:JSON.parse(localStorage.getItem('tt_categories')  || '[]'),
@@ -6475,7 +6472,7 @@ html, body { height: 100%; }
         }
         if (!data || typeof data !== 'object') throw new Error('Geçersiz format');
         if (Array.isArray(data.orders))     localStorage.setItem('tt_orders',     JSON.stringify(data.orders));
-        if (Array.isArray(data.products))   localStorage.setItem('tt_products',   JSON.stringify(data.products));
+        if (Array.isArray(data.products))   localStorage.setItem('tt_admin_products', JSON.stringify(data.products));
         if (Array.isArray(data.coupons))    localStorage.setItem('tt_coupons',    JSON.stringify(data.coupons));
         if (Array.isArray(data.audit))      localStorage.setItem('tt_audit',      JSON.stringify(data.audit));
         if (Array.isArray(data.categories)) localStorage.setItem('tt_categories', JSON.stringify(data.categories));
