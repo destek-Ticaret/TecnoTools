@@ -3158,13 +3158,15 @@ html, body { height: 100%; }
     }
   })();
 
-  // products state — backend'den çekilir, localStorage cache fallback olarak.
+  // products state — backend authoritative. Admin KENDİ cache anahtarını kullanır
+  // (tt_admin_products): storefront'un tt_products'ı 'stock' alanına effective_stock
+  // yazdığından, paylaşılırsa admin'de stok yanlış/0 görünürdü.
   let products = [];
   try {
-    const saved = JSON.parse(localStorage.getItem('tt_products') || 'null');
+    const saved = JSON.parse(localStorage.getItem('tt_admin_products') || 'null');
     products = (saved && Array.isArray(saved)) ? saved : [];
   } catch(e) { products = []; }
-  const persistProducts = () => safeSetItem('tt_products', JSON.stringify(products));
+  const persistProducts = () => safeSetItem('tt_admin_products', JSON.stringify(products));
 
   // CATEGORIES_OBJ: backend formatı [{id, name, sort_order}], CATEGORIES bunun name array'i
   let CATEGORIES_OBJ = [];
@@ -3226,7 +3228,7 @@ html, body { height: 100%; }
   async function reloadAdminProductsFromBackend() {
     const list = await api.products.listAdmin();
     products = list.map(normalizeAdminProduct);
-    safeSetItem('tt_products', JSON.stringify(products));
+    safeSetItem('tt_admin_products', JSON.stringify(products));
     return products;
   }
 
@@ -4370,7 +4372,7 @@ html, body { height: 100%; }
     try {
       await api.products.update(p.id, payload);
       p.stock = next;
-      safeSetItem('tt_products', JSON.stringify(products));
+      safeSetItem('tt_admin_products', JSON.stringify(products));
       renderStockStats();
       renderStockFilterChips();
       updateStocksBadge();
@@ -8812,7 +8814,7 @@ html, body { height: 100%; }
       try { orders = JSON.parse(e.newValue || '[]'); } catch(err) {}
       refreshAll();
     }
-    if (e.key === 'tt_products') {
+    if (e.key === 'tt_admin_products') {
       try { products = JSON.parse(e.newValue || '[]'); } catch(err) {}
       refreshAll();
     }
