@@ -47,6 +47,11 @@ def create_checkout_session(
     ]
     session = stripe.checkout.Session.create(
         mode="payment",
+        # Yalnızca "card" — SEPA/banka havalesi gibi gecikmeli (async) yöntemler
+        # bilinçli olarak dışlanır: bu yöntemlerde checkout.session.completed
+        # ödeme henüz kesinleşmeden (payment_status=unpaid) tetiklenir ve bu
+        # entegrasyon async_payment_succeeded/failed event'lerini dinlemiyor.
+        payment_method_types=["card"],
         line_items=line_data,  # type: ignore[arg-type]
         customer_email=customer_email,
         success_url=settings.stripe_success_url,

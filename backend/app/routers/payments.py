@@ -160,12 +160,15 @@ async def stripe_webhook(
     if event is None:
         raise HTTPException(status_code=400, detail="invalid signature")
 
-    if event["type"] == "checkout.session.completed":
+    if event["type"] in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
         session = event["data"]["object"]
         order_no = session.get("client_reference_id") or (session.get("metadata") or {}).get(
             "order_no"
         )
-        if order_no:
+        # "completed" gecikmeli (async) ödeme yöntemlerinde payment_status=unpaid
+        # iken de tetiklenebilir — para henüz kesinleşmemişken siparişi onaylamayız,
+        # kesin sonuç async_payment_succeeded/failed event'iyle gelir.
+        if order_no and session.get("payment_status") == "paid":
             order = (
                 await db.execute(select(Order).where(Order.order_no == order_no))
             ).scalar_one_or_none()
@@ -175,7 +178,11 @@ async def stripe_webhook(
                 from app.routers.invoices import maybe_auto_issue_invoice
 
                 await maybe_auto_issue_invoice(order.order_no, actor="stripe")
-    elif event["type"] in ("checkout.session.expired", "payment_intent.payment_failed"):
+    elif event["type"] in (
+        "checkout.session.expired",
+        "checkout.session.async_payment_failed",
+        "payment_intent.payment_failed",
+    ):
         session = event["data"]["object"]
         order_no = session.get("client_reference_id") or (session.get("metadata") or {}).get(
             "order_no"

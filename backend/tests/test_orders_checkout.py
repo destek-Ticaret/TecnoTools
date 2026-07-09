@@ -184,6 +184,18 @@ async def test_cancel_restores_deducted_stock(auth_client):
     assert await _eff_stock(auth_client, pid) == 8  # geri eklendi
 
 
+async def test_reconfirm_after_cancel_deducts_stock_again(auth_client):
+    """İptal edilip stoğu geri eklenen bir sipariş tekrar onaylanırsa (processing),
+    stok tekrar düşmeli — aksi halde aynı ürün ikinci kez satılabilir olurdu."""
+    pid, order_no = await _wire_order(auth_client, stock=8, qty=2)
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "processing"})
+    assert await _eff_stock(auth_client, pid) == 6
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "cancelled"})
+    assert await _eff_stock(auth_client, pid) == 8
+    await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "processing"})
+    assert await _eff_stock(auth_client, pid) == 6
+
+
 async def test_cancel_before_fulfill_keeps_stock(auth_client):
     pid, order_no = await _wire_order(auth_client, stock=4, qty=1)
     await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "cancelled"})

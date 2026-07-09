@@ -121,7 +121,9 @@ async def twofa_status(user: User = Depends(current_user)):
 
 
 @router.post("/2fa/setup", status_code=200)
+@limiter.limit("10/minute")
 async def twofa_setup(
+    request: Request,
     payload: TwoFASetupRequest,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(current_user),
@@ -136,7 +138,9 @@ async def twofa_setup(
 
 
 @router.post("/2fa/disable", status_code=200)
+@limiter.limit("10/minute")
 async def twofa_disable(
+    request: Request,
     payload: TwoFADisableRequest,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(current_user),
@@ -213,6 +217,13 @@ async def reset_password_with_token(
         update(PasswordResetToken)
         .where((PasswordResetToken.user_id == user.id) & (PasswordResetToken.used_at.is_(None)))
         .values(used_at=now)
+    )
+    # Güvenlik: tüm aktif refresh token'larını iptal et (çalınmış bir oturum
+    # şifre sıfırlamadan sonra da geçerli kalmasın)
+    await db.execute(
+        update(RefreshToken)
+        .where((RefreshToken.user_id == user.id) & (RefreshToken.revoked_at.is_(None)))
+        .values(revoked_at=now)
     )
     await db.commit()
     return {"ok": True}

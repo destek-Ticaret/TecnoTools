@@ -334,7 +334,9 @@ async def update_me(
 
 
 @router.post("/change-password", status_code=200)
+@limiter.limit("10/minute")
 async def change_password(
+    request: Request,
     payload: CustomerChangePassword,
     db: AsyncSession = Depends(get_db),
     customer: Customer = Depends(current_customer),

@@ -2930,8 +2930,8 @@ html { scroll-behavior: smooth; }
   // Renders product image (uploaded image) or emoji fallback
   function productImg(p) {
     return p.image
-      ? `<img src="${p.image}" alt="${(p.name||'').replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`
-      : p.icon;
+      ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" />`
+      : escapeHtml(p.icon);
   }
 
   /* Backend ProductPublicOut → frontend için normalize.
@@ -3061,7 +3061,7 @@ html { scroll-behavior: smooth; }
 
   function makeCard(p) {
     const isFav = wishlist.includes(p.id);
-    const badgeHTML = p.badge ? `<span class="badge ${p.badge.type}">${p.badge.text}</span>` : '';
+    const badgeHTML = p.badge ? `<span class="badge ${escapeHtml(p.badge.type)}">${escapeHtml(p.badge.text)}</span>` : '';
     const avail = effectiveStock(p);
     const soldOut = avail <= 0;
     return `
@@ -3082,9 +3082,9 @@ html { scroll-behavior: smooth; }
           <div class="product-img" style="cursor:pointer;" onclick="goProduct(${p.id})">${productImg(p)}</div>
         </div>
         <div class="product-info">
-          <div class="product-cat">${p.cat}</div>
-          <div class="product-name" style="cursor:pointer;" onclick="goProduct(${p.id})">${p.name}</div>
-          <div class="product-sub">${p.sub}</div>
+          <div class="product-cat">${escapeHtml(p.cat)}</div>
+          <div class="product-name" style="cursor:pointer;" onclick="goProduct(${p.id})">${escapeHtml(p.name)}</div>
+          <div class="product-sub">${escapeHtml(p.sub)}</div>
           <div class="stars">${starsHTML(p.rating)}<span class="stars-num">${p.rating} (${p.reviews})</span></div>
           ${soldOut ? `<div class="stock-out-msg">Stoklar tükendi — yakında yenilenecek</div>` : ''}
           <div class="product-foot">
@@ -3417,20 +3417,20 @@ html { scroll-behavior: smooth; }
       </button>
       <div class="modal-img" id="qvMainImg">${productImg(p)}</div>
       ${hasGallery ? `<div style="position:absolute;bottom:1rem;left:1rem;display:flex;gap:.4rem;z-index:2;">${galleryImgs.map((src, i) => `
-        <button type="button" onclick="qvSelectImage(${i}, ${p.id})" style="width:46px;height:46px;border-radius:8px;border:2px solid ${i===0?'#fff':'rgba(255,255,255,.6)'};overflow:hidden;cursor:pointer;padding:0;background:none;${i===0?'box-shadow:0 0 0 2px var(--primary);':''}" data-qv-thumb="${i}"><img src="${src}" style="width:100%;height:100%;object-fit:cover;" /></button>
+        <button type="button" onclick="qvSelectImage(${i}, ${p.id})" style="width:46px;height:46px;border-radius:8px;border:2px solid ${i===0?'#fff':'rgba(255,255,255,.6)'};overflow:hidden;cursor:pointer;padding:0;background:none;${i===0?'box-shadow:0 0 0 2px var(--primary);':''}" data-qv-thumb="${i}"><img src="${escapeHtml(src)}" style="width:100%;height:100%;object-fit:cover;" /></button>
       `).join('')}</div>` : ''}
       <div class="modal-info">
-        <div class="product-cat">${p.cat}</div>
-        <h3>${p.name}</h3>
+        <div class="product-cat">${escapeHtml(p.cat)}</div>
+        <h3>${escapeHtml(p.name)}</h3>
         <div class="stars">${starsHTML(p.rating)}<span class="stars-num">${p.rating} · ${p.reviews} değerlendirme</span></div>
         <div class="modal-price-row">
           <span class="modal-price">${fmt(p.price)}</span>
           ${(p.old && p.old > p.price) ? `<span class="modal-price-old">${fmt(p.old)}</span><span class="modal-discount">-%${discount}</span>` : ''}
         </div>
         ${qvSoldOut ? `<div class="stock-out-msg" style="margin:.2rem 0;">Stoklar tükendi — yakında yenilenecek</div>` : ''}
-        ${p.desc ? `<p class="modal-desc">${p.desc}</p>` : ''}
+        ${p.desc ? `<p class="modal-desc">${escapeHtml(p.desc)}</p>` : ''}
         ${p.features.length ? `<ul class="modal-features">
-          ${p.features.map(f => `<li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> ${f}</li>`).join('')}
+          ${p.features.map(f => `<li><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> ${escapeHtml(f)}</li>`).join('')}
         </ul>` : ''}
         <div class="modal-actions">
           <button class="btn btn-primary" ${qvSoldOut ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''} onclick="${qvSoldOut ? '' : `addToCart(${p.id});closeQV();`}">
@@ -3740,10 +3740,6 @@ html { scroll-behavior: smooth; }
     const el = document.getElementById('authMsg');
     if (!el) return;
     el.innerHTML = `<div class="auth-msg ${kind}">${escapeHtml(text)}</div>`;
-  }
-
-  function escapeHtml(s) {
-    return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
   async function submitCustomerLogin(e) {

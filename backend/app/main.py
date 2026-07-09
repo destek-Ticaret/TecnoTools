@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -148,6 +149,9 @@ app = FastAPI(title="TecnoTools API", version="1.0.0", lifespan=lifespan)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+# default_limits (200/minute) sadece bu middleware ile TÜM route'lara uygulanır;
+# @limiter.limit(...) dekoratörü olmayan endpoint'ler middleware olmadan korumasız kalırdı.
+app.add_middleware(SlowAPIMiddleware)
 
 # Auth: Bearer token (Authorization header) kullanılıyor — cookie yok.
 # allow_credentials=True + allow_headers=["*"] Starlette'de çakışır;

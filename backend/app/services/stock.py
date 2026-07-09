@@ -1,44 +1,63 @@
-"""Sipariş bazlı stok düşme / geri ekleme — idempotent (çift düşme/ekleme yok).
+"""Sipariş bazlı stok düşme / geri ekleme — idempotent (çift düşme/ekleme yok)
+ve eşzamanlı çağrılara karşı satır kilidiyle korunur.
 
-Tek kural: bir siparişe ait `reason="sale"` StockMovement varsa stok o sipariş
-için zaten düşülmüştür. Tüm onay yolları (PayTR/Stripe callback, havale/kapıda
-admin onayı) `deduct_stock_once`'tan geçer → ikinci çağrı no-op olur, hangi yol
-önce gelirse gelsin çift düşme imkânsız.
+Kural: bir sipariş için "net satış" = sale hareketi sayısı - (cancel+return)
+hareketi sayısı. `deduct_stock_once` net satış > 0 ise no-op (zaten düşülmüş),
+`restore_stock_once` net satış <= 0 ise no-op (geri eklenecek bir şey yok).
+Bu sayede iptal → tekrar onay döngüsünde stok doğru şekilde tekrar düşer
+(basit "sale hareketi var mı" kontrolü bunu engelliyordu).
 
-İptal/iade `restore_stock_once` ile stoğu geri ekler (`reason="cancel"`), yine
-idempotent: daha önce düşülmemişse veya zaten geri eklenmişse no-op.
+Eşzamanlılık: her çağrı önce ilgili Order satırını `FOR UPDATE` ile kilitler
+(aynı sipariş için yarışan iki çağrı serileşir — webhook retry + admin onayı
+çakışması çift düşmeye yol açamaz) ve hedef Product/ProductVariant satırlarını
+da kilitleyerek farklı siparişlerin aynı ürünü eşzamanlı güncellemesinden
+kaynaklanan "lost update" (kaybolan güncelleme) riskini kapatır. Postgres'te
+tam etkilidir; SQLite bu kilidi desteklemediğinden (dev/test) no-op geçer.
 """
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order, Product, ProductVariant, StockMovement
 
 
-async def _has_movement(db: AsyncSession, order_no: str, reasons: tuple[str, ...]) -> bool:
-    row = (
+async def _lock_order(db: AsyncSession, order: Order) -> None:
+    """Aynı order_no için eşzamanlı deduct/restore çağrılarını serileştirir."""
+    await db.execute(select(Order.id).where(Order.id == order.id).with_for_update())
+
+
+async def _movement_count(db: AsyncSession, order_no: str, reasons: tuple[str, ...]) -> int:
+    return (
         await db.execute(
-            select(StockMovement.id)
-            .where(StockMovement.order_no == order_no, StockMovement.reason.in_(reasons))
-            .limit(1)
+            select(func.count(StockMovement.id)).where(
+                StockMovement.order_no == order_no, StockMovement.reason.in_(reasons)
+            )
         )
-    ).first()
-    return row is not None
+    ).scalar_one()
 
 
 async def _load_targets(
     db: AsyncSession, order: Order
 ) -> tuple[dict[int, Product], dict[int, ProductVariant]]:
     """Sipariş kalemlerinin hedeflerini yükle: varyantlı kalem → ProductVariant,
-    varyantsız kalem → Product."""
-    product_ids = [it.product_id for it in order.items if it.product_id and not it.variant_id]
-    variant_ids = [it.variant_id for it in order.items if it.variant_id]
+    varyantsız kalem → Product. Satırlar FOR UPDATE ile kilitlenir (lost-update
+    önleme); id sırasına göre seçilerek çapraz siparişler arasında deadlock
+    riski azaltılır."""
+    product_ids = sorted({it.product_id for it in order.items if it.product_id and not it.variant_id})
+    variant_ids = sorted({it.variant_id for it in order.items if it.variant_id})
     pmap: dict[int, Product] = {}
     if product_ids:
         rows = (
-            (await db.execute(select(Product).where(Product.id.in_(product_ids))))
+            (
+                await db.execute(
+                    select(Product)
+                    .where(Product.id.in_(product_ids))
+                    .order_by(Product.id)
+                    .with_for_update()
+                )
+            )
             .scalars()
             .unique()
             .all()
@@ -47,7 +66,14 @@ async def _load_targets(
     vmap: dict[int, ProductVariant] = {}
     if variant_ids:
         vrows = (
-            (await db.execute(select(ProductVariant).where(ProductVariant.id.in_(variant_ids))))
+            (
+                await db.execute(
+                    select(ProductVariant)
+                    .where(ProductVariant.id.in_(variant_ids))
+                    .order_by(ProductVariant.id)
+                    .with_for_update()
+                )
+            )
             .scalars()
             .unique()
             .all()
@@ -89,18 +115,25 @@ async def _apply(db: AsyncSession, order: Order, *, delta_sign: int, reason: str
 
 
 async def deduct_stock_once(db: AsyncSession, order: Order) -> bool:
-    """Sipariş kalemleri için stoğu (varyantlıysa varyant, değilse ürün) BİR KEZ
-    düş. Zaten düşülmüşse no-op. Returns: bu çağrıda fiilen düşüldüyse True."""
-    if await _has_movement(db, order.order_no, ("sale",)):
+    """Sipariş kalemleri için stoğu (varyantlıysa varyant, değilse ürün) düş —
+    net satış (sale - cancel/return) zaten pozitifse no-op (çift düşme yok).
+    İptal edilip tekrar onaylanan bir sipariş için doğru şekilde tekrar düşer.
+    Returns: bu çağrıda fiilen düşüldüyse True."""
+    await _lock_order(db, order)
+    sold = await _movement_count(db, order.order_no, ("sale",))
+    restored = await _movement_count(db, order.order_no, ("cancel", "return"))
+    if sold > restored:
         return False
     return await _apply(db, order, delta_sign=-1, reason="sale")
 
 
 async def restore_stock_once(db: AsyncSession, order: Order) -> bool:
-    """İptal: daha önce düşülmüş stoğu BİR KEZ geri ekle. Düşülmemiş ya da zaten
-    geri eklenmiş (cancel/return) ise no-op. Returns: fiilen geri eklendiyse True."""
-    if not await _has_movement(db, order.order_no, ("sale",)):
-        return False
-    if await _has_movement(db, order.order_no, ("cancel", "return")):
+    """İptal: daha önce düşülmüş (ve henüz geri eklenmemiş) stoğu geri ekle.
+    Net satış <= 0 ise (hiç düşülmemiş ya da zaten geri eklenmiş) no-op.
+    Returns: fiilen geri eklendiyse True."""
+    await _lock_order(db, order)
+    sold = await _movement_count(db, order.order_no, ("sale",))
+    restored = await _movement_count(db, order.order_no, ("cancel", "return"))
+    if sold <= restored:
         return False
     return await _apply(db, order, delta_sign=1, reason="cancel")
