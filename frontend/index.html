@@ -2927,6 +2927,12 @@ html { scroll-behavior: smooth; }
     ];
   }
 
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   // Renders product image (uploaded image) or emoji fallback
   function productImg(p) {
     return p.image
