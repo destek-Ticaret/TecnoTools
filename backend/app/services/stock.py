@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import noload
 
 from app.models import Order, Product, ProductVariant, StockMovement
 
@@ -49,12 +50,17 @@ async def _load_targets(
     variant_ids = sorted({it.variant_id for it in order.items if it.variant_id})
     pmap: dict[int, Product] = {}
     if product_ids:
+        # NOT: Product.category ilişkisi lazy="joined" — varsayılan sorgu bir LEFT
+        # OUTER JOIN üretir ve Postgres bunu FOR UPDATE ile REDDEDER ("FOR UPDATE
+        # cannot be applied to the nullable side of an outer join"). category
+        # burada kullanılmadığından noload ile bu join'i devre dışı bırakıyoruz.
         rows = (
             (
                 await db.execute(
                     select(Product)
                     .where(Product.id.in_(product_ids))
                     .order_by(Product.id)
+                    .options(noload(Product.category))
                     .with_for_update()
                 )
             )
