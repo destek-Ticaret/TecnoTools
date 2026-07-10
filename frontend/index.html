@@ -2005,7 +2005,6 @@ html { scroll-behavior: smooth; }
             let _ttTaxDeb = null;
             window.ttTaxLookup = function (input) {
               const status = document.getElementById('coTaxStatus');
-              const company = document.getElementById('coCompany');
               const raw = (input.value || '').replace(/\D+/g, '');
               if (raw.length < 10) { status.textContent = ''; status.style.color = 'var(--muted)'; return; }
               clearTimeout(_ttTaxDeb);
@@ -2021,16 +2020,8 @@ html { scroll-behavior: smooth; }
                     status.textContent = '✓ Geçerli TCKN — fatura bireysel olarak düzenlenecek';
                     status.style.color = '#16a34a';
                   } else if (res.kind === 'vkn') {
-                    if (res.is_taxpayer && res.title) {
-                      status.textContent = '✓ Mükellef: ' + res.title;
-                      if (company && !company.value) company.value = res.title;
-                    } else if (res.is_taxpayer === false) {
-                      status.textContent = '⚠ VKN formatı doğru ama GİB e-arşiv kapsamında bulunamadı';
-                      status.style.color = '#d97706';
-                    } else {
-                      status.textContent = '✓ Geçerli VKN (GİB sorgulanamadı)';
-                    }
-                    if (!status.style.color || status.style.color === '') status.style.color = '#16a34a';
+                    status.textContent = '✓ Geçerli VKN — fatura kurumsal olarak düzenlenecek';
+                    status.style.color = '#16a34a';
                   }
                 }).catch(() => { /* network hatası — sessiz */ });
               }, 450);

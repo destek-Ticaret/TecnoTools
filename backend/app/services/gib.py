@@ -1,29 +1,32 @@
 """GİB (Gelir İdaresi Başkanlığı) mükellef doğrulama.
 
-İki kademe çalışır:
+Yalnız format/algoritma doğrulaması yapılır — TCKN (11 hane) ve VKN (10 hane)
+için resmi MERNIS/GİB checksum'ları. Network çağrısı gerektirmez, anında
+pozitif/negatif sonuç verir.
 
-  1) Format/algoritma doğrulaması — TCKN (11 hane) ve VKN (10 hane) için
-     resmi MERNIS/GIB checksum'ları. Network çağrısı gerektirmez, anında
-     pozitif/negatif sonuç verir.
+NOT: GİB'in canlı "mükellef e-arşiv/e-fatura kapsamında mı" sorgusu için
+resmi, ücretsiz, otomatize edilebilir bir açık API YOKTUR:
+  - `sorgu.efatura.gov.tr` altında bir uç nokta tahmin edip kullanmayı
+    denemiştik; o adres artık (veya hiç) mevcut değil (404 dönüyor).
+  - GİB'in gerçek kamuya açık "e-Fatura Kayıtlı Kullanıcılar" sorgu sayfası
+    (sorgu.efatura.gov.tr/kullanicilar/) CAPTCHA korumalıdır — sunucu
+    tarafından otomatik sorgulanamaz.
+  - Gerçek zamanlı mükellef sorgusu istenirse, yalnızca ücretli bir özel
+    entegratörün (Nilvera, Foriba, Mikro vb.) API'si üzerinden yapılabilir;
+    o zaman `_query_gib_taxpayer` bu entegratörün endpoint'ine bağlanacak
+    şekilde yeniden yazılmalı.
 
-  2) Mükellef sorgu — VKN için GİB e-arşiv/e-fatura kapsamında olan
-     mükellefleri listeler. Bağlantı yoksa (offline / GIB down) format
-     doğrulamasıyla yetinilir; UI yine de devam edebilir.
+Bu yüzden VKN için de (TCKN'de olduğu gibi) yalnızca format sonucu dönülür;
+UI'da yanıltıcı "GİB sorgulanamadı" gibi mesajlar yerine net bir "geçerli"
+onayı gösterilir.
 
 Frontend kullanım: checkout VKN/TCKN alanında debounce'lu (450ms) çağrı.
 """
 
 from __future__ import annotations
 
-import logging
 import re
-from dataclasses import asdict, dataclass
-
-import httpx
-
-from app.services.cache import shared_cache
-
-logger = logging.getLogger(__name__)
+from dataclasses import dataclass
 
 # Yalnız rakam — UI formdan boşluk/tire vb. gelmesi muhtemel
 _DIGITS_RE = re.compile(r"\D+")
@@ -36,10 +39,13 @@ class TaxLookupResult:
     kind: str  # "tckn" | "vkn" | "invalid"
     value: str
     valid_format: bool
-    is_taxpayer: bool | None = None  # GİB sorgu sonucu; None = sorgulanmadı
+    # Aşağıdaki üçü şu an her zaman None/"format" — canlı GİB mükellef sorgusu
+    # yok (bkz. modül docstring'i). Alanlar, ileride bir entegratör API'si
+    # bağlanırsa response şeması değişmesin diye korunuyor.
+    is_taxpayer: bool | None = None
     title: str | None = None  # ünvan (VKN için)
     tax_office: str | None = None  # vergi dairesi (VKN için)
-    source: str | None = None  # "format" | "gib" | "cache"
+    source: str | None = None  # "format"
     error: str | None = None
 
 
@@ -106,69 +112,13 @@ def classify(value: str) -> str:
     return "invalid"
 
 
-# ── GİB internet vergi dairesi sorgu (best-effort) ─────────────────────────
-_GIB_QUERY_URL = "https://sorgu.efatura.gov.tr/earsiv-services/esarsiv"
-_GIB_TIMEOUT = 4.0
-_GIB_TTL = 60 * 60 * 24  # 24 saat — mükellef listesi gün içi değişmez
-
-
-async def _query_gib_taxpayer(vkn: str) -> TaxLookupResult:
-    """GİB'in açık sorgu uç noktasından e-arşiv mükellef ünvanını çekmeye çalış.
-
-    Resmi açık API yok; GİB sitesinin sorgu formu HTML döner. Burada
-    `is_taxpayer`'ı sadece HTTP 2xx + içerikte VKN'nin geçmesi olarak
-    yorumluyoruz; ünvan çıkarmaya çalışıyoruz.
-
-    Production'da Foriba/Nilvera gibi entegratörünüzün "mükellef sorgu" API'sini
-    kullanmak daha sağlıklı — `provider` ayarına göre buraya başka fonksiyon
-    bağlanabilir.
-    """
-    cache_key = ("gib_taxpayer", vkn)
-    cached = shared_cache.get(cache_key)
-    if cached is not None:
-        cached_result = TaxLookupResult(**cached)
-        cached_result.source = "cache"
-        return cached_result
-
-    out = TaxLookupResult(kind="vkn", value=vkn, valid_format=True, source="gib")
-    try:
-        async with httpx.AsyncClient(timeout=_GIB_TIMEOUT, follow_redirects=True) as client:
-            resp = await client.post(
-                _GIB_QUERY_URL,
-                data={"vkn": vkn},
-                headers={"User-Agent": "Mozilla/5.0 (compatible; TecnoTools/1.0)"},
-            )
-        if 200 <= resp.status_code < 300:
-            body = (resp.text or "")[:8000]
-            if vkn in body:
-                out.is_taxpayer = True
-                # Çok kaba ünvan çıkarımı — production'da entegratör API'si tavsiye edilir
-                m = re.search(
-                    r"<td[^>]*>\s*([^<]{4,120}A\.Ş\.|[^<]{4,120}LTD\.\s*ŞTİ\.)\s*</td>",
-                    body,
-                    re.IGNORECASE,
-                )
-                if m:
-                    out.title = m.group(1).strip()
-            else:
-                out.is_taxpayer = False
-        else:
-            out.error = f"gib_http_{resp.status_code}"
-    except (TimeoutError, httpx.HTTPError) as e:
-        out.error = f"gib_unreachable: {type(e).__name__}"
-        logger.info("GİB sorgusu başarısız (%s): %s", vkn, e)
-
-    # Hatayı da kısa süre cache'le ki ardışık aynı çağrılarda GİB'i bombalamayalım
-    shared_cache.set(cache_key, asdict(out), ttl=_GIB_TTL if out.error is None else 60)
-    return out
-
-
 async def lookup(value: str, query_gib: bool = True) -> TaxLookupResult:
     """Public API — endpoint buradan çağırır.
 
     Args:
       value: kullanıcının girdiği VKN veya TCKN.
-      query_gib: VKN için GİB sorgusu yapılsın mı? False ise sadece format.
+      query_gib: geriye dönük uyumluluk için tutulur; canlı GİB sorgusu
+        olmadığından şu an davranışı değiştirmez (bkz. modül docstring'i).
     """
     s = _strip(value)
     kind = classify(s)
@@ -178,7 +128,6 @@ async def lookup(value: str, query_gib: bool = True) -> TaxLookupResult:
         # TCKN doğrulaması için MERNIS sorgusu kullanmıyoruz (ad-soyad-doğum yılı
         # zorunlu kılıyor + e-arşiv için zaten TCKN'nin doğru olması yeterli).
         return TaxLookupResult(kind="tckn", value=s, valid_format=True, source="format")
-    # VKN
-    if not query_gib:
-        return TaxLookupResult(kind="vkn", value=s, valid_format=True, source="format")
-    return await _query_gib_taxpayer(s)
+    # VKN — canlı GİB mükellef sorgusu yok (bkz. modül docstring'i); yalnızca
+    # (doğrulanmış) format sonucu dönülür.
+    return TaxLookupResult(kind="vkn", value=s, valid_format=True, source="format")

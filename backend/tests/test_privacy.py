@@ -314,6 +314,30 @@ async def test_tax_lookup_endpoint_invalid(client):
     assert body["valid_format"] is False
 
 
+async def test_tax_lookup_vkn_no_live_gib_query(client):
+    """GİB'in canlı mükellef sorgusu için ücretsiz/otomatize edilebilir bir API
+    yok (bkz. app/services/gib.py) — geçerli bir VKN, query_gib varsayılan
+    (True) olsa bile hiçbir ağ çağrısı yapmadan, dürüst bir format sonucu
+    dönmeli (önceden var olmayan bir URL'e istek atıp hep is_taxpayer=None +
+    error dönerdi)."""
+    from app.services.gib import validate_vkn
+
+    candidate = None
+    for v in ("4350309852", "1234567890", "0123456789", "8900000023"):
+        if validate_vkn(v):
+            candidate = v
+            break
+    if not candidate:
+        pytest.skip("Test için geçerli VKN bulunamadı")
+    r = await client.get("/api/tax/lookup", params={"value": candidate})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["kind"] == "vkn"
+    assert body["valid_format"] is True
+    assert body["source"] == "format"
+    assert body["error"] is None
+
+
 async def test_tax_lookup_skips_gib_when_disabled(client):
     """query_gib=False sadece format döner — network call gerekmemeli."""
     # 10 hane uzunluğunda checksum geçen bir VKN bulmak için bir tane üretelim
