@@ -30,9 +30,19 @@ _DEV_LAN_NETWORKS = [
 
 
 def _client_ip(request) -> str:
-    # GÜVENLİK: X-Real-IP nginx tarafından $remote_addr'a sabitlenir (client
-    # spoof'layamaz). X-Forwarded-For'un İLK değeri client-kontrollü olabilir,
-    # bu yüzden ona güvenmiyoruz. nginx yoksa (dev) doğrudan bağlantı IP'si.
+    # GÜVENLİK: Bu API Railway'de çalışıyor — Railway'in kendi edge/CDN katmanı
+    # X-Forwarded-For'u YENİDEN YAZAR (client'ın gönderdiği değeri değil, gerçek
+    # bağlantı IP'sini SOLA ekler), yani ilk (en soldaki) değer güvenilirdir.
+    # X-Real-IP ise Railway'de CDN'in kendi IP'sine sabitlenebiliyor (yanıltıcı) —
+    # yalnızca bu projenin bundled nginx+docker-compose kurulumunda ($remote_addr
+    # ile) güvenilir olduğundan, XFF yoksa fallback olarak kullanılır.
+    # Kaynak: Railway Central Station — "which header should I rely on for real
+    # client IP" (X-Forwarded-For önerilir, ilk değer).
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        first = xff.split(",")[0].strip()
+        if first:
+            return first
     real = request.headers.get("x-real-ip")
     if real:
         return real.strip()

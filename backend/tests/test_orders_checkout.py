@@ -154,6 +154,43 @@ async def _eff_stock(auth_client, pid):
     return (await auth_client.get(f"/api/products/{pid}")).json()["effective_stock"]
 
 
+async def _cod_order(auth_client, *, stock, qty):
+    pr = await auth_client.post(
+        "/api/products", json={"name": "Kapıda Ödeme Ürünü", "price": 100, "stock": stock}
+    )
+    pid = pr.json()["id"]
+    co = await auth_client.post(
+        "/api/orders/checkout",
+        json={
+            "items": [{"product_id": pid, "qty": qty}],
+            "customer_name": "User",
+            "customer_email": "u@u.com",
+            "customer_phone": "+905551112233",
+            "customer_city": "X",
+            "customer_address": "Mahalle Sokak No:1 Daire:5",
+            "payment_method": "cod",
+        },
+    )
+    assert co.status_code == 200, co.text
+    return pid, co.json()["order_no"]
+
+
+async def test_cod_order_marks_paid_when_delivered(auth_client):
+    """Kapıda ödeme siparişi checkout'ta stok düşer ama payment_status 'pending'
+    kalır; teslim edilince (fulfill durumuna ilk geçiş) 'success'e çekilmeli —
+    aksi hâlde teslim edilmiş COD siparişleri hep 'pending' görünürdü."""
+    pid, order_no = await _cod_order(auth_client, stock=5, qty=2)
+    r = await auth_client.get("/api/orders")
+    order = next(o for o in r.json() if o["order_no"] == order_no)
+    assert order["payment_status"] == "pending"
+    assert await _eff_stock(auth_client, pid) == 3  # COD: checkout anında düştü
+
+    r = await auth_client.patch(f"/api/orders/{order_no}/status", json={"status": "delivered"})
+    assert r.status_code == 200
+    assert r.json()["payment_status"] == "success"
+    assert await _eff_stock(auth_client, pid) == 3  # tekrar düşmedi (idempotent)
+
+
 async def test_processing_deducts_stock_and_marks_paid(auth_client):
     pid, order_no = await _wire_order(auth_client, stock=5, qty=2)
     assert await _eff_stock(auth_client, pid) == 5  # havale: henüz düşmedi

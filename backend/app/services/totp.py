@@ -27,13 +27,30 @@ def _hotp(key: bytes, counter: int, digits: int = 6) -> str:
     return str(code_int % (10**digits)).zfill(digits)
 
 
-def verify_totp(code: str, secret_b32: str, window: int = 1, step: int = 30) -> bool:
+def verify_totp(
+    code: str,
+    secret_b32: str,
+    window: int = 1,
+    step: int = 30,
+    min_step: int | None = None,
+) -> int | None:
+    """Kod geçerliyse eşleşen HOTP step sayacını döner, geçersizse None.
+
+    `min_step` verilirse, o step'e eşit ya da daha eski bir eşleşme reddedilir
+    (anti-replay) — aksi hâlde bir kez görülen kod, ~90 saniyelik pencere
+    içinde tekrar tekrar kullanılabilirdi."""
     if not code or not secret_b32:
-        return False
+        return None
     code = code.strip().replace(" ", "")
     try:
         key = _b32_decode(secret_b32)
     except Exception:
-        return False
+        return None
     now = int(time.time() // step)
-    return any(hmac.compare_digest(code, _hotp(key, now + w)) for w in range(-window, window + 1))
+    for w in range(-window, window + 1):
+        counter = now + w
+        if min_step is not None and counter <= min_step:
+            continue
+        if hmac.compare_digest(code, _hotp(key, counter)):
+            return counter
+    return None

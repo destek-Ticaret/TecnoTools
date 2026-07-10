@@ -15,7 +15,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -29,6 +29,10 @@ _PUB_PATH = _KEYS_DIR / "order_signing_public.pem"
 
 _private_key: rsa.RSAPrivateKey | None = None
 _public_key: rsa.RSAPublicKey | None = None
+
+# Barkod QR koduyla uzun süre dolaşabildiğinden (iade/garanti süreçleri), kısa
+# tutulmaz; yine de süresiz geçerlilik yerine makul bir üst sınır konur.
+TOKEN_TTL_DAYS = 730
 
 
 def _ensure_keys_loaded() -> tuple[rsa.RSAPrivateKey, rsa.RSAPublicKey]:
@@ -98,6 +102,18 @@ def verify_token(token: str) -> dict[str, Any] | None:
     except InvalidSignature:
         return None
     try:
-        return json.loads(payload_bytes.decode("utf-8"))
+        payload = json.loads(payload_bytes.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         return None
+    issued_at = payload.get("issued_at")
+    if not isinstance(issued_at, str):
+        return None
+    try:
+        issued = datetime.fromisoformat(issued_at)
+    except ValueError:
+        return None
+    if issued.tzinfo is None:
+        issued = issued.replace(tzinfo=UTC)
+    if datetime.now(UTC) - issued > timedelta(days=TOKEN_TTL_DAYS):
+        return None
+    return payload

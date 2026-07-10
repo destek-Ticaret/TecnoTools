@@ -31,6 +31,23 @@ async def test_reservation_reduces_effective_stock_for_others(auth_client):
     assert r2.json()["effective_stock"] == 10
 
 
+async def test_reservation_qty_capped_to_real_stock(auth_client):
+    """Auth'suz bir uç nokta olduğundan, istenen qty gerçek stoktan fazlaysa
+    kırpılmalı — aksi hâlde herhangi biri devasa bir qty ile bir ürünü herkese
+    'stokta yok' gösterebilirdi."""
+    pr = await auth_client.post("/api/products", json={"name": "Az Stoklu", "price": 10, "stock": 4})
+    pid = pr.json()["id"]
+
+    sync = await auth_client.post(
+        "/api/reservations/sync",
+        json={"session_id": "attacker", "items": [{"product_id": pid, "qty": 999999}]},
+    )
+    assert sync.status_code == 200
+
+    r = await auth_client.get(f"/api/products/{pid}?session_id=victim")
+    assert r.json()["effective_stock"] == 0  # kırpıldı: 4'ten fazla rezerve edilemedi
+
+
 async def test_reservation_release(auth_client):
     pr = await auth_client.post(
         "/api/products",

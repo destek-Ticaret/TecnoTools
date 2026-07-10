@@ -105,7 +105,9 @@ pytest --cov=app            # coverage
 - **Stok**: sipariş onaylanınca düşülür — kart: ödeme başarılı callback'inde; havale/kapıda: admin siparişi onaylı duruma (hazırlanıyor/kargoda/teslim) çekince. `deduct_stock_once` idempotenttir (çift düşme yok); iptalde `restore_stock_once` geri ekler. Sepet rezervasyonu görünür stoğu ayna olarak tutar.
 - **Auth**: admin ve müşteri JWT'leri `type` ile ayrılır; refresh token rotation aktif.
 - **Güvenlik**: production'da zayıf `APP_SECRET_KEY` ile başlatma engellenir (fail-fast);
-  IP/rate-limit kararları nginx'in sabitlediği `X-Real-IP`'ye dayanır (XFF'e güvenilmez).
+  IP/rate-limit kararları Railway'in yeniden yazdığı `X-Forwarded-For`'un ilk
+  değerine dayanır (`X-Real-IP` yalnızca bundled nginx kurulumu için fallback —
+  Railway'de CDN edge IP'sine sabitlenip yanıltıcı olabiliyor).
 - **Satır sonları**: repo genelinde LF (`.gitattributes`).
 
 ---

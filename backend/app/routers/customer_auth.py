@@ -282,21 +282,48 @@ async def login(request: Request, payload: CustomerLoginIn, db: AsyncSession = D
 @limiter.limit("30/minute")
 async def refresh(request: Request, payload: RefreshIn, db: AsyncSession = Depends(get_db)):
     digest = hash_refresh(payload.refresh_token)
-    row = (
-        await db.execute(
-            select(CustomerRefreshToken).where(CustomerRefreshToken.token_hash == digest)
-        )
-    ).scalar_one_or_none()
     now = datetime.now(UTC)
-    if not row or row.revoked_at or _as_utc(row.expires_at) < now:
+    # Atomik rotate: satır yalnızca HÂLÂ geçerliyse (revoked_at IS NULL) iptal edilir.
+    # Aynı token'la eşzamanlı iki istek gelirse, DB bu UPDATE'i yalnızca birine
+    # "kazandırır" — iki ayrı geçerli oturumun türemesi (token forking) kapanır.
+    rotated = (
+        await db.execute(
+            update(CustomerRefreshToken)
+            .where(CustomerRefreshToken.token_hash == digest, CustomerRefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now)
+            .returning(CustomerRefreshToken.customer_id, CustomerRefreshToken.expires_at)
+        )
+    ).first()
+
+    if rotated is None:
+        # Token yok YA DA daha önce rotate edilmiş (replay!) — çalınmış oturum
+        # işareti. Müşterinin tüm aktif refresh token'larını iptal ederiz.
+        existing = (
+            await db.execute(
+                select(CustomerRefreshToken).where(CustomerRefreshToken.token_hash == digest)
+            )
+        ).scalar_one_or_none()
+        if existing is not None and existing.revoked_at is not None:
+            await db.execute(
+                update(CustomerRefreshToken)
+                .where(
+                    CustomerRefreshToken.customer_id == existing.customer_id,
+                    CustomerRefreshToken.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+            )
+            await db.commit()
         raise HTTPException(status_code=401, detail="Refresh token geçersiz")
+
+    customer_id, expires_at = rotated
+    if _as_utc(expires_at) < now:
+        raise HTTPException(status_code=401, detail="Refresh token geçersiz")
+
     customer = (
-        await db.execute(select(Customer).where(Customer.id == row.customer_id))
+        await db.execute(select(Customer).where(Customer.id == customer_id))
     ).scalar_one_or_none()
     if not customer or not customer.is_active:
         raise HTTPException(status_code=401, detail="Müşteri bulunamadı")
-    # Rotate
-    row.revoked_at = now
     return await _issue_tokens(db, customer)
 
 

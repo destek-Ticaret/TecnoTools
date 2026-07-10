@@ -66,6 +66,9 @@ class User(Base):
         Boolean, default=True, server_default="1", nullable=False
     )
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Son kabul edilen TOTP HOTP-step sayacı — aynı kodun tekrar kullanımını
+    # (replay) engellemek için (bkz. app/services/totp.py verify_totp min_step).
+    totp_last_step: Mapped[int | None] = mapped_column(Integer, nullable=True)
     recovery_code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

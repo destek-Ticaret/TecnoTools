@@ -344,9 +344,11 @@ async def checkout(request: Request, payload: CheckoutRequest, db: AsyncSession 
             iframe_url=sess["url"],
             provider="stripe",
         )
+    # Railway'de X-Forwarded-For'un ilk değeri güvenilir; X-Real-IP fallback
+    # (bkz. app/admin_ip_filter.py _client_ip).
     user_ip = (
-        request.headers.get("x-real-ip")
-        or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+        (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+        or request.headers.get("x-real-ip")
         or (request.client.host if request.client else "")
         or "127.0.0.1"
     )
@@ -502,7 +504,12 @@ async def update_status(
     if payload.status in _fulfill and old not in _fulfill:
         from app.services.stock import deduct_stock_once
 
-        if await deduct_stock_once(db, o) and o.payment_status != PaymentStatus.SUCCESS.value:
+        # Stok düşümü ve ödeme onayı ayrık ele alınır: kapıda ödeme (COD) siparişlerinde
+        # stok checkout anında zaten düşülmüş olur (deduct_stock_once burada no-op döner),
+        # ama sipariş fulfill durumuna İLK kez geçtiğinde ödeme yine de onaylanmalı —
+        # aksi halde COD siparişleri teslim edilse bile payment_status hep "pending" kalırdı.
+        await deduct_stock_once(db, o)
+        if o.payment_status != PaymentStatus.SUCCESS.value:
             o.payment_status = PaymentStatus.SUCCESS.value
     elif payload.status == OrderStatus.CANCELLED.value and old != OrderStatus.CANCELLED.value:
         from app.services.stock import restore_stock_once

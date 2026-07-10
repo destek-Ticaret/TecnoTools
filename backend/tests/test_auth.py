@@ -70,6 +70,31 @@ async def test_refresh_token_rotation(client, seed_admin):
     assert r2.status_code == 401
 
 
+async def test_refresh_replay_revokes_all_sessions(client, seed_admin):
+    """Rotate edilmiş (kullanılmış) bir refresh token'ın tekrar sunulması, çalınmış
+    oturum işaretidir — bu, kullanıcının diğer TÜM aktif oturumlarını da iptal etmeli."""
+    login1 = await client.post(
+        "/api/auth/login", json={"username": "testadmin", "password": "TestPass123!"}
+    )
+    login2 = await client.post(
+        "/api/auth/login", json={"username": "testadmin", "password": "TestPass123!"}
+    )
+    refresh_a = login1.json()["refresh_token"]
+    refresh_b = login2.json()["refresh_token"]
+
+    # A'yı rotate et (A artık iptal, yeni bir çocuk token geçerli)
+    r = await client.post("/api/auth/refresh", json={"refresh_token": refresh_a})
+    assert r.status_code == 200
+
+    # A'yı TEKRAR sun (replay) — hem kendisi 401 alır hem de B (ilgisiz, hâlâ aktif
+    # olması gereken başka bir oturum) iptal edilmiş olmalı
+    replay = await client.post("/api/auth/refresh", json={"refresh_token": refresh_a})
+    assert replay.status_code == 401
+
+    still_b = await client.post("/api/auth/refresh", json={"refresh_token": refresh_b})
+    assert still_b.status_code == 401
+
+
 async def test_logout_revokes_refresh(client, seed_admin):
     login = await client.post(
         "/api/auth/login",

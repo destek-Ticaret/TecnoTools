@@ -1,12 +1,12 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Body, Depends
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Reservation
+from app.models import Product, Reservation
 
 router = APIRouter(prefix="/api/reservations", tags=["reservations"])
 
@@ -33,14 +33,38 @@ async def sync_reservations(
     await db.execute(delete(Reservation).where(Reservation.session_id == session_id))
 
     expiry = now + timedelta(minutes=RESERVATION_TTL_MIN)
-    rows = []
+    requested: dict[int, int] = {}
     for it in items:
         pid = int(it.get("product_id") or 0)
         qty = int(it.get("qty") or 0)
         if pid > 0 and qty > 0:
-            rows.append(
-                {"session_id": session_id, "product_id": pid, "qty": qty, "expires_at": expiry}
+            requested[pid] = requested.get(pid, 0) + qty
+
+    # Kimliksiz/auth'suz bir uç nokta olduğundan (misafir sepeti), gerçek stoktan
+    # fazla rezervasyon istenmesi engellenir — aksi halde herhangi biri sahte
+    # session_id + devasa qty ile bir ürünü herkese "stokta yok" gösterebilirdi.
+    rows = []
+    if requested:
+        pmap = {
+            p.id: p.stock or 0
+            for p in (
+                await db.execute(select(Product).where(Product.id.in_(requested.keys())))
             )
+            .scalars()
+            .unique()
+            .all()
+        }
+        for pid, qty in requested.items():
+            capped = min(qty, pmap.get(pid, 0))
+            if capped > 0:
+                rows.append(
+                    {
+                        "session_id": session_id,
+                        "product_id": pid,
+                        "qty": capped,
+                        "expires_at": expiry,
+                    }
+                )
     if rows:
         await db.execute(pg_insert(Reservation).values(rows))
     await db.commit()

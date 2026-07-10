@@ -176,6 +176,27 @@ async def test_refresh_rotation(client):
     assert r2.status_code == 401
 
 
+async def test_refresh_replay_revokes_all_sessions(client):
+    """Rotate edilmiş bir müşteri refresh token'ının tekrar sunulması, diğer TÜM
+    aktif oturumların da iptal edilmesine yol açmalı (çalınmış oturum işareti)."""
+    reg = (await _register(client)).json()
+    login2 = await client.post(
+        "/api/customer-auth/login",
+        json={"email": REGISTER_PAYLOAD["email"], "password": REGISTER_PAYLOAD["password"]},
+    )
+    refresh_a = reg["refresh_token"]
+    refresh_b = login2.json()["refresh_token"]
+
+    r = await client.post("/api/customer-auth/refresh", json={"refresh_token": refresh_a})
+    assert r.status_code == 200
+
+    replay = await client.post("/api/customer-auth/refresh", json={"refresh_token": refresh_a})
+    assert replay.status_code == 401
+
+    still_b = await client.post("/api/customer-auth/refresh", json={"refresh_token": refresh_b})
+    assert still_b.status_code == 401
+
+
 async def test_logout_revokes_refresh(client):
     reg = (await _register(client)).json()
     out = await client.post(

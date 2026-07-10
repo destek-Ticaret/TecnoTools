@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Form, Header, HTTPException, Query, Requ
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models import (
     AuditLog,
@@ -10,11 +11,17 @@ from app.models import (
     PaymentStatus,
 )
 from app.rate_limit import limiter
+from app.services.currency import convert, get_rate
 from app.services.email import send_admin_new_order, send_order_confirmation
 from app.services.events import bus
 from app.services.paytr import verify_callback_hash
 from app.services.stock import deduct_stock_once
 from app.services.stripe_gateway import verify_webhook_signature as verify_stripe_signature
+
+_settings = get_settings()
+# FX kuru checkout ile webhook arasında geçen sürede küçük ölçüde oynayabilir;
+# bu toleransın üstündeki farklar tutar kurcalaması/tutarsızlığı olarak ele alınır.
+_STRIPE_AMOUNT_TOLERANCE = 0.03
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -57,16 +64,16 @@ async def paytr_callback(
         # 200 dönmemek için 400 atıyoruz; PayTR retry yapar
         raise HTTPException(status_code=400, detail="hash mismatch")
 
-    # merchant_oid'i tekrar order_no formatına çeviremeyiz (tire kaybolur), prefix eşleştirme yaparız
-    # Pratikte order_no = "TT-YYYY-NNNN" → merchant_oid = "TTYYYYNNNN"
-    # En güvenlisi: tüm aday siparişleri tarayıp eşleşeni bulmak yerine, order_no'da tire kaldırılarak match
-    result = await db.execute(
-        select(Order).where(
-            Order.payment_status.in_([PaymentStatus.INITIATED.value, PaymentStatus.PENDING.value])
-        )
-    )
-    candidates = result.scalars().unique().all()
-    order = next((o for o in candidates if o.order_no.replace("-", "") == merchant_oid), None)
+    # merchant_oid = order_no'daki tireler kaldırılmış hâli: "TT-YYYY-NNNN" → "TTYYYYNNNN".
+    # Yıl her zaman sabit 4 haneli olduğundan (bkz. _next_order_no), tarama yapmadan
+    # doğrudan deterministik olarak geri kurulabilir — seq 4 haneyi aşsa bile (>9999
+    # sipariş/yıl) belirsizlik oluşmaz, çünkü seq kısmı "yıldan sonraki her şey"dir.
+    if not merchant_oid.startswith("TT") or len(merchant_oid) < 7:
+        return Response(content="OK", media_type="text/plain")
+    order_no = f"TT-{merchant_oid[2:6]}-{merchant_oid[6:]}"
+    order = (
+        await db.execute(select(Order).where(Order.order_no == order_no))
+    ).scalar_one_or_none()
     if not order:
         # Sipariş yok veya zaten işlenmiş — yine de OK döneriz ki PayTR retry etmesin
         return Response(content="OK", media_type="text/plain")
@@ -75,6 +82,28 @@ async def paytr_callback(
         return Response(content="OK", media_type="text/plain")
 
     if status == "success":
+        # Savunma amaçlı tutar doğrulaması: PayTR'nin bildirdiği tutar (kuruş),
+        # siparişin GÜNCEL toplamıyla eşleşmeli. Token oluşturulduktan sonra
+        # sipariş tutarı değiştiyse (admin düzenlemesi, kupon vb.) callback'i
+        # körü körüne onaylamayız — manuel incelemeye düşer.
+        expected_kurus = round(float(order.total) * 100)
+        try:
+            reported_kurus = int(total_amount)
+        except ValueError:
+            reported_kurus = -1
+        if reported_kurus != expected_kurus:
+            db.add(
+                AuditLog(
+                    actor="paytr",
+                    action="payment-amount-mismatch",
+                    message=(
+                        f"Tutar uyuşmazlığı: {order.order_no} — bildirilen {reported_kurus}, "
+                        f"beklenen {expected_kurus} kuruş. Sipariş otomatik onaylanmadı."
+                    ),
+                )
+            )
+            await db.commit()
+            return Response(content="OK", media_type="text/plain")
         order.payment_status = PaymentStatus.SUCCESS.value
         order.status = OrderStatus.PROCESSING.value
         order.payment_method = payment_type or "card"
@@ -172,12 +201,41 @@ async def stripe_webhook(
             order = (
                 await db.execute(select(Order).where(Order.order_no == order_no))
             ).scalar_one_or_none()
-            if order:
-                await _mark_order_paid(db, order, "stripe")
-                await db.commit()
-                from app.routers.invoices import maybe_auto_issue_invoice
+            if order and order.payment_status != PaymentStatus.SUCCESS.value:
+                # Savunma amaçlı tutar doğrulaması: Stripe'ın tahsil ettiği tutar,
+                # siparişin GÜNCEL toplamının (session para birimine güncel kurla
+                # çevrilmiş hâlinin) makul bir toleransı içinde olmalı. Checkout
+                # session'ı oluşturulduktan sonra sipariş tutarı değiştiyse
+                # (admin düzenlemesi, kupon vb.) körü körüne onaylamayız.
+                session_cur = (session.get("currency") or "").upper()
+                amount_total = session.get("amount_total")
+                mismatch = True
+                if session_cur and amount_total is not None:
+                    try:
+                        rate = await get_rate(_settings.base_currency, session_cur)
+                        expected = convert(float(order.total), rate)
+                        actual = float(amount_total) / 100
+                        mismatch = abs(actual - expected) > expected * _STRIPE_AMOUNT_TOLERANCE
+                    except Exception:
+                        mismatch = True
+                if mismatch:
+                    db.add(
+                        AuditLog(
+                            actor="stripe",
+                            action="payment-amount-mismatch",
+                            message=(
+                                f"Tutar uyuşmazlığı: {order.order_no} — Stripe {amount_total} "
+                                f"{session_cur}, sipariş toplamı {order.total}. Otomatik onaylanmadı."
+                            ),
+                        )
+                    )
+                    await db.commit()
+                else:
+                    await _mark_order_paid(db, order, "stripe")
+                    await db.commit()
+                    from app.routers.invoices import maybe_auto_issue_invoice
 
-                await maybe_auto_issue_invoice(order.order_no, actor="stripe")
+                    await maybe_auto_issue_invoice(order.order_no, actor="stripe")
     elif event["type"] in (
         "checkout.session.expired",
         "checkout.session.async_payment_failed",

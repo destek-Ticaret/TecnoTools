@@ -62,8 +62,10 @@ async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depe
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="2FA kodu gerekli")
         from app.services.totp import verify_totp
 
-        if not verify_totp(payload.totp_code, user.totp_secret):
+        matched_step = verify_totp(payload.totp_code, user.totp_secret, min_step=user.totp_last_step)
+        if matched_step is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="2FA kodu hatalı")
+        user.totp_last_step = matched_step
 
     access = create_access_token(user.username, user.role)
     raw_refresh, refresh_hash, expiry = create_refresh_token()
@@ -76,21 +78,49 @@ async def login(request: Request, payload: LoginRequest, db: AsyncSession = Depe
 @limiter.limit("30/minute")
 async def refresh(request: Request, payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
     digest = hash_refresh(payload.refresh_token)
-    result = await db.execute(select(RefreshToken).where(RefreshToken.token_hash == digest))
-    token_row = result.scalar_one_or_none()
     now = datetime.now(UTC)
-    if not token_row or token_row.revoked_at or _as_utc(token_row.expires_at) < now:
+    # Atomik rotate: satır yalnızca HÂLÂ geçerliyse (revoked_at IS NULL) iptal edilir.
+    # Aynı token'la eşzamanlı iki istek gelirse (çalıntı token + gerçek kullanıcı
+    # yarışı), DB bu UPDATE'i yalnızca birine "kazandırır" — iki ayrı geçerli
+    # oturumun türemesi (token forking) böylece imkânsız hâle gelir.
+    rotated = (
+        await db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.token_hash == digest, RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now)
+            .returning(RefreshToken.user_id, RefreshToken.expires_at)
+        )
+    ).first()
+
+    if rotated is None:
+        # Token yok YA DA daha önce rotate edilmiş (replay!). Rotate edilmiş bir
+        # refresh token'ın tekrar sunulması çalınmış bir oturumun güçlü işaretidir
+        # — kullanıcının tüm aktif token'larını iptal ederiz (mass revocation).
+        existing = (
+            await db.execute(select(RefreshToken).where(RefreshToken.token_hash == digest))
+        ).scalar_one_or_none()
+        if existing is not None and existing.revoked_at is not None:
+            await db.execute(
+                update(RefreshToken)
+                .where(RefreshToken.user_id == existing.user_id, RefreshToken.revoked_at.is_(None))
+                .values(revoked_at=now)
+            )
+            await db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token geçersiz"
         )
 
-    user_result = await db.execute(select(User).where(User.id == token_row.user_id))
+    user_id, expires_at = rotated
+    if _as_utc(expires_at) < now:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token geçersiz"
+        )
+
+    user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Kullanıcı bulunamadı")
 
-    # Rotate: eskiyi iptal et, yeni token ver
-    token_row.revoked_at = now
     raw_refresh, refresh_hash, expiry = create_refresh_token()
     db.add(RefreshToken(user_id=user.id, token_hash=refresh_hash, expires_at=expiry))
     await db.commit()
@@ -130,9 +160,11 @@ async def twofa_setup(
 ):
     from app.services.totp import verify_totp
 
-    if not verify_totp(payload.code, payload.secret):
+    matched_step = verify_totp(payload.code, payload.secret)
+    if matched_step is None:
         raise HTTPException(status_code=400, detail="Doğrulama kodu hatalı")
     user.totp_secret = payload.secret
+    user.totp_last_step = matched_step
     await db.commit()
     return {"ok": True}
 
@@ -149,9 +181,11 @@ async def twofa_disable(
         raise HTTPException(status_code=400, detail="2FA zaten devre dışı")
     from app.services.totp import verify_totp
 
-    if not verify_totp(payload.code, user.totp_secret):
+    matched_step = verify_totp(payload.code, user.totp_secret, min_step=user.totp_last_step)
+    if matched_step is None:
         raise HTTPException(status_code=401, detail="2FA kodu hatalı")
     user.totp_secret = None
+    user.totp_last_step = None
     await db.commit()
     return {"ok": True}
 
